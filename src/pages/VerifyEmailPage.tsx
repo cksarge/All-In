@@ -165,7 +165,7 @@ export default function VerifyEmailPage() {
           Verify email
         </Button>
         <ResendCodeButton lastSentAt={sentAt} onResend={resend} />
-        <Turnstile ref={captcha} action="resend" />
+        <Turnstile ref={captcha} action="resend" appearance="interaction-only" />
         <p className="text-center text-xs text-subtle">
           Already verified? <Link to="/login" className="text-gold-300 hover:underline">Log in</Link>
         </p>
