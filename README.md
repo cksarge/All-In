@@ -120,8 +120,8 @@ After deploying, set **Authentication → URL Configuration → Site URL** in Su
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 1 | Scaffold, design system, landing, auth (OTP), email templates, profiles, chip economy, SQL | ✅ Done |
-| 2 | Lobby, tables & seats, Realtime plumbing, multiplayer blackjack | Next |
-| 3 | Roulette, craps | |
+| 2 | Lobby, tables & seats, Realtime plumbing, multiplayer blackjack | ✅ Done |
+| 3 | Roulette, craps | Next |
 | 4 | Poker: Hold'em, Omaha, Omaha Hi-Lo, Stud, Draw | |
 | 5 | Six slot machines + shared progressive jackpot | |
 | 6 | Baccarat, video poker, Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six | |

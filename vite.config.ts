@@ -1,4 +1,5 @@
 import { copyFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -20,12 +21,15 @@ function basePath(): string {
  * makes deep links like /All-In/lounge load the app, which then routes client-side.
  */
 function spaFallback(): Plugin {
+  let outDir = 'dist';
   return {
     name: 'spa-404-fallback',
     apply: 'build',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
     closeBundle() {
-      const dist = fileURLToPath(new URL('./dist/', import.meta.url));
-      copyFileSync(`${dist}index.html`, `${dist}404.html`);
+      copyFileSync(resolve(outDir, 'index.html'), resolve(outDir, '404.html'));
     },
   };
 }

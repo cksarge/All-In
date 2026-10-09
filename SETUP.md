@@ -16,6 +16,8 @@ look for the same setting name under **Authentication**.
 2. `02_economy.sql`
 3. `03_games_and_stakes.sql`
 4. `04_realtime.sql`
+5. `05_tables.sql`
+6. `06_blackjack.sql`
 
 Every file is safe to re-run. See `supabase/sql/README.md` for what each one does.
 
@@ -115,8 +117,9 @@ organization**. Anyone else sees *"We can't send email to that address yet"*.
 
 ## 8. Realtime
 
-`04_realtime.sql` adds `wallets` and `chip_ledger` to the `supabase_realtime` publication.
-Check **Database → Publications → supabase_realtime**: both tables should be listed.
+The SQL files add `wallets`, `chip_ledger`, `game_tables`, `table_seats`, `bj_rounds` and `bj_hands` to the
+`supabase_realtime` publication. Check **Database → Publications → supabase_realtime**: all six should be listed.
+The hidden tables (`bj_shoes`, `bj_secrets`) must **not** be in the publication.
 
 **Realtime → Settings**: for Phase 1, leave **"Allow public access"** enabled (do not switch
 to private-channels-only yet). Postgres Changes still enforce RLS, so each player only

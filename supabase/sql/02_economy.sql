@@ -83,16 +83,22 @@ comment on table public.chip_ledger is
 -- -----------------------------------------------------------------------------
 
 -- Chips a player currently has committed at tables (seated stacks, unresolved
--- bets). Phase 2+ replaces this with the real calculation so a player with a
--- big stack on a table can't claim a refill. Returns 0 until then.
-create or replace function private.chips_in_play(p_user uuid)
-returns bigint
-language sql
-stable
-set search_path = ''
-as $$
-  select 0::bigint;
-$$;
+-- bets). Later files (06_blackjack.sql, ...) replace this with the real sum so a
+-- player with chips on a table can't claim a refill. Only created here if it
+-- doesn't exist yet, so re-running this file never resets the later version.
+do $$
+begin
+  if to_regprocedure('private.chips_in_play(uuid)') is null then
+    execute $f$
+      create function private.chips_in_play(p_user uuid)
+      returns bigint
+      language sql
+      stable
+      set search_path = ''
+      as 'select 0::bigint'
+    $f$;
+  end if;
+end $$;
 
 -- THE ONLY way chips change. Atomically updates the wallet and writes the
 -- ledger row. Raises 'insufficient_chips' instead of going negative.

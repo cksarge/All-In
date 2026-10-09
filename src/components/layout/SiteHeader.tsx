@@ -65,6 +65,9 @@ function UserMenu() {
           <Link role="menuitem" to="/lounge" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Lounge
           </Link>
+          <Link role="menuitem" to="/lobby" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Lobby
+          </Link>
           <button
             role="menuitem"
             type="button"
@@ -112,9 +115,14 @@ export function SiteHeader() {
         <Logo to={signedIn ? '/lounge' : '/'} compact={signedIn} className="mr-auto sm:mr-4" />
         <nav aria-label="Main" className="mr-auto hidden items-center gap-1 sm:flex">
           {signedIn && (
-            <NavLink to="/lounge" className={navCls}>
-              Lounge
-            </NavLink>
+            <>
+              <NavLink to="/lounge" className={navCls}>
+                Lounge
+              </NavLink>
+              <NavLink to="/lobby" className={navCls}>
+                Lobby
+              </NavLink>
+            </>
           )}
           <NavLink to="/how-chips-work" className={navCls}>
             How chips work

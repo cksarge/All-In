@@ -4,7 +4,7 @@ import { useSettings } from '@/stores/settingsStore';
  * Tiny Web Audio synth: no audio files to load, and everything respects the
  * mute toggle. Later phases add richer per-game sounds on top of this.
  */
-export type SoundName = 'click' | 'chip' | 'coins' | 'success' | 'error' | 'whoosh';
+export type SoundName = 'click' | 'chip' | 'coins' | 'success' | 'error' | 'whoosh' | 'card' | 'flip' | 'win' | 'lose' | 'turn' | 'pop';
 
 let ctx: AudioContext | null = null;
 
@@ -81,6 +81,31 @@ export function playSound(name: SoundName) {
       break;
     case 'whoosh':
       noise(c, { dur: 0.25, freq: 900, gain: 0.05 });
+      break;
+    case 'card':
+      noise(c, { dur: 0.07, freq: 2600, gain: 0.09 });
+      noise(c, { start: 0.03, dur: 0.05, freq: 1400, gain: 0.05 });
+      break;
+    case 'flip':
+      noise(c, { dur: 0.05, freq: 3200, gain: 0.07 });
+      tone(c, { freq: 600, start: 0.02, dur: 0.05, type: 'triangle', gain: 0.03 });
+      break;
+    case 'win':
+      [659.25, 783.99, 1046.5, 1318.5].forEach((f, i) =>
+        tone(c, { freq: f, start: i * 0.07, dur: 0.25, type: 'triangle', gain: 0.07 }),
+      );
+      for (let i = 0; i < 4; i++) noise(c, { start: 0.25 + i * 0.05, dur: 0.035, freq: 4200, gain: 0.08 });
+      break;
+    case 'lose':
+      tone(c, { freq: 392, dur: 0.22, type: 'triangle', gain: 0.06, slide: 330 });
+      tone(c, { freq: 311, start: 0.18, dur: 0.3, type: 'triangle', gain: 0.05, slide: 262 });
+      break;
+    case 'turn':
+      tone(c, { freq: 880, dur: 0.12, type: 'sine', gain: 0.07 });
+      tone(c, { freq: 1320, start: 0.1, dur: 0.16, type: 'sine', gain: 0.06 });
+      break;
+    case 'pop':
+      tone(c, { freq: 520, dur: 0.08, type: 'sine', gain: 0.08, slide: 900 });
       break;
   }
 }

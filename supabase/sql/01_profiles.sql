@@ -11,6 +11,9 @@
 -- SECURITY DEFINER functions that call into it.
 create schema if not exists private;
 revoke all on schema private from public;
+-- New functions in `private` are not executable by default (Postgres grants
+-- EXECUTE to PUBLIC otherwise).
+alter default privileges in schema private revoke execute on functions from public;
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then

@@ -7,7 +7,7 @@ type Variant = 'gold' | 'felt' | 'ruby' | 'outline' | 'ghost';
 type Size = 'sm' | 'md' | 'lg';
 
 const base =
-  'relative inline-flex select-none items-center justify-center gap-2 rounded-xl font-semibold tracking-wide transition ' +
+  'relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl font-semibold tracking-wide transition ' +
   'duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2';
 
 const variants: Record<Variant, string> = {
