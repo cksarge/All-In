@@ -13,6 +13,10 @@ export interface Reaction {
 }
 
 const HEARTBEAT_MS = 15_000;
+// Leaving the page inside the app (lobby, lounge, …) gives up the seat. The short
+// delay lets React's dev-mode remount cancel it; a refresh or closed tab never
+// unmounts, so those keep the 2-minute reconnect hold.
+const pendingLeave = new Map<string, number>();
 const SAFETY_REFETCH_MS = 12_000;
 const REACTION_COOLDOWN_MS = 2_000;
 const REACTION_SHOW_MS = 3_500;
@@ -117,10 +121,28 @@ export function useBlackjackTable(tableId: string) {
   const mySeat = state?.seats.find((s) => s.user_id === user?.id) ?? null;
   const mySeatNo = mySeat?.seat_no;
 
+  const seatedRef = useRef(false);
+  seatedRef.current = Boolean(mySeatNo);
+  useEffect(() => {
+    window.clearTimeout(pendingLeave.get(tableId));
+    pendingLeave.delete(tableId);
+    return () => {
+      if (!seatedRef.current) return;
+      pendingLeave.set(
+        tableId,
+        window.setTimeout(() => {
+          pendingLeave.delete(tableId);
+          // Supabase requests only run once awaited/then'd.
+          void supabase.rpc('leave_table', { p_table: tableId }).then(() => undefined);
+        }, 300),
+      );
+    };
+  }, [tableId]);
+
   // Heartbeat keeps the seat (reconnect hold is 2 minutes).
   useEffect(() => {
     if (!mySeatNo) return;
-    const beat = () => void supabase.rpc('table_heartbeat', { p_table: tableId });
+    const beat = () => void supabase.rpc('table_heartbeat', { p_table: tableId }).then(() => undefined);
     beat();
     const id = window.setInterval(beat, HEARTBEAT_MS);
     return () => window.clearInterval(id);

@@ -244,6 +244,43 @@ reset role;
 select tests.ok((select phase from public.bj_rounds where table_id = :T order by round_no desc limit 1) = 'settled', 'lobby finished the abandoned round');
 select tests.ok(private.chips_in_play(:C) = 0, 'no chips stuck in play');
 
+-- ===== There is always a public table with a free seat at every stake level =====
+reset role;
+delete from auth.users where email like '%@fill.test';
+insert into auth.users (id, email, raw_user_meta_data)
+select ('00000000-0000-0000-0000-0000000f00' || lpad(g::text, 2, '0'))::uuid, 'u' || g || '@fill.test',
+       jsonb_build_object('username', 'filler' || g)
+  from generate_series(1, 30) g;
+-- Fill every open public low-stakes table completely.
+insert into public.table_seats (table_id, seat_no, user_id)
+select t.table_id, t.seat_no, u.id
+  from (select gt.id as table_id, s as seat_no, row_number() over (order by gt.id, s) as rn
+          from public.game_tables gt, generate_series(1, 5) s
+         where gt.game_key = 'blackjack' and gt.tier = 'low' and gt.status = 'open' and not gt.is_private
+           and not exists (select 1 from public.table_seats x where x.table_id = gt.id and x.seat_no = s)) t
+  join (select id, row_number() over (order by id) as rn from auth.users where email like '%@fill.test') u on u.rn = t.rn;
+select tests.ok(not private.tier_has_free_table('blackjack', 'low'), 'all low tables are full');
+set role authenticated;
+select tests.as_user(:A);
+select public.list_tables('blackjack');
+reset role;
+select tests.ok(private.tier_has_free_table('blackjack', 'low'), 'a new low table opened automatically');
+select tests.ok((select count(*) from public.game_tables where game_key = 'blackjack' and tier = 'low' and status = 'open' and not is_private
+                 and (select count(*) from public.table_seats s where s.table_id = game_tables.id) = 0) = 1, 'exactly one new empty table');
+set role authenticated;
+select tests.as_user(:B);
+select public.quick_join('blackjack', 'low') as qj \gset
+select tests.ok((select count(*) from public.table_seats where table_id = (:'qj'::jsonb ->> 'table_id')::uuid) = 1, 'quick join seats you at the new table');
+-- Rate limit on opening tables
+reset role;
+update public.game_tables set created_at = now() - interval '1 minute' where created_by = :C;
+set role authenticated;
+select tests.as_user(:C);
+select public.create_table('blackjack', 'low', false);
+select tests.throws($$select public.create_table('blackjack', 'low', false)$$, 'slow_down');
+reset role;
+delete from auth.users where email like '%@fill.test';
+
 -- ===== Integrity =====
 select tests.ok(not exists (
   select 1 from public.wallets w
