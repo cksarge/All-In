@@ -128,7 +128,7 @@ export default function LobbyPage() {
           <EmptyState
             icon={<GameIcon gameKey={current.key} className="h-12 w-12" />}
             title={`${current.name} opens soon`}
-            message="The tables are being built. Blackjack is open now."
+            message="The tables are being built. Blackjack, roulette and craps are open now."
             action={
               <Button size="sm" className="mt-2" onClick={() => setParams({ game: 'blackjack' })}>
                 Play blackjack
@@ -276,6 +276,7 @@ function TableCard({
         <div className="min-w-0">
           <h3 className="truncate font-display text-lg font-bold text-ivory">{table.name}</h3>
           <p className="text-xs text-muted">
+            {table.variant && <span className="capitalize text-cream/80">{table.variant} · </span>}
             Bets {formatChips(table.min_bet)}–{formatChips(table.max_bet)}
             {table.is_private && ' · Private'}
           </p>
@@ -335,6 +336,7 @@ function CreatePrivateModal({
   onCreated: (id: string) => void;
 }) {
   const [tier, setTier] = useState<TierKey>('low');
+  const [variant, setVariant] = useState<'european' | 'american'>('european');
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ id: string; code: string } | null>(null);
 
@@ -344,7 +346,12 @@ function CreatePrivateModal({
 
   const create = async () => {
     setBusy(true);
-    const { data, error } = await supabase.rpc('create_table', { p_game: game, p_tier: tier, p_private: true });
+    const { data, error } = await supabase.rpc('create_table', {
+      p_game: game,
+      p_tier: tier,
+      p_private: true,
+      p_variant: game === 'roulette' ? variant : null,
+    });
     setBusy(false);
     if (error) {
       toast.error("Couldn't create the table", friendlyError(error));
@@ -420,6 +427,31 @@ function CreatePrivateModal({
               })}
             </div>
           </fieldset>
+          {game === 'roulette' && (
+            <fieldset className="mt-5">
+              <legend className="text-sm font-medium text-cream/90">Wheel</legend>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ['european', 'European', 'Single 0'],
+                    ['american', 'American', '0 and 00'],
+                  ] as const
+                ).map(([v, label, hint]) => (
+                  <label
+                    key={v}
+                    className={cn(
+                      'cursor-pointer rounded-xl border p-3 text-sm transition',
+                      variant === v ? 'border-gold-500/70 bg-gold-500/10' : 'border-white/10 hover:border-white/25',
+                    )}
+                  >
+                    <input type="radio" name="variant" className="sr-only" checked={variant === v} onChange={() => setVariant(v)} />
+                    <span className="block font-semibold text-ivory">{label}</span>
+                    <span className="block text-xs text-cream/70">{hint}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <Button block className="mt-6" onClick={create} loading={busy}>
             Create table
           </Button>

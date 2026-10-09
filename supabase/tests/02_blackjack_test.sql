@@ -26,6 +26,10 @@ create or replace function tests.expire(p_table uuid) returns void language sql 
   update public.bj_rounds set phase_ends_at = now() - interval '1 minute'
    where table_id = p_table and phase <> 'settled'
 $$;
+create or replace function tests.expire_rl(p_table uuid) returns void language sql as $$
+  update public.rl_rounds set phase_ends_at = now() - interval '1 minute'
+   where table_id = p_table and phase <> 'settled'
+$$;
 grant execute on all functions in schema tests to anon, authenticated;
 
 delete from auth.users where email like '%@bj.test';

@@ -13,14 +13,22 @@ When a later phase adds or changes a file, re-running everything from `01` is al
 | 4 | `04_realtime.sql` | Adds `wallets` and `chip_ledger` to the `supabase_realtime` publication so balances update live. Realtime respects RLS, so each player only receives their own rows. Also defines `private.add_to_realtime()` used by later files. |
 | 5 | `05_tables.sql` | Multiplayer tables and seats for every table game: `game_tables` (public or private with a 6-character invite code), `table_seats` (one seat per player, heartbeat-based **2-minute reconnect hold**). Crypto-random helpers (`private.random_int`, `private.shuffled_shoe`) using pgcrypto. `game_history` and `player_game_stats`, written when rounds settle. **Always a free table:** whenever every public table at a stake level is full, a new one opens automatically (`private.ensure_open_tables`, run by the lobby and quick join; an advisory lock stops duplicates), and the last free table at a level is never auto-closed. RPCs: `list_tables`, `quick_join`, `create_table` (one per player every 20 s), `join_table`, `join_by_code`, `leave_table`, `table_heartbeat`, `set_sitting_out`, `my_table`. |
 | 6 | `06_blackjack.sql` | Multiplayer blackjack, fully server-side. `bj_rounds` and `bj_hands` (public to the table: blackjack cards are dealt face up), plus the **hidden** `bj_shoes` (undealt cards) and `bj_secrets` (dealer hole card), which have RLS on with no policies and no client privileges. RPCs: `bj_state`, `bj_place_bet`, `bj_clear_bet`, `bj_deal_now`, `bj_insurance`, `bj_action` (hit/stand/double/split/surrender), `bj_advance`. Opens blackjack and seeds four always-open house tables. |
+| 7 | `07_roulette.sql` | Shared-table roulette with 20 s betting rounds. European (single 0) and American (0 + 00) wheels via the table's `variant`. `rl_rounds`, `rl_bets` (public to the table) and the **hidden** `rl_secrets`: the pocket is drawn when betting closes and stays unreadable until the ball lands. Every bet is validated server-side (straight, split, street, corner, line, dozen, column, red/black, odd/even, low/high) and pays 36 ÷ numbers covered. Hot/cold numbers over the last 100 spins. RPCs: `rl_state`, `rl_place_bet`, `rl_undo_bet`, `rl_rebet`, `rl_advance`. Seeds a European and an American house wheel per stake level. |
+| 8 | `08_craps.sql` | Shared-table craps with a rotating shooter. `cr_state` (point, shooter, roll timer), `cr_rolls` (history), `cr_bets` (bets that ride across rolls). Pass / don't pass, come / don't come, odds (up to 3×, true odds), place, field, hardways and proposition bets. Dice are rolled by the server; the shooter can roll after 3 s, otherwise it auto-rolls after 20 s. Players who leave get optional bets back; contract bets play out. RPCs: `cr_state`, `cr_place_bet`, `cr_add_odds`, `cr_remove_bet`, `cr_roll`, `cr_advance`. |
 
 ## Turn timers without a server process
 
 There is no background job. Each round stores its deadline (`phase_ends_at`). Every client at the table calls
-`bj_advance()` when a countdown hits zero; the **server** checks the deadline and, if it has passed, closes betting,
+the game's advance function (`bj_advance`, `rl_advance`, `cr_advance`) when a countdown hits zero; the **server** checks the deadline and, if it has passed, closes betting,
 closes insurance, or auto-stands the player who timed out (disconnected players are skipped straight away). The lobby
 (`list_tables`) also finishes any round whose timer ran out while nobody was watching, so bets can't get stuck.
 No Edge Functions or `pg_cron` are needed.
+
+## Adding a game
+
+Each game file plugs into two shared helpers from `05_tables.sql` by naming convention, so shared code never
+has to change: `private.<game>_tick_stale()` (finish that game's expired rounds) and
+`private.<game>_in_play(uuid)` (chips a player has riding on that game).
 
 ## Security model
 
