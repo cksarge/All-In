@@ -4,17 +4,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { CardFan } from '@/components/cards/PlayingCard';
 import { ChipBurst } from '@/components/economy/ChipBurst';
 import { ReactionBar } from '@/components/table/ReactionBar';
+import { TableHeader } from '@/components/table/TableHeader';
+import { PhaseBar } from '@/components/table/PhaseBar';
 import { chipColorFor } from '@/components/table/ChipStack';
 import { useSecondsLeft } from '@/components/table/TimerRing';
 import { Button } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { ChipIcon } from '@/components/ui/ChipIcon';
 import { ErrorState, FullPageLoader } from '@/components/ui/States';
-import { TierBadge } from '@/components/ui/TierBadge';
 import { cn } from '@/components/ui/cn';
 import { useBlackjackTable } from '@/hooks/useBlackjackTable';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { useNow } from '@/hooks/useNow';
 import { availableActions, chipDenominations, type BjAction, type BjHand, type BjState } from '@/lib/blackjack';
 import { formatChips, formatChipsCompact } from '@/lib/format';
 import { playSound } from '@/lib/sound';
@@ -206,57 +206,16 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
 
   return (
     <div className="mx-auto max-w-6xl px-3 pb-36 pt-4 sm:px-4 sm:pb-10">
-      {/* Top bar */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Button size="sm" variant={mySeat ? 'outline' : 'ghost'} onClick={() => void leaveTable()}>
-          ← {mySeat ? 'Leave table' : 'Lobby'}
-        </Button>
-        <h1 className="font-display text-xl font-bold text-ivory sm:text-2xl">{table.name}</h1>
-        <TierBadge tier={table.tier} />
-        <span className="text-xs text-muted">
-          Bets {formatChips(table.min_bet)}–{formatChips(table.max_bet)}
-        </span>
-        {table.is_private && table.invite_code && (
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(table.invite_code!);
-                toast.success('Invite code copied', table.invite_code!);
-              } catch {
-                toast.info('Invite code', table.invite_code!);
-              }
-            }}
-            className="rounded-lg border border-gold-500/40 px-2 py-1 font-mono text-xs tracking-widest text-gold-200 hover:bg-gold-500/10"
-            aria-label={`Copy invite code ${table.invite_code}`}
-          >
-            {table.invite_code}
-          </button>
-        )}
-        <div className="flex w-full flex-wrap items-center justify-end gap-1 sm:ml-auto sm:w-auto sm:gap-1.5">
-          <span className="mr-1 hidden text-xs text-muted sm:inline" title="People at this table right now">
-            👀 {t.watchers}
-          </span>
-          {!t.connected && <span className="text-xs text-ruby-300">Reconnecting…</span>}
-          <Button size="sm" variant="ghost" onClick={() => setRulesOpen(true)}>
-            Rules
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>
-            History
-          </Button>
-          {mySeat && (
-            <>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => void run('sitout', () => t.sitOut(mySeat.status !== 'sitting_out'))}
-              >
-                {mySeat.status === 'sitting_out' ? "I'm back" : 'Sit out'}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <TableHeader
+        table={table}
+        watchers={t.watchers}
+        connected={t.connected}
+        mySeat={mySeat}
+        onLeave={() => void leaveTable()}
+        onRules={() => setRulesOpen(true)}
+        onHistory={() => setHistoryOpen(true)}
+        onSitOut={() => mySeat && void run('sitout', () => t.sitOut(mySeat.status !== 'sitting_out'))}
+      />
 
       {/* Felt */}
       <section
@@ -525,20 +484,6 @@ function statusLine(
   const d =
     r.dealer_result === 'blackjack' ? 'Dealer has blackjack' : r.dealer_result === 'bust' ? 'Dealer busts!' : `Dealer stands on ${r.dealer_total}`;
   return { key: `settled-${r.id}`, label: `${d} · next hand in`, timed: true };
-}
-
-/** Thin bar that drains as the current timer runs out. */
-function PhaseBar({ endsAt, totalSeconds, offsetMs }: { endsAt: string; totalSeconds: number; offsetMs: number }) {
-  const now = useNow(200, offsetMs);
-  const frac = Math.max(0, Math.min(1, (new Date(endsAt).getTime() - now) / (totalSeconds * 1000)));
-  return (
-    <div className="h-1 w-40 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
-      <div
-        className={cn('h-full rounded-full transition-[width] duration-200 ease-linear', frac > 0.25 ? 'bg-gold-400' : 'bg-ruby-400')}
-        style={{ width: `${frac * 100}%` }}
-      />
-    </div>
-  );
 }
 
 function waitingLine(state: BjState, userId: string | undefined): string {

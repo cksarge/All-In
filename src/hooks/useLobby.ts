@@ -9,6 +9,7 @@ export interface LobbyTable {
   id: string;
   name: string;
   tier: TierKey;
+  variant: string | null;
   tier_rank: number;
   tier_label: string;
   min_bet: number;
