@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CardFan } from '@/components/cards/PlayingCard';
 import { ChipBurst } from '@/components/economy/ChipBurst';
@@ -14,8 +14,9 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { cn } from '@/components/ui/cn';
 import { useBlackjackTable } from '@/hooks/useBlackjackTable';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useNow } from '@/hooks/useNow';
 import { availableActions, chipDenominations, type BjAction, type BjHand, type BjState } from '@/lib/blackjack';
-import { formatChips, formatChipsCompact, formatSigned } from '@/lib/format';
+import { formatChips, formatChipsCompact } from '@/lib/format';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/stores/authStore';
 import { toast } from '@/stores/toastStore';
@@ -37,7 +38,7 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [draft, setDraft] = useState(0);
   const [burst, setBurst] = useState(0);
-  const [banner, setBanner] = useState<{ id: string; net: number; text: string } | null>(null);
+  const [banner, setBanner] = useState<{ id: string; net: number; paid: number; text: string } | null>(null);
   const lastBetKey = `allin-bj-lastbet-${tableId}`;
 
   const round = state?.round ?? null;
@@ -50,6 +51,9 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
   const secondsLeft = useSecondsLeft(round?.phase_ends_at, offsetMs);
   const nextRoundReady = !round || (round.phase === 'settled' && (secondsLeft ?? 0) <= 0);
   const canBet = Boolean(mySeat) && (nextRoundReady || round?.phase === 'betting');
+  // Once the results pause is over, clear the old hand off the felt.
+  const viewRound = round && !(round.phase === 'settled' && nextRoundReady) ? round : null;
+  const viewHands = viewRound ? hands : [];
 
   // Keep the bet draft in sync with a bet the server already holds.
   const placedBet = myBetHand?.bet;
@@ -110,6 +114,7 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
     celebrated.current = round.id;
     void useWallet.getState().fetchStatus();
     const net = mine.reduce((n, h) => n + h.payout - h.bet - h.insurance, 0);
+    const paid = mine.reduce((n, h) => n + h.payout, 0);
     const bj = mine.some((h) => h.result === 'blackjack');
     if (net > 0) {
       playSound('win');
@@ -120,11 +125,19 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
     setBanner({
       id: round.id,
       net,
-      text: bj ? 'Blackjack!' : net > 0 ? 'You win!' : net < 0 ? 'Dealer wins' : 'Push',
+      paid,
+      text: bj ? 'Blackjack! You win' : net > 0 ? 'You win' : net < 0 ? 'Dealer wins' : 'Push · bet returned',
     });
-    const id = window.setTimeout(() => setBanner(null), 2600);
-    return () => window.clearTimeout(id);
   }, [round, hands, userId]);
+
+  // The banner has its own timer, so state refreshes can't keep it on screen.
+  const bannerId = banner?.id;
+  useEffect(() => {
+    if (!bannerId) return;
+    const id = window.setTimeout(() => setBanner(null), 2800);
+    return () => window.clearTimeout(id);
+  }, [bannerId]);
+  const showBanner = banner && banner.id === round?.id && round.phase === 'settled' ? banner : null;
 
   // ---- Keyboard shortcuts --------------------------------------------------
   const actions = myTurnHand ? availableActions(myTurnHand, myHands.length, balance) : null;
@@ -170,7 +183,23 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
   const table = state.table;
   const seatsByNo = new Map(state.seats.map((s) => [s.seat_no, s]));
   const reactionsByUser = new Map(t.reactions.map((r) => [r.user_id, r]));
-  const status = statusLine(state, userId, secondsLeft);
+  const status = statusLine(state, userId, nextRoundReady);
+  const phaseSeconds =
+    round?.phase === 'betting' ? state.rules.bet_seconds
+    : round?.phase === 'insurance' ? state.rules.insurance_seconds
+    : round?.phase === 'playing' ? state.rules.turn_seconds
+    : round?.phase === 'settled' ? state.rules.next_round_seconds
+    : 0;
+  const leaveTable = async () => {
+    if (mySeat) {
+      const err = await t.leave();
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
+    navigate('/lobby?game=blackjack');
+  };
   const denoms = chipDenominations(table.min_bet, table.max_bet);
   const maxDraft = Math.min(table.max_bet, balance + (myBetHand?.bet ?? 0));
   const myHand0 = myHands.find((h) => h.hand_index === 0);
@@ -179,9 +208,9 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
     <div className="mx-auto max-w-6xl px-3 pb-36 pt-4 sm:px-4 sm:pb-10">
       {/* Top bar */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Link to="/lobby?game=blackjack" className="rounded-lg px-2 py-1 text-sm text-cream/75 hover:bg-white/[0.06] hover:text-ivory">
-          ← Lobby
-        </Link>
+        <Button size="sm" variant={mySeat ? 'outline' : 'ghost'} onClick={() => void leaveTable()}>
+          ← {mySeat ? 'Leave table' : 'Lobby'}
+        </Button>
         <h1 className="font-display text-xl font-bold text-ivory sm:text-2xl">{table.name}</h1>
         <TierBadge tier={table.tier} />
         <span className="text-xs text-muted">
@@ -224,17 +253,6 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
               >
                 {mySeat.status === 'sitting_out' ? "I'm back" : 'Sit out'}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  const err = await t.leave();
-                  if (err) toast.error(err);
-                  else navigate('/lobby?game=blackjack');
-                }}
-              >
-                Leave
-              </Button>
             </>
           )}
         </div>
@@ -245,60 +263,77 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
         aria-label="Blackjack table"
         className="felt relative mt-4 rounded-[2.5rem] border-[10px] border-[#3a2412] px-2 pb-8 pt-5 shadow-[inset_0_0_80px_rgba(0,0,0,0.55),0_30px_60px_-30px_rgba(0,0,0,0.9)] sm:rounded-b-[10rem] sm:px-10 sm:pb-14 lg:rounded-b-[14rem] lg:px-16"
       >
-        <div className="pointer-events-none absolute inset-x-[12%] top-[42%] hidden text-center font-display text-[0.7rem] uppercase tracking-[0.35em] text-gold-300/35 xl:block">
-          Blackjack pays 3 to 2 · Dealer stands on all 17s · Insurance pays 2 to 1
-        </div>
-
         {/* Dealer */}
         <div className="flex flex-col items-center gap-2">
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-felt-300/80">Dealer</p>
           <div className="flex min-h-[5rem] items-end">
-            {round && round.dealer_cards.length > 0 ? (
-              <CardFan cards={round.dealer_cards} hidden={round.hole_hidden ? 1 : 0} size="md" />
+            {viewRound && viewRound.dealer_cards.length > 0 ? (
+              <CardFan cards={viewRound.dealer_cards} hidden={viewRound.hole_hidden ? 1 : 0} size="md" />
             ) : (
               <div className="h-[4.9rem] w-[3.5rem] rounded-lg border-2 border-dashed border-white/10" aria-hidden="true" />
             )}
           </div>
-          {round?.dealer_total != null && round.dealer_cards.length > 0 && (
+          {viewRound?.dealer_total != null && viewRound.dealer_cards.length > 0 && (
             <span
               className={cn(
                 'rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums',
-                round.dealer_result === 'bust' ? 'bg-ruby-800 text-ruby-300' : round.dealer_result === 'blackjack' ? 'bg-gold-500 text-ink-950' : 'bg-ink-950/80 text-ivory',
+                viewRound.dealer_result === 'bust' ? 'bg-ruby-800 text-ruby-300' : viewRound.dealer_result === 'blackjack' ? 'bg-gold-500 text-ink-950' : 'bg-ink-950/80 text-ivory',
               )}
             >
-              {round.dealer_result === 'blackjack' ? 'Blackjack' : round.dealer_result === 'bust' ? `Bust (${round.dealer_total})` : round.dealer_total}
-              {round.hole_hidden && ' + ?'}
+              {viewRound.dealer_result === 'blackjack' ? 'Blackjack' : viewRound.dealer_result === 'bust' ? `Bust (${viewRound.dealer_total})` : viewRound.dealer_total}
+              {viewRound.hole_hidden && ' + ?'}
             </span>
           )}
         </div>
 
         {/* Status line */}
-        <div className="relative mx-auto mt-4 flex min-h-10 max-w-md items-center justify-center" aria-live="polite">
+        <div className="relative mx-auto mt-4 flex min-h-12 max-w-md flex-col items-center justify-center">
           <AnimatePresence mode="wait">
-            {banner ? (
+            {showBanner ? (
               <motion.div
-                key={`banner-${banner.id}`}
+                key={`banner-${showBanner.id}`}
+                role="status"
                 initial={{ scale: 0.6, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 20 }}
                 className={cn(
                   'rounded-full px-5 py-2 font-display text-lg font-bold shadow-xl',
-                  banner.net > 0 ? 'bg-gradient-to-r from-gold-300 to-gold-500 text-ink-950' : banner.net < 0 ? 'bg-ruby-800 text-ivory' : 'bg-ink-700 text-ivory',
+                  showBanner.net > 0 ? 'bg-gradient-to-r from-gold-300 to-gold-500 text-ink-950' : showBanner.net < 0 ? 'bg-ruby-800 text-ivory' : 'bg-ink-700 text-ivory',
                 )}
               >
-                {banner.text} {banner.net !== 0 && <span className="tabular-nums">{formatSigned(banner.net)}</span>}
+                {showBanner.text}
+                {showBanner.net > 0 && (
+                  <ChipAmount value={showBanner.paid} className="ml-2 align-middle" iconClassName="h-5 w-5" />
+                )}
               </motion.div>
             ) : (
-              <motion.p
-                key={status.text}
+              // Keyed by phase/turn only, so the seconds count down in place without re-animating.
+              <motion.div
+                key={status.key}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                className={cn('rounded-full bg-ink-950/60 px-4 py-1.5 text-sm font-medium', status.highlight ? 'text-gold-200' : 'text-cream/90')}
+                className="flex flex-col items-center gap-1.5"
               >
-                {status.text}
-              </motion.p>
+                <p
+                  className={cn('rounded-full bg-ink-950/60 px-4 py-1.5 text-sm font-medium', status.highlight ? 'text-gold-200' : 'text-cream/90')}
+                  aria-live="polite"
+                >
+                  {status.label}
+                  {status.timed && secondsLeft !== null && (
+                    <>
+                      {' · '}
+                      <span className="inline-block min-w-[2.2ch] text-left tabular-nums" aria-hidden="true">
+                        {secondsLeft}s
+                      </span>
+                    </>
+                  )}
+                </p>
+                {status.timed && round?.phase_ends_at && phaseSeconds > 0 && (
+                  <PhaseBar endsAt={round.phase_ends_at} totalSeconds={phaseSeconds} offsetMs={offsetMs} />
+                )}
+              </motion.div>
             )}
           </AnimatePresence>
           <AnimatePresence>{burst > 0 && <ChipBurst key={burst} count={18} />}</AnimatePresence>
@@ -314,8 +349,8 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
                 <SeatView
                   seatNo={seatNo}
                   seat={seat}
-                  hands={hands.filter((h) => h.seat_no === seatNo && (!seat || h.user_id === seat.user_id || h.result !== null))}
-                  round={round}
+                  hands={viewHands.filter((h) => h.seat_no === seatNo && (!seat || h.user_id === seat.user_id || h.result !== null))}
+                  round={viewRound}
                   isMe={seat?.user_id === userId}
                   canSit={!mySeat}
                   onSit={() => void run(`sit-${seatNo}`, () => t.sit(seatNo), 'chip')}
@@ -460,23 +495,50 @@ function ActionButton({
   );
 }
 
-function statusLine(state: BjState, userId: string | undefined, secondsLeft: number | null): { text: string; highlight?: boolean } {
+/**
+ * What the status line says. `key` changes only when the phase or turn changes
+ * (that's when it animates); the seconds are rendered separately.
+ */
+function statusLine(
+  state: BjState,
+  userId: string | undefined,
+  nextRoundReady: boolean,
+): { key: string; label: string; timed: boolean; highlight?: boolean } {
   const r = state.round;
   const seated = state.seats.some((s) => s.user_id === userId);
-  if (!r || (r.phase === 'settled' && (secondsLeft ?? 0) <= 0)) {
-    return { text: seated ? 'Place your bets' : state.seats.length ? 'Waiting for bets' : 'Table open: take a seat', highlight: seated };
+  if (!r || nextRoundReady) {
+    return {
+      key: `open-${seated}`,
+      label: seated ? 'Place your bets' : state.seats.length ? 'Waiting for bets' : 'Table open: take a seat',
+      timed: false,
+      highlight: seated,
+    };
   }
-  if (r.phase === 'betting') return { text: `Bets close in ${secondsLeft ?? 0}s`, highlight: true };
-  if (r.phase === 'insurance') return { text: `Dealer shows an Ace · Insurance? ${secondsLeft ?? 0}s`, highlight: true };
+  if (r.phase === 'betting') return { key: `bet-${r.id}`, label: 'Bets close in', timed: true, highlight: true };
+  if (r.phase === 'insurance') return { key: `ins-${r.id}`, label: 'Dealer shows an Ace · Insurance?', timed: true, highlight: true };
   if (r.phase === 'playing') {
     const h = state.hands.find((x) => x.id === r.turn_hand_id);
-    if (h?.user_id === userId) return { text: `Your turn · ${secondsLeft ?? 0}s`, highlight: true };
+    if (h?.user_id === userId) return { key: `turn-${r.turn_hand_id}`, label: 'Your turn', timed: true, highlight: true };
     const name = state.seats.find((s) => s.user_id === h?.user_id)?.username ?? 'A player';
-    return { text: `${name} is playing · ${secondsLeft ?? 0}s` };
+    return { key: `turn-${r.turn_hand_id}`, label: `${name} is playing`, timed: true };
   }
   const d =
     r.dealer_result === 'blackjack' ? 'Dealer has blackjack' : r.dealer_result === 'bust' ? 'Dealer busts!' : `Dealer stands on ${r.dealer_total}`;
-  return { text: `${d} · next hand in ${secondsLeft ?? 0}s` };
+  return { key: `settled-${r.id}`, label: `${d} · next hand in`, timed: true };
+}
+
+/** Thin bar that drains as the current timer runs out. */
+function PhaseBar({ endsAt, totalSeconds, offsetMs }: { endsAt: string; totalSeconds: number; offsetMs: number }) {
+  const now = useNow(200, offsetMs);
+  const frac = Math.max(0, Math.min(1, (new Date(endsAt).getTime() - now) / (totalSeconds * 1000)));
+  return (
+    <div className="h-1 w-40 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+      <div
+        className={cn('h-full rounded-full transition-[width] duration-200 ease-linear', frac > 0.25 ? 'bg-gold-400' : 'bg-ruby-400')}
+        style={{ width: `${frac * 100}%` }}
+      />
+    </div>
+  );
 }
 
 function waitingLine(state: BjState, userId: string | undefined): string {

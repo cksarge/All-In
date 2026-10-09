@@ -84,7 +84,7 @@ export function SeatView({
                     className={cn('absolute -top-3 z-10 rounded-full px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider shadow', res.cls)}
                   >
                     {res.text}
-                    {h.payout > h.bet + h.insurance && ` +${formatChipsCompact(h.payout - h.bet - h.insurance)}`}
+                    {(h.result === 'win' || h.result === 'blackjack') && ` +${formatChipsCompact(h.payout)}`}
                   </motion.span>
                 )}
               </AnimatePresence>

@@ -7,7 +7,11 @@ import { supabase } from '@/lib/supabase';
 export function ReturnToTable() {
   const [seat, setSeat] = useState<{ table_id: string; name: string; seat_no: number } | null>(null);
   useEffect(() => {
-    void supabase.rpc('my_table').then(({ data }) => setSeat((data as typeof seat) ?? null));
+    // Short delay: leaving a table by navigating here releases the seat a moment later.
+    const t = window.setTimeout(() => {
+      void supabase.rpc('my_table').then(({ data }) => setSeat((data as typeof seat) ?? null));
+    }, 900);
+    return () => window.clearTimeout(t);
   }, []);
   if (!seat) return null;
   return (

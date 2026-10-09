@@ -172,7 +172,67 @@ begin
    where t.status = 'open'
      and not t.persistent
      and t.last_activity_at < now() - case when t.is_private then interval '30 minutes' else interval '10 minutes' end
-     and not exists (select 1 from public.table_seats s where s.table_id = t.id);
+     and not exists (select 1 from public.table_seats s where s.table_id = t.id)
+     -- Never close the only public table at this stake level that still has a free seat.
+     and (t.is_private or exists (
+           select 1 from public.game_tables o
+            where o.id <> t.id and o.game_key = t.game_key and o.tier = t.tier
+              and o.status = 'open' and not o.is_private
+              and (select count(*) from public.table_seats s where s.table_id = o.id) < o.max_seats));
+end $$;
+
+create or replace function private.public_table_name()
+returns text
+language sql
+volatile
+set search_path = ''
+as $$
+  select (array['Velvet', 'Monarch', 'Starlight', 'Gilded', 'Midnight', 'Crown', 'Marquee', 'Lucky'])[private.random_int(8) + 1]
+         || ' ' || (array['Lounge', 'Room', 'Salon', 'Parlor'])[private.random_int(4) + 1]
+         || ' ' || (100 + private.random_int(900))::text;
+$$;
+
+create or replace function private.tier_has_free_table(p_game text, p_tier text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.game_tables t
+     where t.game_key = p_game and t.tier = p_tier and t.status = 'open' and not t.is_private
+       and (select count(*) from public.table_seats s where s.table_id = t.id) < t.max_seats
+  );
+$$;
+
+-- Guarantee there is always at least one public table with a free seat at every
+-- stake level of an open multiplayer game. When the last one fills up, a new
+-- table opens automatically (advisory lock: only one is created even if many
+-- players look at the lobby at the same moment).
+create or replace function private.ensure_open_tables(p_game text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_seats integer;
+  v_tier text;
+begin
+  select max_seats into v_seats from public.games where key = p_game and multiplayer and released;
+  if v_seats is null then
+    return;
+  end if;
+  for v_tier in select tier from public.stake_tiers where game_key = p_game order by tier_rank loop
+    if not private.tier_has_free_table(p_game, v_tier) then
+      perform pg_advisory_xact_lock(hashtext('allin-open-table:' || p_game || ':' || v_tier));
+      if not private.tier_has_free_table(p_game, v_tier) then
+        insert into public.game_tables (game_key, tier, name, max_seats)
+        values (p_game, v_tier, private.public_table_name(), v_seats);
+      end if;
+    end if;
+  end loop;
 end $$;
 
 revoke all on function private.cleanup_tables() from public;
@@ -276,6 +336,7 @@ declare
 begin
   perform private.cleanup_tables();
   perform private.tick_stale_tables();
+  perform private.ensure_open_tables(p_game);
   return coalesce((
     select jsonb_agg(row_to_json(x)::jsonb order by x.tier_rank, x.persistent desc, x.seats_filled desc, x.created_at)
       from (
@@ -323,6 +384,9 @@ begin
     raise exception 'game_not_open';
   end if;
   perform private.assert_tier_access(v_uid, p_game, p_tier);
+  if exists (select 1 from public.game_tables where created_by = v_uid and created_at > now() - interval '20 seconds') then
+    raise exception 'slow_down' using hint = 'Please wait a few seconds before opening another table.';
+  end if;
 
   if p_private then
     loop
@@ -331,9 +395,7 @@ begin
     end loop;
     select username || '''s table' into v_name from public.profiles where id = v_uid;
   else
-    v_name := (array['Velvet', 'Monarch', 'Starlight', 'Gilded', 'Midnight', 'Crown', 'Marquee', 'Lucky'])[private.random_int(8) + 1]
-              || ' ' || (array['Lounge', 'Room', 'Salon', 'Parlor'])[private.random_int(4) + 1]
-              || ' ' || (100 + private.random_int(900))::text;
+    v_name := private.public_table_name();
   end if;
 
   insert into public.game_tables (game_key, tier, name, is_private, invite_code, max_seats, created_by)
@@ -369,7 +431,17 @@ begin
    limit 1;
 
   if v_table is null then
-    return public.create_table(p_game, p_tier, false);
+    -- Every table at this level is full: open a new one and sit there.
+    perform private.ensure_open_tables(p_game);
+    select t.id into v_table
+      from public.game_tables t
+     where t.game_key = p_game and t.tier = p_tier and t.status = 'open' and not t.is_private
+       and (select count(*) from public.table_seats s where s.table_id = t.id) < t.max_seats
+     order by t.created_at
+     limit 1;
+    if v_table is null then
+      raise exception 'game_not_open';
+    end if;
   end if;
 
   v_seat := private.take_seat(v_uid, v_table, null);
