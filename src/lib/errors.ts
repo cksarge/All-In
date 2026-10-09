@@ -70,6 +70,8 @@ export function friendlyError(error: unknown, context: ErrorContext = 'rpc'): st
         return 'An account with this email already exists. Try logging in instead.';
       case 'otp_expired':
         return 'That code is incorrect or has expired. Check the digits, or request a new code.';
+      case 'captcha_failed':
+        return 'The security check failed or expired. Please try again.';
       case 'otp_disabled':
         return 'Email codes are turned off for this project. (Admin: check SETUP.md.)';
       case 'over_email_send_rate_limit': {
@@ -102,6 +104,7 @@ export function friendlyError(error: unknown, context: ErrorContext = 'rpc'): st
         if (context === 'signup') return 'That username was just taken. Please choose another.';
         break;
     }
+    if (/captcha/i.test(msg)) return 'The security check failed or expired. Please try again.';
     if (e.status === 429) return 'Too many attempts. Please wait a minute, then try again.';
     if (/database error saving new user/i.test(msg)) {
       return 'That username was just taken. Please choose another.';

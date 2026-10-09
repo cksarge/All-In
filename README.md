@@ -12,7 +12,9 @@ A web-based, free-play, multiplayer social casino game.
 2. **Server-authoritative.** Shuffles, rolls, spins, rules, bet validation and every chip change run in Postgres
    functions called with `supabase.rpc()`. The browser can read its own balance and can never write it.
 3. **Hidden information stays hidden.** Hole cards and the undealt deck are protected by RLS, not by the UI.
-4. **Publishable key only** in the client. The secret / service-role key is never used in front-end code.
+4. **Bot protection.** Cloudflare Turnstile guards sign-up, log-in, code resends and password resets. Supabase
+   Auth verifies the tokens, so the Turnstile secret never touches the front end.
+5. **Publishable key only** in the client. The secret / service-role key is never used in front-end code.
 
 `npm run check:copy` scans the UI and email templates for currency symbols and words like
 "deposit", "withdraw", "cash out", "buy" or "purchase" (the required "No purchases" disclaimers are allowed).
@@ -26,6 +28,7 @@ It builds to a static site.
 
 ```
 .
+├── .github/workflows/     deploy-pages.yml (GitHub Pages)
 ├── index.html
 ├── public/                  favicon, _redirects (Netlify SPA fallback)
 ├── vercel.json              SPA fallback for Vercel
@@ -78,7 +81,19 @@ Then follow **[SETUP.md](./SETUP.md)** to run the SQL files and configure the Su
 | `npm run check` | Typecheck + copy guard |
 | `npm run test:sql` | Apply `supabase/sql` twice to a throwaway Postgres and run the SQL tests (needs Postgres 15+ binaries locally) |
 
-## Deploy (static hosting)
+## Deploy to GitHub Pages (recommended)
+
+`.github/workflows/deploy-pages.yml` builds and deploys on every push to `main`, or on demand from the Actions tab.
+
+1. Repo **Settings → Pages → Source: GitHub Actions**.
+2. Push or merge to `main`. The site appears at **https://cksarge.github.io/All-In/**.
+3. In Supabase, set **Site URL** to that address (see [SETUP.md](./SETUP.md)).
+
+How it works on Pages: the workflow sets `VITE_BASE=/All-In/` so asset URLs and routes live under the repo path,
+and the build copies `index.html` to `404.html` so deep links like `/All-In/lounge` still load the app
+(GitHub Pages has no rewrite rules).
+
+## Other static hosts
 
 `npm run build` produces a static site in `dist/`. The two `VITE_*` variables are baked in **at build time**,
 so set them in your host's build environment:
@@ -86,6 +101,9 @@ so set them in your host's build environment:
 ```
 VITE_SUPABASE_URL=https://irwctaccrxtcoqsskjpy.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_16Wb-YS3WD6d6iq93tDRpA_pdMlm7xT
+VITE_TURNSTILE_SITE_KEY=0x4AAAAAAFSY1ZizIBVxN3W0
+# Only when serving from a sub-path (e.g. GitHub Pages project sites):
+VITE_BASE=/All-In/
 ```
 
 - **Netlify:** build command `npm run build`, publish directory `dist`. `public/_redirects` handles SPA routes.

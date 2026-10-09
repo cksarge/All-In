@@ -68,7 +68,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={motionPref === 'system' ? 'user' : reduced ? 'always' : 'never'}>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
         <RouteEffects />
         <WalletConnector />
         <Routes>
