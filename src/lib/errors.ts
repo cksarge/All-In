@@ -46,6 +46,7 @@ const RPC_MESSAGES: Record<string, string> = {
   invite_not_found: "That invite code didn't match an open table. Check the code and try again.",
   game_not_open: "That game isn't open yet.",
   unknown_game: "That game doesn't exist.",
+  slow_down: 'Please wait a few seconds before opening another table.',
   // Blackjack
   betting_closed: 'Betting is closed for this hand.',
   next_round_pending: 'The next hand opens in a moment.',
