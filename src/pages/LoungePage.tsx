@@ -5,6 +5,8 @@ import { DailyBonusCard } from '@/components/economy/DailyBonusCard';
 import { RecentActivity } from '@/components/economy/RecentActivity';
 import { RefillCard } from '@/components/economy/RefillCard';
 import { GameGrid } from '@/components/lounge/GameGrid';
+import { ReturnToTable } from '@/components/lounge/ReturnToTable';
+import { ButtonLink } from '@/components/ui/Button';
 import { WelcomeTour } from '@/components/onboarding/WelcomeTour';
 import { ErrorState, FullPageLoader } from '@/components/ui/States';
 import { useAuth } from '@/stores/authStore';
@@ -52,10 +54,16 @@ export default function LoungePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
-      <header className="mb-6">
-        <p className="text-sm font-medium text-gold-400">{greeting()},</p>
-        <h1 className="font-display text-3xl font-bold text-ivory sm:text-4xl">{profile?.username ?? '…'}</h1>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-gold-400">{greeting()},</p>
+          <h1 className="font-display text-3xl font-bold text-ivory sm:text-4xl">{profile?.username ?? '…'}</h1>
+        </div>
+        <ButtonLink to="/lobby" size="lg">
+          Find a table
+        </ButtonLink>
       </header>
+      <ReturnToTable />
 
       {walletError && (
         <div className="surface mb-6">

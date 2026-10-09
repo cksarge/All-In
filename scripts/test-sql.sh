@@ -16,7 +16,7 @@ else
   RUNAS=(bash -c)
 fi
 "${RUNAS[@]}" "'$PG_BIN/initdb' -D '$WORK/data' -U postgres -A trust >/dev/null"
-"${RUNAS[@]}" "'$PG_BIN/pg_ctl' -D '$WORK/data' -o '-p $PORT -k $WORK -c listen_addresses=' -l '$WORK/log' start -w >/dev/null"
+"${RUNAS[@]}" "'$PG_BIN/pg_ctl' -D '$WORK/data' -o '-p $PORT -k $WORK -c listen_addresses= -c wal_level=logical' -l '$WORK/log' start -w >/dev/null"
 
 export PGOPTIONS="-c client_min_messages=warning"
 PSQL=(psql -h "$WORK" -p "$PORT" -U postgres -d postgres -v ON_ERROR_STOP=1 -q -X)
@@ -31,6 +31,6 @@ done
 
 status=0
 for t in "$ROOT"/supabase/tests/*_test.sql; do
-  if "${PSQL[@]}" -f "$t" >/dev/null; then echo "ok   $(basename "$t")"; else echo "FAIL $(basename "$t")"; status=1; fi
+  if "${PSQL[@]}" -f "$t" >"$WORK/out.txt"; then echo "ok   $(basename "$t")"; else echo "FAIL $(basename "$t")"; tail -40 "$WORK/out.txt"; status=1; fi
 done
 exit $status
