@@ -90,7 +90,7 @@ export function BlackjackRulesModal({ open, onClose }: { open: boolean; onClose:
               <tr>
                 <th scope="col" className="py-2">Result</th>
                 <th scope="col" className="py-2">Pays</th>
-                <th scope="col" className="py-2">On a bet of 100</th>
+                <th scope="col" className="py-2">Bet 100, you get back</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
