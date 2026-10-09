@@ -101,6 +101,18 @@ organization**. Anyone else sees *"We can't send email to that address yet"*.
    (e.g. 100+/hour). Leave the per-address resend wait at 60 seconds (the app's "resend code"
    countdown matches it).
 
+### No email arriving?
+
+1. **Authentication → Users:** is the new account listed as *Waiting for verification*? If it's missing, the
+   sign-up never reached Supabase. Check the message the app showed.
+2. **Logs → Auth logs** (Logs & Analytics): find the sign-up request and look for mail errors
+   (`email_address_not_authorized`, `over_email_send_rate_limit`, `Error sending confirmation email`, SMTP/550 errors).
+3. **Still on the built-in sender?** It only delivers to email addresses of members of your Supabase organization,
+   and only a few emails per hour across the whole project. Set up custom SMTP (above).
+4. **Custom SMTP set up?** The sender address must be on a domain you've verified with the provider
+   (SPF/DKIM). Use port 465 or 587. Many providers show a delivery log; check whether the email was rejected there.
+5. Check spam / promotions folders. Each address can only request a new code every 60 seconds.
+
 ## 8. Realtime
 
 `04_realtime.sql` adds `wallets` and `chip_ledger` to the `supabase_realtime` publication.

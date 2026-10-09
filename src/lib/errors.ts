@@ -18,9 +18,10 @@ export function retryAfterSeconds(error: unknown): number | null {
 }
 
 function isNetworkError(e: ErrorLike): boolean {
+  // Note: supabase-js also reports HTTP 5xx as AuthRetryableFetchError, so check the
+  // status too. Only status 0 (no response at all) is a real connection problem.
   return (
-    e.name === 'AuthRetryableFetchError' ||
-    e.status === 0 ||
+    (e.name === 'AuthRetryableFetchError' && !e.status) ||
     /failed to fetch|networkerror|load failed|network request failed/i.test(e.message ?? '')
   );
 }
@@ -47,6 +48,15 @@ export function friendlyError(error: unknown, context: ErrorContext = 'rpc'): st
   const e = error as ErrorLike;
   const code = e.code ?? '';
   const msg = e.message ?? '';
+
+  // Supabase couldn't hand the email to its mail server (SMTP misconfigured, provider rejected it, …).
+  if (/error sending .*(email|otp)|smtp|mail server/i.test(msg)) {
+    return "We couldn't send your email right now. Please try again in a few minutes. (Admin: check SMTP settings and Auth logs, see SETUP.md.)";
+  }
+  // The sign-up trigger raised (e.g. username_taken in a race with another player).
+  if (/database error saving new user/i.test(msg)) {
+    return 'That username was just taken. Please choose another.';
+  }
 
   if (isNetworkError(e)) {
     return "Can't reach the All In servers. Check your connection and try again.";
@@ -100,15 +110,10 @@ export function friendlyError(error: unknown, context: ErrorContext = 'rpc'): st
         return 'Your session has ended. Please log in again.';
       case 'validation_failed':
         return 'Please check the details you entered and try again.';
-      case 'unexpected_failure':
-        if (context === 'signup') return 'That username was just taken. Please choose another.';
-        break;
     }
     if (/captcha/i.test(msg)) return 'The security check failed or expired. Please try again.';
     if (e.status === 429) return 'Too many attempts. Please wait a minute, then try again.';
-    if (/database error saving new user/i.test(msg)) {
-      return 'That username was just taken. Please choose another.';
-    }
+    if (e.status && e.status >= 500) return 'Our servers hit a problem. Please try again in a moment.';
     if (/token has expired or is invalid/i.test(msg)) {
       return 'That code is incorrect or has expired. Check the digits, or request a new code.';
     }
