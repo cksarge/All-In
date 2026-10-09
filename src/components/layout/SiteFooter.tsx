@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { ChipIcon } from '@/components/ui/ChipIcon';
+import { useUi } from '@/stores/uiStore';
 import { NO_REAL_MONEY_FOOTER } from './NoRealMoneyNotice';
 
 export function SiteFooter() {
+  const openSettings = useUi((s) => s.openSettings);
   return (
     <footer className="mt-auto border-t border-white/[0.06] bg-ink-950/70">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-6 text-center sm:flex-row sm:justify-between sm:text-left">
@@ -14,9 +16,9 @@ export function SiteFooter() {
           <Link to="/how-chips-work" className="hover:text-ivory">
             How chips work
           </Link>
-          <Link to="/settings" className="hover:text-ivory">
+          <button type="button" onClick={openSettings} className="hover:text-ivory">
             Settings
-          </Link>
+          </button>
           <span className="text-subtle">© {new Date().getFullYear()} All In</span>
         </nav>
       </div>

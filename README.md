@@ -86,10 +86,12 @@ Then follow **[SETUP.md](./SETUP.md)** to run the SQL files and configure the Su
 `.github/workflows/deploy-pages.yml` builds and deploys on every push to `main`, or on demand from the Actions tab.
 
 1. Repo **Settings → Pages → Source: GitHub Actions**.
-2. Push or merge to `main`. The site appears at **https://cksarge.github.io/All-In/**.
+2. Push or merge to `main`. The site appears at **https://allin.carterscoding.com/** (custom domain, set in
+   *Settings → Pages* and in `public/CNAME`). Without a custom domain it would be `https://cksarge.github.io/All-In/`.
 3. In Supabase, set **Site URL** to that address (see [SETUP.md](./SETUP.md)).
 
-How it works on Pages: the workflow sets `VITE_BASE=/All-In/` so asset URLs and routes live under the repo path,
+How it works on Pages: the workflow asks GitHub for the site's base path (`/` on the custom domain, `/All-In/`
+on a plain github.io project site) and builds with it,
 and the build copies `index.html` to `404.html` so deep links like `/All-In/lounge` still load the app
 (GitHub Pages has no rewrite rules).
 

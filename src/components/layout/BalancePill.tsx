@@ -20,13 +20,13 @@ export function BalancePill() {
   }, [balance]);
 
   return (
-    <div className="relative flex items-center gap-2 rounded-xl border border-white/10 bg-ink-950/60 py-1.5 pl-2.5 pr-2">
+    <div className="relative flex items-center gap-1.5 rounded-xl border border-white/10 bg-ink-950/60 py-1.5 pl-2 pr-1.5 xs:gap-2 xs:pl-2.5 xs:pr-2">
       {balance === undefined ? (
         <Skeleton className="h-5 w-20" />
       ) : (
         <ChipAmount value={balance} className="text-[0.95rem] font-semibold text-ivory" iconClassName="h-5 w-5" />
       )}
-      <PlayChipsBadge className="whitespace-nowrap" />
+      <PlayChipsBadge className="whitespace-nowrap max-xs:px-1.5 max-xs:tracking-[0.06em]" />
       <AnimatePresence>
         {delta && (
           <motion.span
