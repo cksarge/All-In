@@ -128,6 +128,10 @@ The app refuses to start if it detects one.
 4. If GitHub says the deployment is blocked by environment protection rules, open
    *Settings → Environments → github-pages* and allow the branch you're deploying from.
 
+**Blank or "taking longer than usual" page?** Pages is serving the raw source instead of the built site.
+This happens when *Settings → Pages → Source* is **Deploy from a branch**. Switch it to **GitHub Actions**, make
+sure the code is on `main`, and check that the latest **Deploy to GitHub Pages** run in the Actions tab is green.
+
 ## 11. Smoke test
 
 1. `npm run dev`, open `http://localhost:5173`.

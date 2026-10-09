@@ -10,9 +10,30 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet" />
     <title>All In · Free-play casino lounge</title>
+    <style>
+      /* Shown until the app starts. If it never does, the help text fades in. */
+      html, body { margin: 0; background: #0b0d0c; color: #ece5d6; }
+      .boot { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 14px; padding: 24px; text-align: center; font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      .boot h1 { margin: 0; font: 700 28px Georgia, serif; color: #f4ead2; }
+      .boot h1 span { color: #e3c35e; }
+      .boot-help { max-width: 420px; color: #a59f93; opacity: 0; animation: boot-show 0.4s ease 6s forwards; }
+      .boot-note { color: #f0d688; font-size: 13px; }
+      @keyframes boot-show { to { opacity: 1; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot" role="status">
+        <h1>All <span>In</span></h1>
+        <p>Shuffling up…</p>
+        <p class="boot-help">
+          The lounge is taking longer than usual to open. Try refreshing the page. If it still doesn't load, the site
+          may not have been built and deployed correctly (site owner: see SETUP.md, “GitHub Pages”).
+        </p>
+        <p class="boot-note">Free to play. No real money. No purchases. Chips have no cash value.</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
