@@ -207,7 +207,7 @@ export default function ForgotPasswordPage() {
               return res.wait;
             }}
           />
-          <Turnstile ref={captcha} action="reset" />
+          <Turnstile ref={captcha} action="reset" appearance="interaction-only" />
         </form>
       </AuthCard>
     );

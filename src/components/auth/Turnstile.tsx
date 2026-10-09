@@ -18,13 +18,18 @@ type Waiter = { resolve: (t: string) => void; reject: (e: Error) => void; timer:
 const WAIT_MS = 60_000;
 
 /**
- * Cloudflare Turnstile, rendered "interaction-only": invisible unless Cloudflare
- * needs the player to click, in which case it appears right here in the form.
+ * Cloudflare Turnstile. Visible by default; secondary spots (e.g. "resend code")
+ * use 'interaction-only' so the widget only appears if Cloudflare needs a click.
  */
-export const Turnstile = forwardRef<TurnstileHandle, { action?: string; className?: string }>(function Turnstile(
-  { action, className },
-  ref,
-) {
+export const Turnstile = forwardRef<
+  TurnstileHandle,
+  {
+    action?: string;
+    className?: string;
+    /** 'always' shows the widget; 'interaction-only' hides it unless Cloudflare needs a click. */
+    appearance?: 'always' | 'interaction-only';
+  }
+>(function Turnstile({ action, className, appearance = 'always' }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<TurnstileApi | null>(null);
   const widgetRef = useRef<string | null>(null);
@@ -54,7 +59,7 @@ export const Turnstile = forwardRef<TurnstileHandle, { action?: string; classNam
           action,
           theme: 'dark',
           size: 'flexible',
-          appearance: 'interaction-only',
+          appearance,
           'response-field': false,
           'refresh-expired': 'auto',
           callback: (token) => {
@@ -95,7 +100,7 @@ export const Turnstile = forwardRef<TurnstileHandle, { action?: string; classNam
       widgetRef.current = null;
       flush((w) => w.reject(new Error('captcha_unavailable')));
     };
-  }, [action]);
+  }, [action, appearance]);
 
   useImperativeHandle(ref, () => ({
     getToken: () => {
@@ -123,10 +128,12 @@ export const Turnstile = forwardRef<TurnstileHandle, { action?: string; classNam
 
   if (!turnstileEnabled) return null;
 
+  const visible = appearance === 'always' || interactive;
   return (
-    <div className={cn(interactive || failed ? 'flex flex-col gap-2' : 'contents', className)}>
+    <div className={cn(visible || failed ? 'flex flex-col gap-2' : 'contents', className)}>
       {interactive && <p className="text-sm text-cream/85">Quick security check: please confirm you’re human.</p>}
-      <div ref={containerRef} className={interactive ? 'min-h-[65px]' : undefined} />
+      {/* Reserve the widget's height so the form doesn't jump when it appears. */}
+      <div ref={containerRef} className={visible ? 'min-h-[65px]' : undefined} />
       {failed && (
         <p role="alert" className="text-xs font-medium text-ruby-300">
           The security check couldn’t load. Check your connection or disable content blockers for this site, then
