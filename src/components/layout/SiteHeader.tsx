@@ -3,7 +3,9 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ButtonLink } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
 import { cn } from '@/components/ui/cn';
+import { SettingsButton } from '@/components/settings/SettingsModal';
 import { useAuth } from '@/stores/authStore';
+import { useUi } from '@/stores/uiStore';
 import { BalancePill } from './BalancePill';
 import { SoundToggle } from './SoundToggle';
 
@@ -15,6 +17,7 @@ const navCls = ({ isActive }: { isActive: boolean }) =>
 
 function UserMenu() {
   const { profile, signOut } = useAuth();
+  const openSettings = useUi((s) => s.openSettings);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -44,7 +47,7 @@ function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        className="flex h-10 items-center gap-2 rounded-xl pl-1 pr-2 transition hover:bg-white/[0.06]"
+        className="flex h-10 items-center gap-2 rounded-xl pl-0.5 pr-0.5 transition hover:bg-white/[0.06] md:pl-1 md:pr-2"
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gold-500/50 bg-gradient-to-br from-ruby-600 to-ruby-800 font-display text-sm font-bold text-gold-200">
           {initial}
@@ -62,9 +65,20 @@ function UserMenu() {
           <Link role="menuitem" to="/lounge" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Lounge
           </Link>
-          <Link role="menuitem" to="/settings" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
-            Settings
+          <Link role="menuitem" to="/lobby" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Lobby
           </Link>
+          <button
+            role="menuitem"
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              openSettings();
+            }}
+            className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/[0.06]"
+          >
+            Settings
+          </button>
           <Link role="menuitem" to="/how-chips-work" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             How chips work
           </Link>
@@ -97,20 +111,28 @@ export function SiteHeader() {
       >
         Skip to content
       </a>
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:gap-3">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-1 px-3 xs:gap-2 sm:gap-3 sm:px-4">
         <Logo to={signedIn ? '/lounge' : '/'} compact={signedIn} className="mr-auto sm:mr-4" />
         <nav aria-label="Main" className="mr-auto hidden items-center gap-1 sm:flex">
           {signedIn && (
-            <NavLink to="/lounge" className={navCls}>
-              Lounge
-            </NavLink>
+            <>
+              <NavLink to="/lounge" className={navCls}>
+                Lounge
+              </NavLink>
+              <NavLink to="/lobby" className={navCls}>
+                Lobby
+              </NavLink>
+            </>
           )}
           <NavLink to="/how-chips-work" className={navCls}>
             How chips work
           </NavLink>
         </nav>
         {signedIn && <BalancePill />}
-        <SoundToggle />
+        <div className="flex items-center">
+          <SoundToggle />
+          <SettingsButton />
+        </div>
         {signedIn ? (
           <UserMenu />
         ) : status === 'signedOut' ? (

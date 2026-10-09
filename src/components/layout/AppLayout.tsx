@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom';
+import { SettingsModal } from '@/components/settings/SettingsModal';
 import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
 
@@ -10,6 +11,7 @@ export function AppLayout() {
         <Outlet />
       </main>
       <SiteFooter />
+      <SettingsModal />
     </div>
   );
 }

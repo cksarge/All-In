@@ -37,7 +37,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # "/All-In" for https://cksarge.github.io/All-In/, "" if you add a custom domain.
+          # "" on the custom domain (allin.carterscoding.com), "/All-In" on a plain github.io project site.
+          # Re-run this workflow after changing the custom domain.
           VITE_BASE: ${{ steps.pages.outputs.base_path }}/
           # These are all public values. Override them under
           # Settings → Secrets and variables → Actions → Variables if they ever change.

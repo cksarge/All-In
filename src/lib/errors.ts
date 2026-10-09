@@ -37,7 +37,25 @@ const RPC_MESSAGES: Record<string, string> = {
   bet_out_of_range: "That bet is outside this table's limits.",
   unknown_stake_tier: "That stake level doesn't exist.",
   invalid_amount: "That amount isn't valid.",
+  // Tables and seats
+  table_not_found: "That table isn't open anymore.",
+  table_full: 'That table is full. Try another one, or quick join.',
+  seat_taken: 'Someone just took that seat. Pick another one.',
+  seat_invalid: "That seat doesn't exist.",
+  not_seated: 'Take a seat first.',
+  invite_not_found: "That invite code didn't match an open table. Check the code and try again.",
+  game_not_open: "That game isn't open yet.",
+  unknown_game: "That game doesn't exist.",
+  // Blackjack
+  betting_closed: 'Betting is closed for this hand.',
+  next_round_pending: 'The next hand opens in a moment.',
+  not_your_turn: "It's not your turn.",
+  action_not_allowed: "You can't do that with this hand.",
+  insurance_closed: 'Insurance is closed for this hand.',
 };
+
+/** Errors whose server hint is already player-friendly. */
+const USE_HINT = new Set(['action_not_allowed', 'bet_out_of_range', 'tier_locked']);
 
 /**
  * Turns any Supabase/auth/RPC/network error into a short, friendly sentence.
@@ -120,7 +138,7 @@ export function friendlyError(error: unknown, context: ErrorContext = 'rpc'): st
   }
 
   // Postgres RPC errors: our functions raise snake_case codes as the message.
-  if (RPC_MESSAGES[msg]) return RPC_MESSAGES[msg];
+  if (RPC_MESSAGES[msg]) return USE_HINT.has(msg) && e.hint ? e.hint : RPC_MESSAGES[msg];
   if (code === 'PGRST202' || code === '42883' || code === 'PGRST205' || code === '42P01') {
     return 'The game server is missing its database setup. (Admin: run the SQL files in supabase/sql.)';
   }

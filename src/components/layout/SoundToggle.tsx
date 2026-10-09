@@ -13,7 +13,7 @@ export function SoundToggle() {
       aria-pressed={!soundOn}
       aria-label={soundOn ? 'Mute sounds' : 'Unmute sounds'}
       title={soundOn ? 'Mute sounds' : 'Unmute sounds'}
-      className="flex h-10 w-10 items-center justify-center rounded-xl text-cream/80 transition hover:bg-white/[0.06] hover:text-ivory"
+      className="flex h-10 w-9 items-center justify-center rounded-xl text-cream/80 sm:w-10 transition hover:bg-white/[0.06] hover:text-ivory"
     >
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" fillOpacity="0.15" />
