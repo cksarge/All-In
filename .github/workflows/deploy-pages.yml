@@ -1,0 +1,61 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - run: npm ci
+
+      - name: Copy guard (no real money wording)
+        run: npm run check:copy
+
+      - name: Build
+        run: npm run build
+        env:
+          # "/All-In" for https://cksarge.github.io/All-In/, "" if you add a custom domain.
+          VITE_BASE: ${{ steps.pages.outputs.base_path }}/
+          # These are all public values. Override them under
+          # Settings → Secrets and variables → Actions → Variables if they ever change.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://irwctaccrxtcoqsskjpy.supabase.co' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_16Wb-YS3WD6d6iq93tDRpA_pdMlm7xT' }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAFSY1ZizIBVxN3W0' }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { OtpInput } from '@/components/auth/OtpInput';
 import { PasswordChecklist } from '@/components/auth/PasswordChecklist';
 import { ResendCodeButton } from '@/components/auth/ResendCodeButton';
+import { captchaErrorMessage, Turnstile, type TurnstileHandle } from '@/components/auth/Turnstile';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { PasswordField, TextField } from '@/components/ui/TextField';
@@ -31,9 +32,19 @@ export default function ForgotPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const captcha = useRef<TurnstileHandle>(null);
 
   const sendCode = async (address: string): Promise<{ ok: boolean; wait?: number }> => {
-    const { error: err } = await supabase.auth.resetPasswordForEmail(address);
+    let captchaToken: string | undefined;
+    try {
+      captchaToken = await captcha.current?.getToken();
+    } catch (e) {
+      playSound('error');
+      setError(captchaErrorMessage(e));
+      return { ok: false };
+    }
+    const { error: err } = await supabase.auth.resetPasswordForEmail(address, { captchaToken });
+    captcha.current?.reset();
     if (err) {
       playSound('error');
       setError(friendlyError(err, 'reset'));
@@ -122,6 +133,7 @@ export default function ForgotPasswordPage() {
             onChange={(e) => setEmail(e.target.value)}
             autoFocus
           />
+          <Turnstile ref={captcha} action="reset" />
           {error && <Alert tone="error">{error}</Alert>}
           <Button type="submit" size="lg" block loading={busy}>
             Send code
@@ -195,6 +207,7 @@ export default function ForgotPasswordPage() {
               return res.wait;
             }}
           />
+          <Turnstile ref={captcha} action="reset" />
         </form>
       </AuthCard>
     );

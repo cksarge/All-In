@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { PasswordChecklist } from '@/components/auth/PasswordChecklist';
+import { captchaErrorMessage, Turnstile, type TurnstileHandle } from '@/components/auth/Turnstile';
 import { NoRealMoneyNotice } from '@/components/layout/NoRealMoneyNotice';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -32,6 +33,7 @@ export default function SignUpPage() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<{ text: string; loginLink?: boolean } | null>(null);
   const nameStatus = useUsernameCheck(username);
+  const captcha = useRef<TurnstileHandle>(null);
 
   const show = (field: string) => submitted || touched[field];
   const touch = (field: string) => () => setTouched((t) => ({ ...t, [field]: true }));
@@ -53,12 +55,22 @@ export default function SignUpPage() {
     if (nameStatus === 'checking') return;
 
     setBusy(true);
+    let captchaToken: string | undefined;
+    try {
+      captchaToken = await captcha.current?.getToken();
+    } catch (err) {
+      setBusy(false);
+      playSound('error');
+      setFormError({ text: captchaErrorMessage(err) });
+      return;
+    }
     const cleanEmail = email.trim().toLowerCase();
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
-      options: { data: { username } },
+      options: { data: { username }, captchaToken },
     });
+    captcha.current?.reset();
     setBusy(false);
 
     if (error) {
@@ -147,6 +159,8 @@ export default function SignUpPage() {
           I understand that All In is a free game that uses <strong className="text-ivory">play chips only</strong>.
           There is no gambling, no purchases and no real money, and chips have no cash value.
         </Checkbox>
+
+        <Turnstile ref={captcha} action="signup" />
 
         {formError && (
           <Alert tone="error">

@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { OtpInput } from '@/components/auth/OtpInput';
 import { ResendCodeButton } from '@/components/auth/ResendCodeButton';
+import { captchaErrorMessage, Turnstile, type TurnstileHandle } from '@/components/auth/Turnstile';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
@@ -25,6 +26,7 @@ export default function VerifyEmailPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const captcha = useRef<TurnstileHandle>(null);
 
   const verify = async (token: string) => {
     if (busy || token.length !== OTP_LENGTH) return;
@@ -54,7 +56,16 @@ export default function VerifyEmailPage() {
   const resend = async (): Promise<number | void> => {
     setError(null);
     setInfo(null);
-    const { error: err } = await supabase.auth.resend({ type: 'signup', email });
+    let captchaToken: string | undefined;
+    try {
+      captchaToken = await captcha.current?.getToken();
+    } catch (e) {
+      playSound('error');
+      setError(captchaErrorMessage(e));
+      return;
+    }
+    const { error: err } = await supabase.auth.resend({ type: 'signup', email, options: { captchaToken } });
+    captcha.current?.reset();
     if (err) {
       playSound('error');
       setError(friendlyError(err, 'resend'));
@@ -154,6 +165,7 @@ export default function VerifyEmailPage() {
           Verify email
         </Button>
         <ResendCodeButton lastSentAt={sentAt} onResend={resend} />
+        <Turnstile ref={captcha} action="resend" />
         <p className="text-center text-xs text-subtle">
           Already verified? <Link to="/login" className="text-gold-300 hover:underline">Log in</Link>
         </p>
