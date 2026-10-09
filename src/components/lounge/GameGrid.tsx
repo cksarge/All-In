@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { GameIcon } from '@/components/ui/GameIcon';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States';
 import { cn } from '@/components/ui/cn';
@@ -100,7 +101,11 @@ export function GameGrid() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-display text-lg font-bold text-ivory">{g.name}</h3>
-                  {!g.released && (
+                  {g.released ? (
+                    <span className="rounded-full bg-felt-600/60 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-felt-300">
+                      Open
+                    </span>
+                  ) : (
                     <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted">
                       Opening soon
                     </span>
@@ -110,6 +115,14 @@ export function GameGrid() {
                 <p className="mt-2 text-xs text-subtle">
                   {g.multiplayer ? `Multiplayer · up to ${g.max_seats} seats` : 'Solo play'}
                 </p>
+                {g.released && (
+                  <Link
+                    to={g.multiplayer ? `/lobby?game=${g.key}` : `/play/${g.key}`}
+                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-gold-300 after:absolute after:inset-0 hover:underline"
+                  >
+                    Play now →
+                  </Link>
+                )}
               </div>
             </motion.li>
           ))}

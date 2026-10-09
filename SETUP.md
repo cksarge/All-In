@@ -16,6 +16,8 @@ look for the same setting name under **Authentication**.
 2. `02_economy.sql`
 3. `03_games_and_stakes.sql`
 4. `04_realtime.sql`
+5. `05_tables.sql`
+6. `06_blackjack.sql`
 
 Every file is safe to re-run. See `supabase/sql/README.md` for what each one does.
 
@@ -66,8 +68,8 @@ Prefer not to show the code in the inbox preview? Use `Your All In verification 
 
 | Setting | Value |
 | --- | --- |
-| Site URL | `https://cksarge.github.io/All-In/` (or your custom domain). Used for the "All In" link in email footers. |
-| Redirect URLs | `https://cksarge.github.io/All-In/**` and `http://localhost:5173/**` |
+| Site URL | `https://allin.carterscoding.com` (used for the "All In" link in email footers) |
+| Redirect URLs | `https://allin.carterscoding.com/**` and `http://localhost:5173/**` |
 
 ## 6. Cloudflare Turnstile (bot protection)
 
@@ -75,7 +77,7 @@ The app shows Cloudflare Turnstile on sign-up, log-in, "resend code" and "forgot
 Supabase checks each token, so the **secret key only ever goes into the Supabase dashboard**.
 
 1. **Cloudflare dashboard → Turnstile → your widget** (site key `0x4AAAAAAFSY1ZizIBVxN3W0`):
-   - **Hostnames:** add `cksarge.github.io` (plus your custom domain if you add one) and `localhost` for local development.
+   - **Hostnames:** add `allin.carterscoding.com` and `localhost` (for local development).
    - **Widget mode:** *Managed* (recommended). The app renders it "interaction-only", so most players never see it.
    - Copy the widget's **Secret key**.
 2. **Supabase → Authentication → Attack Protection** (older dashboards: *Bot and Abuse Protection*):
@@ -115,8 +117,9 @@ organization**. Anyone else sees *"We can't send email to that address yet"*.
 
 ## 8. Realtime
 
-`04_realtime.sql` adds `wallets` and `chip_ledger` to the `supabase_realtime` publication.
-Check **Database → Publications → supabase_realtime**: both tables should be listed.
+The SQL files add `wallets`, `chip_ledger`, `game_tables`, `table_seats`, `bj_rounds` and `bj_hands` to the
+`supabase_realtime` publication. Check **Database → Publications → supabase_realtime**: all six should be listed.
+The hidden tables (`bj_shoes`, `bj_secrets`) must **not** be in the publication.
 
 **Realtime → Settings**: for Phase 1, leave **"Allow public access"** enabled (do not switch
 to private-channels-only yet). Postgres Changes still enforce RLS, so each player only
@@ -133,7 +136,9 @@ The app refuses to start if it detects one.
 
 1. **GitHub → repo Settings → Pages → Build and deployment → Source: GitHub Actions.**
 2. Merge to `main` (or run **Actions → Deploy to GitHub Pages → Run workflow**). The site goes live at
-   `https://cksarge.github.io/All-In/`.
+   `https://allin.carterscoding.com/` (custom domain from *Settings → Pages → Custom domain* and `public/CNAME`).
+   **After changing the custom domain, re-run the deploy workflow**: the base path is baked in at build time,
+   and a build made for `/All-In/` won't load on the custom domain (you'd be stuck on "Shuffling up…").
 3. The Supabase URL, publishable key and Turnstile site key are baked into the workflow as defaults (all public
    values). To change one without editing code, add a repository **variable** with the same name under
    *Settings → Secrets and variables → Actions → Variables*.
