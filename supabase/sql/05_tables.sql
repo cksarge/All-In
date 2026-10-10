@@ -137,7 +137,7 @@ create table if not exists public.table_seats (
   table_id      uuid not null references public.game_tables (id) on delete cascade,
   seat_no       integer not null check (seat_no between 1 and 9),
   user_id       uuid not null references auth.users (id) on delete cascade,
-  -- Chips brought to the table (used by poker in a later phase; 0 for house games).
+  -- Chips brought to the table (poker). Returned to the wallet when the seat is freed.
   stack         bigint not null default 0 check (stack >= 0),
   status        text not null default 'active' check (status in ('active', 'sitting_out')),
   joined_at     timestamptz not null default now(),
@@ -371,6 +371,40 @@ end $$;
 
 revoke all on function private.take_seat(uuid, uuid, integer) from public;
 
+-- Whenever a seat is freed (leaving, switching tables, the 2-minute reconnect
+-- hold running out), chips the player brought to the table go back to their
+-- wallet, and each game gets a chance to react (e.g. poker folds their hand).
+-- Games hook in by defining private.<game>_seat_left(table uuid, user uuid).
+create or replace function private.on_seat_removed()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  f text;
+  v_game text;
+begin
+  if old.stack > 0 and exists (select 1 from public.wallets where user_id = old.user_id) then
+    select game_key into v_game from public.game_tables where id = old.table_id;
+    perform private.apply_chips(old.user_id, old.stack, 'table_chips_out', v_game, old.table_id::text,
+                                jsonb_build_object('seat_no', old.seat_no));
+  end if;
+  for f in
+    select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'private' and p.proname like '%\_seat\_left' and p.pronargs = 2
+     order by p.proname
+  loop
+    execute format('select private.%I($1, $2)', f) using old.table_id, old.user_id;
+  end loop;
+  return old;
+end $$;
+
+drop trigger if exists table_seats_removed on public.table_seats;
+create trigger table_seats_removed
+  after delete on public.table_seats
+  for each row execute function private.on_seat_removed();
+
 create or replace function private.require_uid()
 returns uuid
 language plpgsql
@@ -405,7 +439,7 @@ begin
   return coalesce((
     select jsonb_agg(row_to_json(x)::jsonb order by x.tier_rank, x.persistent desc, x.seats_filled desc, x.created_at)
       from (
-        select t.id, t.name, t.tier, t.variant, st.tier_rank, st.label as tier_label, st.min_bet, st.max_bet, st.min_bankroll,
+        select t.id, t.game_key, t.name, t.tier, t.variant, st.tier_rank, st.label as tier_label, st.min_bet, st.max_bet, st.min_bankroll, st.params,
                t.is_private, t.max_seats, t.persistent, t.created_at,
                (select count(*) from public.table_seats s where s.table_id = t.id)::int as seats_filled,
                exists (select 1 from public.table_seats s where s.table_id = t.id and s.user_id = v_uid) as is_mine,

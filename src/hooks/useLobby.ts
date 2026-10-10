@@ -7,6 +7,7 @@ import { usePresence } from '@/stores/presenceStore';
 
 export interface LobbyTable {
   id: string;
+  game_key: string;
   name: string;
   tier: TierKey;
   variant: string | null;
@@ -15,6 +16,8 @@ export interface LobbyTable {
   min_bet: number;
   max_bet: number;
   min_bankroll: number;
+  /** Blinds, antes and stack limits for poker tables. */
+  params: Record<string, number>;
   is_private: boolean;
   max_seats: number;
   persistent: boolean;

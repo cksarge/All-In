@@ -230,6 +230,7 @@ export default function HowChipsWorkPage() {
             ['Is All In gambling?', 'No. You never wager anything of value. Chips are free, have no cash value and can’t be exchanged for anything.'],
             ['Can I pay for more chips?', 'No. There is nothing to pay for in All In, and there never will be. Chips come only from playing, daily bonuses and free refills.'],
             ['What if I run out?', `Once you’re below ${formatChips(threshold)} chips you can collect a free refill to ${formatChips(refillTo)}, every ${cooldownH} hours. Plus the daily bonus.`],
+            ['What happens to chips I bring to a poker table?', 'They sit in front of you while you play and count toward your total. Whatever is in front of you goes straight back to your wallet when you leave the table, or if you’re disconnected for more than two minutes.'],
             ['Can I send chips to a friend?', 'No. Chips stay with the player who earned them, which keeps things fair for everyone.'],
             ['What are cosmetics?', 'Card backs, table felts, avatars and more, all unlocked by leveling up, achievements, streaks and leaderboard finishes. They’re never for sale.'],
           ].map(([q, a]) => (

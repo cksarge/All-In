@@ -13,6 +13,7 @@ import { useLobbyTables, type LobbyTable } from '@/hooks/useLobby';
 import { friendlyError } from '@/lib/errors';
 import { formatChips } from '@/lib/format';
 import { playSound } from '@/lib/sound';
+import { isPokerGame, stackRangeLabel, stakesLabel } from '@/lib/poker';
 import { supabase } from '@/lib/supabase';
 import type { GameRow, StakeTier, TierKey } from '@/lib/types';
 import { usePresence } from '@/stores/presenceStore';
@@ -128,7 +129,7 @@ export default function LobbyPage() {
           <EmptyState
             icon={<GameIcon gameKey={current.key} className="h-12 w-12" />}
             title={`${current.name} opens soon`}
-            message="The tables are being built. Blackjack, roulette and craps are open now."
+            message="The tables are being built. Blackjack, roulette, craps and poker are open now."
             action={
               <Button size="sm" className="mt-2" onClick={() => setParams({ game: 'blackjack' })}>
                 Play blackjack
@@ -152,7 +153,16 @@ export default function LobbyPage() {
                       {locked && <span className="text-xs text-cream/70">Locked</span>}
                     </div>
                     <p className="mt-3 text-sm text-cream/85">
-                      Bets <strong className="text-ivory">{formatChips(t.min_bet)}–{formatChips(t.max_bet)}</strong>
+                      {isPokerGame(game) ? (
+                        <>
+                          <strong className="text-ivory">{stakesLabel(game, t.params)}</strong>
+                          <span className="block text-xs text-cream/65">{stackRangeLabel(t.params)}</span>
+                        </>
+                      ) : (
+                        <>
+                          Bets <strong className="text-ivory">{formatChips(t.min_bet)}–{formatChips(t.max_bet)}</strong>
+                        </>
+                      )}
                     </p>
                     <p className="text-xs text-cream/65">
                       Needs <ChipAmount value={t.min_bankroll} iconClassName="h-3.5 w-3.5" /> to sit
@@ -277,7 +287,7 @@ function TableCard({
           <h3 className="truncate font-display text-lg font-bold text-ivory">{table.name}</h3>
           <p className="text-xs text-muted">
             {table.variant && <span className="capitalize text-cream/80">{table.variant} · </span>}
-            Bets {formatChips(table.min_bet)}–{formatChips(table.max_bet)}
+            {isPokerGame(table.game_key) ? stakesLabel(table.game_key, table.params) : `Bets ${formatChips(table.min_bet)}–${formatChips(table.max_bet)}`}
             {table.is_private && ' · Private'}
           </p>
         </div>
@@ -420,7 +430,7 @@ function CreatePrivateModal({
                     />
                     <TierBadge tier={t.tier} />
                     <span className="mt-2 block text-xs text-cream/80">
-                      {formatChips(t.min_bet)}–{formatChips(t.max_bet)}
+                      {isPokerGame(game) ? stakesLabel(game, t.params) : `${formatChips(t.min_bet)}–${formatChips(t.max_bet)}`}
                     </span>
                   </label>
                 );

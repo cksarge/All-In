@@ -53,10 +53,23 @@ const RPC_MESSAGES: Record<string, string> = {
   not_your_turn: "It's not your turn.",
   action_not_allowed: "You can't do that with this hand.",
   insurance_closed: 'Insurance is closed for this hand.',
+  // Roulette and craps
+  invalid_bet: "That bet isn't on the layout.",
+  bet_not_allowed: "That bet isn't available right now.",
+  nothing_to_rebet: 'There was no bet last round to repeat.',
+  invalid_variant: "That table style doesn't exist.",
+  not_shooter: "Only the shooter can roll the dice.",
+  no_bets_down: 'The dice are already rolling.',
+  roll_too_soon: 'Give everyone a moment to bet before the next roll.',
+  // Poker
+  below_min_stack: 'Bring a few more chips to sit in.',
+  above_max_stack: "That's more than this table allows in front of you.",
+  invalid_discard: 'Pick cards from your own hand to swap.',
+  deck_empty: 'The deck ran out. The hand goes on with the cards dealt.',
 };
 
 /** Errors whose server hint is already player-friendly. */
-const USE_HINT = new Set(['action_not_allowed', 'bet_out_of_range', 'tier_locked']);
+const USE_HINT = new Set(['action_not_allowed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack']);
 
 /**
  * Turns any Supabase/auth/RPC/network error into a short, friendly sentence.
