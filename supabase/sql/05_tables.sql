@@ -105,6 +105,34 @@ create table if not exists public.game_tables (
 
 create index if not exists game_tables_lobby_idx on public.game_tables (game_key, status, is_private);
 
+-- Game-specific table style, e.g. roulette 'european' / 'american'. Null for most games.
+alter table public.game_tables add column if not exists variant text;
+
+create or replace function private.default_variant(p_game text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case p_game when 'roulette' then 'european' end;
+$$;
+
+create or replace function private.valid_variant(p_game text, p_variant text)
+returns text
+language plpgsql
+immutable
+set search_path = ''
+as $$
+begin
+  if p_game = 'roulette' then
+    if coalesce(p_variant, 'european') not in ('european', 'american') then
+      raise exception 'invalid_variant';
+    end if;
+    return coalesce(p_variant, 'european');
+  end if;
+  return null;
+end $$;
+
 create table if not exists public.table_seats (
   table_id      uuid not null references public.game_tables (id) on delete cascade,
   seat_no       integer not null check (seat_no between 1 and 9),
@@ -230,6 +258,8 @@ begin
       if not private.tier_has_free_table(p_game, v_tier) then
         insert into public.game_tables (game_key, tier, name, max_seats)
         values (p_game, v_tier, private.public_table_name(), v_seats);
+        update public.game_tables set variant = private.default_variant(p_game)
+         where game_key = p_game and tier = v_tier and variant is null and private.default_variant(p_game) is not null;
       end if;
     end if;
   end loop;
@@ -237,20 +267,55 @@ end $$;
 
 revoke all on function private.cleanup_tables() from public;
 
+-- Each game file plugs into these two by defining functions that follow a
+-- naming convention, so adding a game never means editing shared code:
+--   private.<game>_tick_stale()      finishes that game's rounds whose timers ran
+--                                    out while nobody was watching
+--   private.<game>_in_play(uuid)     chips that player has riding on that game
+
 -- Finishes rounds whose timers ran out while nobody was watching (e.g. every
--- player closed their tab mid-hand). Each game file replaces this with the real
--- version; it's only created here if missing so re-running never resets it.
-do $$
+-- player closed their tab mid-hand), for every game.
+create or replace function private.tick_stale_tables()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  f text;
 begin
-  if to_regprocedure('private.tick_stale_tables()') is null then
-    execute $f$
-      create function private.tick_stale_tables()
-      returns void
-      language plpgsql
-      set search_path = ''
-      as 'begin end'
-    $f$;
-  end if;
+  for f in
+    select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'private' and p.proname like '%\_tick\_stale' and p.pronargs = 0
+     order by p.proname
+  loop
+    execute format('select private.%I()', f);
+  end loop;
+end $$;
+
+-- Chips a player has committed at tables: seated stacks plus every game's
+-- unresolved bets. Used by refills and stake-level checks.
+create or replace function private.chips_in_play(p_user uuid)
+returns bigint
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_total bigint := coalesce((select sum(stack) from public.table_seats where user_id = p_user), 0);
+  v bigint;
+  f text;
+begin
+  for f in
+    select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'private' and p.proname like '%\_in\_play' and p.proname <> 'chips_in_play' and p.pronargs = 1
+     order by p.proname
+  loop
+    execute format('select private.%I($1)', f) into v using p_user;
+    v_total := v_total + coalesce(v, 0);
+  end loop;
+  return v_total;
 end $$;
 
 -- Seat the current user. Leaves any other table first (one seat at a time).
@@ -340,7 +405,7 @@ begin
   return coalesce((
     select jsonb_agg(row_to_json(x)::jsonb order by x.tier_rank, x.persistent desc, x.seats_filled desc, x.created_at)
       from (
-        select t.id, t.name, t.tier, st.tier_rank, st.label as tier_label, st.min_bet, st.max_bet, st.min_bankroll,
+        select t.id, t.name, t.tier, t.variant, st.tier_rank, st.label as tier_label, st.min_bet, st.max_bet, st.min_bankroll,
                t.is_private, t.max_seats, t.persistent, t.created_at,
                (select count(*) from public.table_seats s where s.table_id = t.id)::int as seats_filled,
                exists (select 1 from public.table_seats s where s.table_id = t.id and s.user_id = v_uid) as is_mine,
@@ -362,7 +427,8 @@ begin
 end $$;
 
 -- Create a table and sit down at it. Private tables get a 6-character invite code.
-create or replace function public.create_table(p_game text, p_tier text, p_private boolean default false)
+drop function if exists public.create_table(text, text, boolean);
+create or replace function public.create_table(p_game text, p_tier text, p_private boolean default false, p_variant text default null)
 returns jsonb
 language plpgsql
 security definer
@@ -398,8 +464,8 @@ begin
     v_name := private.public_table_name();
   end if;
 
-  insert into public.game_tables (game_key, tier, name, is_private, invite_code, max_seats, created_by)
-  values (p_game, p_tier, v_name, coalesce(p_private, false), v_code, g.max_seats, v_uid)
+  insert into public.game_tables (game_key, tier, name, is_private, invite_code, max_seats, created_by, variant)
+  values (p_game, p_tier, v_name, coalesce(p_private, false), v_code, g.max_seats, v_uid, private.valid_variant(p_game, p_variant))
   returning id into v_id;
 
   v_seat := private.take_seat(v_uid, v_id, null);
@@ -558,7 +624,7 @@ declare
   f text;
 begin
   foreach f in array array[
-    'public.list_tables(text)', 'public.create_table(text, text, boolean)', 'public.quick_join(text, text)',
+    'public.list_tables(text)', 'public.create_table(text, text, boolean, text)', 'public.quick_join(text, text)',
     'public.join_table(uuid, integer)', 'public.join_by_code(text)', 'public.leave_table(uuid)',
     'public.table_heartbeat(uuid)', 'public.set_sitting_out(uuid, boolean)', 'public.my_table()'
   ]

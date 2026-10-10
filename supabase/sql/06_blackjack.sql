@@ -903,9 +903,9 @@ begin
   end loop;
 end $$;
 
--- Finish rounds whose timers expired while nobody was at the table, so bets
--- never stay stuck "in play". Called from the lobby (list_tables).
-create or replace function private.tick_stale_tables()
+-- Finish blackjack rounds whose timers expired while nobody was at the table,
+-- so bets never stay stuck "in play". Picked up by private.tick_stale_tables().
+create or replace function private.bj_tick_stale()
 returns void
 language plpgsql
 security definer
@@ -923,19 +923,16 @@ begin
   end loop;
 end $$;
 
--- -----------------------------------------------------------------------------
--- Chips in play: seated stacks + unsettled blackjack bets (used by refills and
--- stake-level checks). Replaces the placeholder from 02_economy.sql.
--- -----------------------------------------------------------------------------
-create or replace function private.chips_in_play(p_user uuid)
+-- Unsettled blackjack bets (picked up by private.chips_in_play()).
+create or replace function private.bj_in_play(p_user uuid)
 returns bigint
 language sql
 stable
+security definer
 set search_path = ''
 as $$
-  select coalesce((select sum(stack) from public.table_seats where user_id = p_user), 0)::bigint
-       + coalesce((select sum(bet + insurance) from public.bj_hands
-                    where user_id = p_user and result is null), 0)::bigint;
+  select coalesce(sum(bet + insurance), 0)::bigint from public.bj_hands
+   where user_id = p_user and result is null;
 $$;
 
 -- -----------------------------------------------------------------------------

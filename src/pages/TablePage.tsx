@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BlackjackTable } from '@/components/blackjack/BlackjackTable';
+import { CrapsTable } from '@/components/craps/CrapsTable';
+import { RouletteTable } from '@/components/roulette/RouletteTable';
 import { Button } from '@/components/ui/Button';
 import { ErrorState, FullPageLoader } from '@/components/ui/States';
 import { friendlyError } from '@/lib/errors';
@@ -44,6 +46,8 @@ export default function TablePage() {
   }
   if (!game) return <FullPageLoader label="Finding your table…" />;
   if (game === 'blackjack') return <BlackjackTable key={id} tableId={id} />;
+  if (game === 'roulette') return <RouletteTable key={id} tableId={id} />;
+  if (game === 'craps') return <CrapsTable key={id} tableId={id} />;
   return (
     <div className="mx-auto max-w-lg px-4 py-16">
       <div className="surface">
