@@ -16,6 +16,7 @@ export function TableHeader({
   onHistory,
   onSitOut,
   extra,
+  stakes,
 }: {
   table: {
     name: string;
@@ -34,6 +35,8 @@ export function TableHeader({
   onHistory: () => void;
   onSitOut?: () => void;
   extra?: React.ReactNode;
+  /** Replaces "Bets min–max" (e.g. poker blinds). */
+  stakes?: string;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -48,7 +51,7 @@ export function TableHeader({
         </span>
       )}
       <span className="text-xs text-muted">
-        Bets {formatChips(table.min_bet)}–{formatChips(table.max_bet)}
+        {stakes ?? `Bets ${formatChips(table.min_bet)}–${formatChips(table.max_bet)}`}
       </span>
       {table.is_private && table.invite_code && (
         <button

@@ -3,6 +3,7 @@ import { cardName, cardRank, cardSuit, isRed } from '@/lib/cards';
 import { cn } from '@/components/ui/cn';
 
 const sizes = {
+  xs: 'h-[2.5rem] w-[1.8rem] text-[0.55rem] rounded',
   sm: 'h-[3.6rem] w-[2.6rem] text-[0.7rem] rounded-md',
   md: 'h-[4.9rem] w-[3.5rem] text-sm rounded-lg',
   lg: 'h-[6.3rem] w-[4.5rem] text-base rounded-lg',
@@ -34,21 +35,35 @@ export function PlayingCard({
   index = 0,
   className,
   dim,
+  highlight,
+  delay,
+  still,
 }: {
   card?: number | null;
   size?: CardSize;
   index?: number;
   className?: string;
   dim?: boolean;
+  /** Gold glow, e.g. the cards that make the winning hand. */
+  highlight?: boolean;
+  /** Seconds before the card flies in (defaults to a short stagger by index). */
+  delay?: number;
+  /** No deal animation (e.g. cards in a history list). */
+  still?: boolean;
 }) {
   const faceUp = card !== undefined && card !== null;
   const red = faceUp && isRed(card);
   return (
     <motion.div
-      initial={{ opacity: 0, y: -40, x: 30, rotate: -8, scale: 0.85 }}
+      initial={still ? false : { opacity: 0, y: -40, x: 30, rotate: -8, scale: 0.85 }}
       animate={{ opacity: 1, y: 0, x: 0, rotate: 0, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 26, delay: index * 0.08 }}
-      className={cn('relative shrink-0 select-none [perspective:600px]', sizes[size], className)}
+      transition={{ type: 'spring', stiffness: 320, damping: 26, delay: delay ?? index * 0.08 }}
+      className={cn(
+        'relative shrink-0 select-none [perspective:600px]',
+        sizes[size],
+        highlight && 'z-10 -translate-y-1 drop-shadow-[0_0_10px_rgba(240,214,136,0.9)]',
+        className,
+      )}
       role="img"
       aria-label={faceUp ? cardName(card) : 'Face-down card'}
     >
@@ -63,6 +78,7 @@ export function PlayingCard({
           className={cn(
             'absolute inset-0 rounded-[inherit] border border-black/10 bg-[#fbf7ee] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.7)] [backface-visibility:hidden]',
             dim && 'brightness-75',
+            highlight && 'ring-2 ring-gold-300',
           )}
         >
           {faceUp && (
@@ -97,6 +113,9 @@ export function CardFan({
   size = 'md',
   className,
   dim,
+  highlight,
+  overlap: overlapClass,
+  still,
 }: {
   cards: number[];
   /** Extra face-down cards to show after the visible ones (e.g. the dealer's hole card). */
@@ -104,13 +123,27 @@ export function CardFan({
   size?: CardSize;
   className?: string;
   dim?: boolean;
+  /** Cards to highlight (e.g. the winning five). */
+  highlight?: number[] | null;
+  /** Override the negative margin between cards. */
+  overlap?: string;
+  still?: boolean;
 }) {
-  const overlap = size === 'sm' ? '-ml-6' : size === 'md' ? '-ml-8' : '-ml-10';
+  const overlap = overlapClass ?? (size === 'xs' ? '-ml-4' : size === 'sm' ? '-ml-6' : size === 'md' ? '-ml-8' : '-ml-10');
   const all: (number | null)[] = [...cards, ...Array.from({ length: hidden }, () => null)];
   return (
     <div className={cn('flex items-end', className)}>
       {all.map((c, i) => (
-        <PlayingCard key={i} card={c} size={size} index={i} className={i > 0 ? overlap : undefined} dim={dim} />
+        <PlayingCard
+          key={i}
+          card={c}
+          size={size}
+          index={i}
+          className={i > 0 ? overlap : undefined}
+          dim={dim || (Boolean(highlight?.length) && c !== null && !highlight!.includes(c))}
+          highlight={c !== null && Boolean(highlight?.includes(c))}
+          still={still}
+        />
       ))}
     </div>
   );
