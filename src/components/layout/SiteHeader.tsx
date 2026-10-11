@@ -142,17 +142,17 @@ export function SiteHeader() {
               <NavLink to="/lobby" className={navCls}>
                 Lobby
               </NavLink>
-              <NavLink to="/leaderboards" className={({ isActive }) => cn(navCls({ isActive }), 'hidden lg:block')}>
-                Leaderboards
-              </NavLink>
-              <NavLink to="/friends" className={({ isActive }) => cn(navCls({ isActive }), 'hidden lg:block')}>
-                Friends
+              <NavLink to="/profile" className={navCls}>
+                Profile
               </NavLink>
             </>
           )}
-          <NavLink to="/how-chips-work" className={({ isActive }) => cn(navCls({ isActive }), signedIn && 'hidden xl:block')}>
-            How chips work
-          </NavLink>
+          {/* Signed-in players have this in the account menu and the footer. */}
+          {!signedIn && (
+            <NavLink to="/how-chips-work" className={navCls}>
+              How chips work
+            </NavLink>
+          )}
         </nav>
         {signedIn && <BalancePill />}
         <div className="flex items-center">

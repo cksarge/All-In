@@ -141,9 +141,20 @@ export default function ProfilePage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {self ? (
-              <ButtonLink to="/locker" variant="outline" size="sm">
-                Open locker
-              </ButtonLink>
+              <>
+                <ButtonLink to="/leaderboards" variant="ghost" size="sm">
+                  Leaderboards
+                </ButtonLink>
+                <ButtonLink to="/friends" variant="ghost" size="sm">
+                  Friends
+                  {mine && mine.friend_requests > 0 && (
+                    <span className="ml-1.5 rounded-full bg-gold-500 px-1.5 text-xs font-bold text-ink-950">{mine.friend_requests}</span>
+                  )}
+                </ButtonLink>
+                <ButtonLink to="/locker" variant="outline" size="sm">
+                  Open locker
+                </ButtonLink>
+              </>
             ) : p.friendship === 'friends' ? (
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => void friend('friend_remove', { p_user: p.user_id }, 'Removed from your friends')}>
                 Friends ✓ · Remove
