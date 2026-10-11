@@ -27,9 +27,13 @@ export function ChipAmount({
           ? formatChipsCompact(value)
           : formatChips(value);
   return (
+    // The number, not the icon, sets the baseline (self-baseline), so an amount inside a
+    // sentence sits on the same line as the words around it. The icon stays centred on it.
     <span className={cn('inline-flex items-center gap-1.5 tabular-nums', className)}>
       <ChipIcon className={iconClassName ?? 'h-[1.1em] w-[1.1em]'} color={color} />
-      <span aria-hidden="true">{text}</span>
+      <span aria-hidden="true" className="self-baseline">
+        {text}
+      </span>
       <span className="sr-only">{value === null || value === undefined ? 'unknown' : `${text} play chips`}</span>
     </span>
   );

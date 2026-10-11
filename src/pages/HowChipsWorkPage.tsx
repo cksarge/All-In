@@ -217,8 +217,8 @@ export default function HowChipsWorkPage() {
             Every shuffle, roll and spin happens on our servers, never in your browser. Your balance can only be changed
             by the server, and every single chip movement is recorded in your chip history with a reason.
           </p>
-          <p className="mt-3 flex items-center gap-2 text-sm text-muted">
-            Look for the <PlayChipsBadge /> badge next to your balance.
+          <p className="mt-3 text-sm text-muted">
+            Look for the <PlayChipsBadge className="mx-0.5 align-middle" /> badge next to your balance.
           </p>
         </div>
       </section>
