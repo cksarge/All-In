@@ -141,6 +141,18 @@ const fits = (page) => page.evaluate(() => document.documentElement.scrollWidth 
   await ann.waitForTimeout(300);
   await ann.screenshot({ path: `${SHOTS}/m-plinko.png` });
   ok((await bal(A)) === b - 10 + 1700, 'plinko: the far edge of a 12-row high-risk board paid 170x');
+  // five balls at once
+  b = await bal(A);
+  await ann.getByRole('radio', { name: '5', exact: true }).click();
+  await button(ann, 'Drop 5');
+  await ann.getByText(/balls bouncing/).waitFor({ timeout: 5000 });
+  await ann.waitForTimeout(900);
+  await ann.screenshot({ path: `${SHOTS}/m-plinko-five.png` });
+  await ann.getByText(/5 balls landed/).waitFor({ timeout: 20000 });
+  const five = (await pool.query(`select coalesce(sum(returned), 0) as won, count(*) as n from (select returned from public.game_history h join auth.users u on u.id = h.user_id where u.email = $1 and h.game_key = 'plinko' order by h.id desc limit 5) x`, [A])).rows[0];
+  ok((await bal(A)) === b - 50 + Number(five.won), `plinko: five balls, five separate bets (won ${five.won})`);
+  await ann.waitForTimeout(1200);
+  ok((await ann.getByRole('banner').getByText((await bal(A)).toLocaleString('en-US')).count()) > 0, 'plinko: the header balance is right once every ball has landed');
 
   // Scratch cards
   await open(ann, 'scratch_cards');
@@ -197,6 +209,9 @@ const fits = (page) => page.evaluate(() => document.documentElement.scrollWidth 
   ok(got >= 3 && got <= 8, `crash: manual collect after ~5s paid about 1.4 to 1.7x (net ${got})`);
   await pool.query(`update public.crash_secrets set crash_at = now() where round_id = (select id from public.crash_rounds order by round_no desc limit 1)`);
   await ann.getByText(/^Crashed at/).waitFor({ timeout: 5000 });
+  await ann.waitForTimeout(350);
+  await ann.screenshot({ path: `${SHOTS}/m-crash-falling.png` });
+  await ann.getByText('Crashed here').waitFor({ timeout: 3000 });
   await ann.screenshot({ path: `${SHOTS}/m-crash-crashed.png` });
   ok(true, 'crash: the round crashes for everyone');
 

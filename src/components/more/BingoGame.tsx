@@ -39,7 +39,8 @@ interface State {
 }
 
 const LETTERS = ['B', 'I', 'N', 'G', 'O'];
-const BALL_BG = ['bg-sapphire-500', 'bg-ruby-500', 'bg-ivory text-ink-950', 'bg-felt-500', 'bg-gold-500 text-ink-950'];
+/** Ball colour per column, each with a text colour that shows up on it. */
+const BALL_BG = ['bg-sapphire-500 text-ivory', 'bg-ruby-500 text-ivory', 'bg-ivory text-ink-950', 'bg-felt-500 text-ivory', 'bg-gold-500 text-ink-950'];
 const letterOf = (n: number) => LETTERS[Math.floor((n - 1) / 15)];
 const LINES: number[][] = [
   ...[0, 1, 2, 3, 4].map((c) => [0, 1, 2, 3, 4].map((r) => c * 5 + r)),
@@ -254,7 +255,7 @@ function Hall({ info }: { info: SoloInfo<Config> }) {
               initial={lastBall ? { scale: 0.4, rotate: -120 } : false}
               animate={{ scale: 1, rotate: 0 }}
               className={cn(
-                'flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-full font-display font-black text-ivory shadow-[inset_0_-6px_10px_rgba(0,0,0,0.3),0_8px_16px_rgba(0,0,0,0.5)]',
+                'flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-full font-display font-black shadow-[inset_0_-6px_10px_rgba(0,0,0,0.3),0_8px_16px_rgba(0,0,0,0.5)]',
                 lastBall ? BALL_BG[Math.floor((lastBall - 1) / 15)] : 'bg-ink-950/50',
               )}
               aria-live="polite"
@@ -282,6 +283,8 @@ function Hall({ info }: { info: SoloInfo<Config> }) {
                 <>
                   Starting in <strong className="text-gold-200">{sellLeft}s</strong>
                 </>
+              ) : phase === 'done' ? (
+                'Round over'
               ) : (
                 'Waiting for players'
               )}

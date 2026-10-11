@@ -42,6 +42,8 @@ interface State {
 }
 
 const fmt = (m: number) => `${m.toFixed(2)}×`;
+/** How long the line takes to fall after a crash. */
+const FALL_MS = 900;
 
 export function CrashGame() {
   const { info, error, load } = useSoloGame<Config>('crash', 'more_info');
@@ -49,7 +51,8 @@ export function CrashGame() {
   return <Room info={info} />;
 }
 
-function Graph({ seconds, mult, crashed, growth }: { seconds: number; mult: number; crashed: boolean; growth: number }) {
+/** The flight so far. `fall` (0 to 1) is how far the line has dropped after a crash. */
+function Graph({ seconds, mult, crashed, growth, fall }: { seconds: number; mult: number; crashed: boolean; growth: number; fall: number }) {
   const W = 100;
   const H = 56;
   const tMax = Math.max(8, seconds * 1.15);
@@ -61,6 +64,11 @@ function Graph({ seconds, mult, crashed, growth }: { seconds: number; mult: numb
     return `${x(t).toFixed(2)},${y(Math.exp(growth * t)).toFixed(2)}`;
   });
   const color = crashed ? '#e25a68' : '#f0d688';
+  // After a crash the line plunges from its peak to the floor, a little to the right.
+  const peakX = x(seconds);
+  const peakY = y(Math.exp(growth * seconds));
+  const dropX = peakX + Math.min(W - peakX, 5) * fall;
+  const dropY = peakY + (H - peakY) * fall;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">
       {[0.25, 0.5, 0.75].map((f) => (
@@ -68,8 +76,16 @@ function Graph({ seconds, mult, crashed, growth }: { seconds: number; mult: numb
       ))}
       {seconds > 0 && (
         <>
-          <polygon points={`0,${H} ${pts.join(' ')} ${x(seconds).toFixed(2)},${H}`} fill={color} opacity="0.12" />
-          <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+          <polygon points={`0,${H} ${pts.join(' ')} ${peakX.toFixed(2)},${H}`} fill={color} opacity={0.12 * (1 - fall * 0.7)} />
+          <polyline
+            points={`${pts.join(' ')}${crashed ? ` ${dropX.toFixed(2)},${dropY.toFixed(2)}` : ''}`}
+            fill="none"
+            stroke={color}
+            strokeWidth="1.6"
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </>
       )}
     </svg>
@@ -100,6 +116,14 @@ function Room({ info }: { info: SoloInfo<Config> }) {
   const mult = crashed ? Number(round?.crash_point ?? 1) : flying ? Math.floor(Math.exp(c.growth * seconds) * 100) / 100 : 1;
   const crashSeconds = crashed ? Math.log(mult) / c.growth : seconds;
   const countdown = round?.phase === 'betting' ? Math.max(0, Math.ceil((new Date(round.betting_ends_at).getTime() - now) / 1000)) : 0;
+
+  // When this browser first saw the crash: the line and the number fall from that moment.
+  const crashSeen = useRef<{ id: string; at: number } | null>(null);
+  if (crashed && round && crashSeen.current?.id !== round.id) crashSeen.current = { id: round.id, at: Date.now() };
+  const fall = crashed && crashSeen.current ? Math.min(1, (Date.now() - crashSeen.current.at) / FALL_MS) : 0;
+  const falling = crashed && fall < 1;
+  // The number tumbles to zero with the line, then settles on where the round crashed.
+  const shownMult = falling ? mult * (1 - fall) * (1 - fall) : mult;
 
   // Sounds and a balance refresh when the round changes phase.
   const lastPhase = useRef<string | undefined>(undefined);
@@ -216,7 +240,7 @@ function Room({ info }: { info: SoloInfo<Config> }) {
       }
     >
       <div className="relative mx-auto h-52 w-full overflow-hidden rounded-2xl border border-white/10 bg-ink-950/50 sm:h-64">
-        <Graph seconds={crashSeconds} mult={mult} crashed={Boolean(crashed)} growth={c.growth} />
+        <Graph seconds={crashSeconds} mult={mult} crashed={Boolean(crashed)} growth={c.growth} fall={fall} />
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {round.phase === 'betting' ? (
             <>
@@ -226,9 +250,11 @@ function Room({ info }: { info: SoloInfo<Config> }) {
           ) : (
             <>
               <p className={cn('font-display text-5xl font-black tabular-nums sm:text-6xl', crashed ? 'text-ruby-400' : 'text-gold-200')} aria-live="off">
-                {fmt(mult)}
+                {fmt(shownMult)}
               </p>
-              {crashed && <p className="mt-1 text-sm font-semibold uppercase tracking-widest text-ruby-300">Crashed</p>}
+              {crashed && (
+                <p className="mt-1 text-sm font-semibold uppercase tracking-widest text-ruby-300">{falling ? 'Crash!' : 'Crashed here'}</p>
+              )}
             </>
           )}
         </div>

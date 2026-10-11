@@ -324,6 +324,9 @@ crash_bets, bingo_rounds. Postgres Changes enforce RLS.
   advances the round, so the screen polls it (400 ms while a Crash round flies, about 1 s otherwise) and also
   refetches on Realtime changes. Crash draws its multiplier locally from `started_at` and the server clock
   offset, so it can run a fraction of a second past the real crash point before the next poll corrects it.
+- Plinko can have many balls in the air: each ball is its own `plinko_drop` call and bet (1, 3, 5 or 10 per
+  press, and Drop can be pressed again mid-flight). The header balance is held with `holdBalance` and moved
+  ball by ball. Crash draws the line falling to the floor for about a second after a crash (asked for by the user).
 - **Copy:** the word for taking a win is **"Collect"** (the user's choice; the copy guard also rejects
   identifiers like `buy`, so name functions `takeCards`, not `buy`).
 - **Lounge and lobby:** the lounge lists games in four sections (`CATEGORIES` in `src/lib/games.ts`, driven
@@ -369,7 +372,7 @@ crash_bets, bingo_rounds. Postgres Changes enforce RLS.
    node scripts/e2e/phase3.cjs /tmp/shots       # roulette + craps
    node scripts/e2e/slots.cjs /tmp/shots        # all six machines, features, jackpot, phone widths (21 checks)
    node scripts/e2e/solo.cjs /tmp/shots         # the eight Phase 6 games, a resumed hand, phone widths (29 checks)
-   node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (42 checks)
+   node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (44 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:
