@@ -79,7 +79,8 @@ export function Modal({
             aria-label={title}
             tabIndex={-1}
             className={cn(
-              'surface relative w-full max-w-md overflow-hidden border-gold-500/20 bg-ink-800 p-6 sm:p-8',
+              // Never taller than the screen: long content scrolls inside the panel.
+              'surface relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain border-gold-500/20 bg-ink-800 p-6 sm:p-8',
               className,
             )}
             initial={{ y: 24, scale: 0.97, opacity: 0 }}

@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { formatChips } from '@/lib/format';
@@ -8,7 +9,13 @@ export function TournamentRules({ open, onClose, config }: { open: boolean; onCl
   const { sng, showdown, freeroll } = config;
   return (
     <Modal open={open} onClose={onClose} title="How tournaments work" className="max-w-2xl">
-      <div className="space-y-5 text-sm leading-relaxed text-cream/85">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="font-display text-2xl font-bold text-ivory">How tournaments work</h2>
+        <Button size="sm" variant="ghost" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+      <div className="mt-4 space-y-5 text-sm leading-relaxed text-cream/85">
         <section>
           <h3 className="font-display text-lg font-bold text-ivory">Sit &amp; Go poker</h3>
           <ul className="mt-2 list-disc space-y-1.5 pl-5">
