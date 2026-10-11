@@ -1,0 +1,9 @@
+{
+  "name": "allin-e2e",
+  "private": true,
+  "description": "Local end-to-end tests for All In (test-only, never deployed). See CLAUDE.md.",
+  "dependencies": {
+    "pg": "^8.23.1",
+    "playwright": "^1.56.0"
+  }
+}
