@@ -1,3 +1,4 @@
+import { QuickStart } from '@/components/onboarding/QuickStart';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BlackjackTable } from '@/components/blackjack/BlackjackTable';
@@ -46,10 +47,19 @@ export default function TablePage() {
     );
   }
   if (!game) return <FullPageLoader label="Finding your table…" />;
-  if (game === 'blackjack') return <BlackjackTable key={id} tableId={id} />;
-  if (game === 'roulette') return <RouletteTable key={id} tableId={id} />;
-  if (game === 'craps') return <CrapsTable key={id} tableId={id} />;
-  if (game.startsWith('poker_')) return <PokerTable key={id} tableId={id} />;
+  const table =
+    game === 'blackjack' ? <BlackjackTable key={id} tableId={id} /> :
+    game === 'roulette' ? <RouletteTable key={id} tableId={id} /> :
+    game === 'craps' ? <CrapsTable key={id} tableId={id} /> :
+    game.startsWith('poker_') ? <PokerTable key={id} tableId={id} /> : null;
+  if (table) {
+    return (
+      <>
+        {table}
+        <QuickStart key={game} guide={game} />
+      </>
+    );
+  }
   return (
     <div className="mx-auto max-w-lg px-4 py-16">
       <div className="surface">

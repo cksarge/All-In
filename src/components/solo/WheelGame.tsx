@@ -125,7 +125,7 @@ function Table({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
     setShown(false);
     setResult(null);
     setSpinning(true);
-    playSound('spin');
+    playSound('wheel');
     const start = useWallet.getState().status?.balance ?? 0;
     holdBalance(start - s.total);
     const [res, err] = await call<Result>('wheel_spin', { p_tier: s.tierKey, p_bets: s.bets });

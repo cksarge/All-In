@@ -43,7 +43,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
 -- ----------------------------------------------------------------------------
 select tests.ok((select count(*) from public.games where released) = (select count(*) from public.games), 'every game in the catalogue is open');
 select tests.ok((select jsonb_object_agg(category, n) from (select category, count(*) n from public.games group by category) x)
-                = '{"table": 8, "poker": 8, "slots": 6, "specialty": 9}', 'games per section');
+                = '{"table": 8, "poker": 9, "slots": 7, "specialty": 9}', 'games per section');
 select tests.ok((select count(*) from public.stake_tiers) = (select count(*) * 4 from public.games), 'four stake levels for every game');
 
 -- Plinko: the slot is binomial, so each table's return is exact.

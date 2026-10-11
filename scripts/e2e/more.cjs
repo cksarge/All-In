@@ -14,6 +14,8 @@ const GAMES = ['dragon_tiger', 'casino_war', 'ultimate_holdem', 'plinko', 'mines
 
 async function login(browser, email, vp) {
   const page = await (await browser.newContext({ viewport: vp })).newPage();
+  // First-visit game guides off, so they don't cover the game under test.
+  await page.addInitScript(() => { if (!localStorage.getItem('allin-settings')) localStorage.setItem('allin-settings', JSON.stringify({ state: { soundOn: true, motion: 'system', tourSeen: false, tipsOn: false, tipsSeen: {} }, version: 1 })); });
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   await page.route('https://fonts.googleapis.com/**', (r) => r.abort());
@@ -161,7 +163,8 @@ const fits = (page) => page.evaluate(() => document.documentElement.scrollWidth 
   await ann.getByRole('radio', { name: /Gold Rush/ }).click();
   await button(ann, 'New card');
   await ann.getByText(/Scratch the panels/).waitFor();
-  ok((await ann.getByRole('banner').getByText(String((b - 10).toLocaleString('en-US'))).count()) > 0, 'scratch: the prize is not in the balance until the card is scratched');
+  // The header number rolls to its new value, so wait for it to settle.
+  ok(await ann.getByRole('banner').getByText(String((b - 10).toLocaleString('en-US'))).first().waitFor({ timeout: 3000 }).then(() => true, () => false), 'scratch: the prize is not in the balance until the card is scratched');
   await ann.getByRole('button', { name: 'Panel 1, covered' }).click();
   await ann.getByRole('button', { name: 'Panel 5, covered' }).click();
   await ann.screenshot({ path: `${SHOTS}/m-scratch-partial.png` });

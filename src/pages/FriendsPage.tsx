@@ -1,3 +1,4 @@
+import { SectionNav } from '@/components/layout/SectionNav';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { PlayerLine } from '@/components/progress/bits';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -74,6 +75,7 @@ export default function FriendsPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:py-10">
+      <SectionNav />
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">Play together</p>
       <h1 className="font-display text-4xl font-bold text-ivory">Friends</h1>
 

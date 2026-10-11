@@ -1,3 +1,4 @@
+import { SectionNav } from '@/components/layout/SectionNav';
 import { useEffect, useState } from 'react';
 import { PlayerLine } from '@/components/progress/bits';
 import { ChipAmount } from '@/components/ui/ChipAmount';
@@ -60,6 +61,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:py-10">
+      <SectionNav />
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">The standings</p>
       <h1 className="font-display text-4xl font-bold text-ivory">Leaderboards</h1>
 

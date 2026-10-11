@@ -1015,7 +1015,7 @@ grant select on public.jackpots to authenticated;
 -- -----------------------------------------------------------------------------
 -- Open the machines and seed the jackpot (a re-run never resets the pot).
 -- -----------------------------------------------------------------------------
-update public.games set released = true where category = 'slots';
+update public.games set released = true where key like 'slots\_%';
 
 insert into public.jackpots (key, game_key, seed, pool_hundredths)
 select 'grand', 'slots_progressive', s.seed, s.seed * 100

@@ -12,3 +12,9 @@ delete from tests.decks;
 delete from public.solo_rounds;
 delete from public.crash_rounds;
 delete from public.bingo_rounds;
+delete from public.tournaments;
+delete from public.game_tables where play_money;
+-- A craps table left with a point on would refuse the next run's Pass Line bet.
+delete from public.cr_bets;
+delete from public.cr_rolls;
+delete from public.cr_state;

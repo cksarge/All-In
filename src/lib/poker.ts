@@ -128,6 +128,8 @@ export interface PkState extends LiveTableState {
     status: string;
     invite_code: string | null;
     stakes: PkStakes;
+    /** A tournament table: the chips on it are a score, not wallet chips. */
+    play_money?: boolean;
   };
   seats: PkSeat[];
   hand: PkHand | null;

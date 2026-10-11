@@ -43,6 +43,12 @@ export function RouletteBoard({
 }) {
   const zones = useMemo(() => buildZones(variant), [variant]);
   const [hover, setHover] = useState<Zone | null>(null);
+  // The thin spots on lines and corners can't be tabbed to one by one (there are over a hundred),
+  // so keyboard and screen-reader players get them as a list below the layout.
+  const edges = useMemo(() => zones.filter((z) => z.kind === 'edge'), [zones]);
+  const edgeTypes = useMemo(() => [...new Set(edges.map((z) => z.type))], [edges]);
+  const [pick, setPick] = useState('');
+  const picked = edges.find((z) => z.key === pick) ?? null;
   const covered = new Set(hover?.numbers ?? []);
 
   // Chips per spot: mine and everyone else's.
@@ -66,6 +72,7 @@ export function RouletteBoard({
   };
 
   return (
+    <>
     <div
       className="relative w-full select-none rounded-xl border-2 border-gold-500/40 bg-felt-800 shadow-inner"
       style={{ aspectRatio: `${W} / ${H}` }}
@@ -149,5 +156,41 @@ export function RouletteBoard({
         );
       })}
     </div>
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <label htmlFor="rl-inside" className="w-full text-xs text-muted sm:w-auto">
+        Splits, streets, corners and lines
+      </label>
+      <select
+        id="rl-inside"
+        value={pick}
+        onChange={(e) => {
+          setPick(e.target.value);
+          setHover(edges.find((z) => z.key === e.target.value) ?? null);
+        }}
+        className="min-w-0 flex-1 rounded-lg border border-white/15 bg-ink-950 px-2 py-1.5 text-sm text-cream"
+      >
+        <option value="">Choose a bet…</option>
+        {edgeTypes.map((type) => (
+          <optgroup key={type} label={`${BET_INFO[type].name} (pays ${BET_INFO[type].pays})`}>
+            {edges
+              .filter((z) => z.type === type)
+              .map((z) => (
+                <option key={z.key} value={z.key}>
+                  {z.label}
+                </option>
+              ))}
+          </optgroup>
+        ))}
+      </select>
+      <button
+        type="button"
+        disabled={disabled || !picked}
+        onClick={() => picked && onBet(picked)}
+        className="rounded-lg border border-gold-500/50 px-3 py-1.5 text-sm font-semibold text-gold-300 transition hover:bg-gold-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Place chip
+      </button>
+    </div>
+    </>
   );
 }

@@ -94,7 +94,7 @@ function Table({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
     }
     setShown(false);
     setResult(res);
-    playSound('whoosh');
+    playSound('dice');
     await sleep(1100);
     setShown(true);
     settleBalance(res.balance);

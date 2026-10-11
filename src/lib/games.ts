@@ -13,15 +13,19 @@ export type CategoryKey = (typeof CATEGORIES)[number]['key'];
 /** Solo-style games that are really one room shared by everyone (no tables or seats). */
 const LIVE_ROOMS = new Set(['crash', 'bingo']);
 
-/** How a game is played: at tables with seats, in one shared live room, or on your own. */
-export type GameMode = 'tables' | 'room' | 'solo';
+/** Catalogue entries that are really the tournaments page. */
+const TOURNAMENTS = new Set(['sng_poker', 'slot_showdown']);
+
+/** How a game is played: at tables with seats, in one shared live room, on your own, or as a tournament. */
+export type GameMode = 'tables' | 'room' | 'solo' | 'tournament';
 
 export function gameMode(g: Pick<GameRow, 'key' | 'multiplayer'>): GameMode {
-  return g.multiplayer ? 'tables' : LIVE_ROOMS.has(g.key) ? 'room' : 'solo';
+  return TOURNAMENTS.has(g.key) ? 'tournament' : g.multiplayer ? 'tables' : LIVE_ROOMS.has(g.key) ? 'room' : 'solo';
 }
 
 /** Where "Play" goes: the lobby's table list for table games, the game itself otherwise. */
 export function gameHref(g: Pick<GameRow, 'key' | 'multiplayer'>): string {
+  if (TOURNAMENTS.has(g.key)) return '/tournaments';
   return g.multiplayer ? `/lobby?game=${g.key}` : `/play/${g.key}`;
 }
 
@@ -29,5 +33,6 @@ export function modeLabel(g: Pick<GameRow, 'key' | 'multiplayer' | 'max_seats' |
   const mode = gameMode(g);
   if (mode === 'tables') return `Live tables · up to ${g.max_seats} seats`;
   if (mode === 'room') return 'Live room · everyone plays the same round';
+  if (mode === 'tournament') return g.key === 'sng_poker' ? 'Tournament · 2, 3 or 6 players' : 'Tournament · new round every 15 minutes';
   return g.category === 'poker' ? 'Solo · against the dealer' : 'Solo';
 }

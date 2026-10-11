@@ -1,3 +1,4 @@
+import { SectionNav } from '@/components/layout/SectionNav';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { LevelBadge, useTitleName, XpBar } from '@/components/progress/bits';
@@ -127,6 +128,7 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
+      {self && <SectionNav />}
       <section className="surface p-6" aria-label={`${p.username}'s profile`}>
         <div className="flex flex-wrap items-center gap-4">
           <Avatar username={p.username} loadout={p.loadout} size={84} me={self} />

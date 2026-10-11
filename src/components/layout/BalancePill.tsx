@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChipAmount, PlayChipsBadge } from '@/components/ui/ChipAmount';
 import { Skeleton } from '@/components/ui/States';
 import { formatSigned } from '@/lib/format';
+import { prefersReducedMotion, useSettings } from '@/stores/settingsStore';
 import { useWallet } from '@/stores/walletStore';
 
 /** Live chip balance with the "Play chips" badge. Flashes +/- on change. */
@@ -10,6 +11,29 @@ export function BalancePill() {
   const balance = useWallet((s) => (s.status ? (s.displayBalance ?? s.status.balance) : undefined));
   const prev = useRef<number | undefined>(undefined);
   const [delta, setDelta] = useState<{ id: number; value: number } | null>(null);
+  const reduced = prefersReducedMotion(useSettings((s) => s.motion));
+  // The number rolls to its new value instead of jumping.
+  const [shown, setShown] = useState<number | undefined>(balance);
+  const shownRef = useRef<number | undefined>(balance);
+  useEffect(() => {
+    const from = shownRef.current;
+    if (balance === undefined || from === undefined || reduced || from === balance) {
+      shownRef.current = balance;
+      setShown(balance);
+      return;
+    }
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / 450);
+      const v = Math.round(from + (balance - from) * (1 - (1 - k) ** 3));
+      shownRef.current = v;
+      setShown(v);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [balance, reduced]);
 
   useEffect(() => {
     if (balance === undefined) return;
@@ -24,7 +48,7 @@ export function BalancePill() {
       {balance === undefined ? (
         <Skeleton className="h-5 w-20" />
       ) : (
-        <ChipAmount value={balance} className="text-[0.95rem] font-semibold text-ivory" iconClassName="h-5 w-5" />
+        <ChipAmount value={shown ?? balance} className="text-[0.95rem] font-semibold text-ivory" iconClassName="h-5 w-5" />
       )}
       <PlayChipsBadge className="whitespace-nowrap max-xs:px-1.5 max-xs:tracking-[0.06em]" />
       <AnimatePresence>

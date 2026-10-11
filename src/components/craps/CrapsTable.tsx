@@ -88,7 +88,7 @@ export function CrapsTable({ tableId }: { tableId: string }) {
     seenRoll.current = rollNo;
     const last = state.recent[0];
     if (!last) return;
-    playSound('card');
+    playSound('dice');
     let won = 0;
     let lost = 0;
     for (const r of state.last_results) {

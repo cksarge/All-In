@@ -17,6 +17,7 @@ export function TableHeader({
   onSitOut,
   extra,
   stakes,
+  tournament,
 }: {
   table: {
     name: string;
@@ -37,14 +38,22 @@ export function TableHeader({
   extra?: React.ReactNode;
   /** Replaces "Bets min–max" (e.g. poker blinds). */
   stakes?: string;
+  /** Tournament tables have no stake level, and leaving goes back to the tournaments. */
+  tournament?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <Button size="sm" variant={mySeat ? 'outline' : 'ghost'} onClick={onLeave}>
-        ← {mySeat ? 'Leave table' : 'Lobby'}
+        ← {tournament ? (mySeat ? 'Leave tournament' : 'Tournaments') : mySeat ? 'Leave table' : 'Lobby'}
       </Button>
       <h1 className="font-display text-xl font-bold text-ivory sm:text-2xl">{table.name}</h1>
-      <TierBadge tier={table.tier} />
+      {tournament ? (
+        <span className="rounded-full border border-gold-500/50 bg-gold-500/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-gold-200">
+          Tournament
+        </span>
+      ) : (
+        <TierBadge tier={table.tier} />
+      )}
       {table.variant && (
         <span className="rounded-full border border-white/15 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-cream/80">
           {table.variant}

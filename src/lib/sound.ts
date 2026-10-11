@@ -6,7 +6,7 @@ import { useSettings } from '@/stores/settingsStore';
  */
 export type SoundName =
   | 'click' | 'chip' | 'coins' | 'success' | 'error' | 'whoosh' | 'card' | 'flip' | 'win' | 'lose' | 'turn' | 'pop'
-  | 'spin' | 'reel' | 'feature' | 'jackpot';
+  | 'spin' | 'reel' | 'feature' | 'jackpot' | 'dice' | 'wheel' | 'tick' | 'levelup' | 'achievement';
 
 let ctx: AudioContext | null = null;
 
@@ -120,6 +120,31 @@ export function playSound(name: SoundName) {
       [392, 523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) =>
         tone(c, { freq: f, start: i * 0.09, dur: 0.3, type: 'triangle', gain: 0.07 }),
       );
+      break;
+    case 'dice':
+      // Two dice tumbling, then settling.
+      for (let i = 0; i < 7; i++) noise(c, { start: i * 0.055 + Math.random() * 0.02, dur: 0.03, freq: 1800 + Math.random() * 1600, gain: 0.11 });
+      noise(c, { start: 0.44, dur: 0.05, freq: 900, gain: 0.13 });
+      break;
+    case 'wheel':
+      // Clicks that slow down.
+      for (let i = 0; i < 14; i++) {
+        const at = 0.035 * i + 0.006 * i * i;
+        noise(c, { start: at, dur: 0.02, freq: 2600, gain: 0.07 });
+        tone(c, { freq: 1500, start: at, dur: 0.02, type: 'square', gain: 0.012 });
+      }
+      break;
+    case 'tick':
+      tone(c, { freq: 1200, dur: 0.035, type: 'square', gain: 0.03 });
+      break;
+    case 'levelup':
+      [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(c, { freq: f, start: i * 0.09, dur: 0.28, type: 'triangle', gain: 0.07 }));
+      tone(c, { freq: 1568, start: 0.5, dur: 0.5, type: 'sine', gain: 0.07 });
+      break;
+    case 'achievement':
+      tone(c, { freq: 880, dur: 0.14, type: 'triangle', gain: 0.07 });
+      tone(c, { freq: 1318.5, start: 0.11, dur: 0.16, type: 'triangle', gain: 0.07 });
+      tone(c, { freq: 1760, start: 0.24, dur: 0.34, type: 'sine', gain: 0.07 });
       break;
     case 'jackpot':
       for (let r = 0; r < 3; r++) {

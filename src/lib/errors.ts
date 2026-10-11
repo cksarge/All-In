@@ -27,6 +27,7 @@ function isNetworkError(e: ErrorLike): boolean {
 }
 
 const RPC_MESSAGES: Record<string, string> = {
+  unknown_tournament: "That tournament doesn't exist any more.",
   not_authenticated: 'Your session has ended. Please log in again.',
   wallet_not_found: "We couldn't find your chip wallet. Try refreshing the page.",
   insufficient_chips: "You don't have enough play chips for that.",
@@ -81,7 +82,7 @@ const RPC_MESSAGES: Record<string, string> = {
 };
 
 /** Errors whose server hint is already player-friendly. */
-const USE_HINT = new Set(['action_not_allowed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack', 'invalid_hand', 'insufficient_chips']);
+const USE_HINT = new Set(['action_not_allowed', 'betting_closed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack', 'invalid_hand', 'insufficient_chips']);
 
 /**
  * Turns any Supabase/auth/RPC/network error into a short, friendly sentence.

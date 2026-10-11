@@ -1,3 +1,4 @@
+import { GitHubLink } from '@/components/ui/GitHubLink';
 import { motion } from 'framer-motion';
 import { ButtonLink } from '@/components/ui/Button';
 import { ChipIcon, type ChipColor } from '@/components/ui/ChipIcon';
@@ -120,6 +121,9 @@ export default function LandingPage() {
             )}
           </div>
           <p className="mt-4 text-sm text-muted">New players start with 10,000 free play chips.</p>
+          <GitHubLink className="mt-4 rounded-full border border-white/15 px-3.5 py-1.5 text-sm font-medium text-cream/90 transition hover:border-gold-500/50 hover:text-ivory">
+            Open source: read the code on GitHub
+          </GitHubLink>
         </div>
         <HeroArt />
       </section>
@@ -163,6 +167,18 @@ export default function LandingPage() {
               </li>
             ))}
           </ul>
+          <div className="surface mt-10 flex flex-wrap items-center justify-between gap-4 p-6" role="note" aria-label="Open source">
+            <div className="min-w-0 max-w-2xl">
+              <h3 className="font-display text-2xl font-bold text-ivory">Open source, start to finish</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted">
+                Every game, every shuffle and every payout table is public. Read how the odds work, check that nothing is hidden, or
+                build on it yourself.
+              </p>
+            </div>
+            <GitHubLink className="rounded-xl border border-gold-500/50 px-4 py-2.5 text-sm font-semibold text-gold-300 transition hover:border-gold-400 hover:bg-gold-500/10">
+              View All In on GitHub
+            </GitHubLink>
+          </div>
           {!signedIn && (
             <div className="mt-12 flex flex-col items-center gap-4 text-center">
               <p className="font-display text-2xl text-ivory">Your seat is open.</p>

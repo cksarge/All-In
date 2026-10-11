@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { MotionConfig } from 'framer-motion';
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Toaster } from '@/components/ui/Toaster';
-import { supabaseConfigured } from '@/lib/supabase';
+import { playSound } from '@/lib/sound';
+import { supabase, supabaseConfigured } from '@/lib/supabase';
 import ConfigMissingPage from '@/pages/ConfigMissingPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import FriendsPage from '@/pages/FriendsPage';
@@ -20,13 +21,16 @@ import PlayPage from '@/pages/PlayPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
 import SignUpPage from '@/pages/SignUpPage';
+import ShowdownPage from '@/pages/ShowdownPage';
 import TablePage from '@/pages/TablePage';
+import TournamentsPage from '@/pages/TournamentsPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import { GuestOnly, RequireAuth } from '@/routes/guards';
 import { useOnlinePresence } from '@/hooks/useLobby';
 import { useAuth } from '@/stores/authStore';
 import { useProgress } from '@/stores/progressStore';
 import { prefersReducedMotion, useSettings } from '@/stores/settingsStore';
+import { toast } from '@/stores/toastStore';
 import { useWallet } from '@/stores/walletStore';
 
 const TITLES: Record<string, string> = {
@@ -43,6 +47,7 @@ const TITLES: Record<string, string> = {
   '/locker': 'Locker · All In',
   '/friends': 'Friends · All In',
   '/leaderboards': 'Leaderboards · All In',
+  '/tournaments': 'Tournaments · All In',
 };
 
 function RouteEffects() {
@@ -50,7 +55,7 @@ function RouteEffects() {
   useEffect(() => {
     document.title =
       TITLES[pathname] ??
-      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : pathname.startsWith('/profile/') ? 'Profile · All In' : 'All In');
+      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : pathname.startsWith('/profile/') ? 'Profile · All In' : pathname.startsWith('/tournaments/') ? 'Tournament · All In' : 'All In');
     window.scrollTo({ top: 0 });
   }, [pathname]);
   return null;
@@ -98,6 +103,36 @@ function ProgressConnector() {
   return null;
 }
 
+/** Takes you to your Sit & Go table the moment it fills, wherever you are on the site. */
+function TournamentConnector() {
+  const userId = useAuth((s) => s.user?.id);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!userId) return;
+    const ch = supabase
+      .channel(`my-tournaments:${userId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournament_entries', filter: `user_id=eq.${userId}` }, ({ new: row }) => {
+        const e = row as { status?: string; tournament_id?: string };
+        if (e.status !== 'playing' || !e.tournament_id) return;
+        void supabase
+          .from('tournaments')
+          .select('table_id, status')
+          .eq('id', e.tournament_id)
+          .maybeSingle()
+          .then(({ data }) => {
+            const t = data as { table_id: string | null; status: string } | null;
+            if (!t?.table_id || t.status !== 'running' || window.location.pathname.endsWith(`/table/${t.table_id}`)) return;
+            playSound('turn');
+            toast.success('Your Sit & Go is starting', 'Taking you to the table.');
+            navigate(`/table/${t.table_id}`);
+          });
+      })
+      .subscribe();
+    return () => void supabase.removeChannel(ch);
+  }, [userId, navigate]);
+  return null;
+}
+
 export default function App() {
   const init = useAuth((s) => s.init);
   const motionPref = useSettings((s) => s.motion);
@@ -117,6 +152,7 @@ export default function App() {
         <WalletConnector />
         <PresenceConnector />
         <ProgressConnector />
+        <TournamentConnector />
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<LandingPage />} />
@@ -136,6 +172,8 @@ export default function App() {
             <Route path="locker" element={<RequireAuth><LockerPage /></RequireAuth>} />
             <Route path="friends" element={<RequireAuth><FriendsPage /></RequireAuth>} />
             <Route path="leaderboards" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
+            <Route path="tournaments" element={<RequireAuth><TournamentsPage /></RequireAuth>} />
+            <Route path="tournaments/:id" element={<RequireAuth><ShowdownPage /></RequireAuth>} />
             <Route path="join/:code" element={<RequireAuth><JoinPage /></RequireAuth>} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>

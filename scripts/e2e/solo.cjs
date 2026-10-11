@@ -13,6 +13,8 @@ const GAMES = ['baccarat', 'video_poker_jacks', 'video_poker_deuces', 'three_car
 
 async function login(browser, email, vp) {
   const page = await (await browser.newContext({ viewport: vp })).newPage();
+  // First-visit game guides off, so they don't cover the game under test.
+  await page.addInitScript(() => { if (!localStorage.getItem('allin-settings')) localStorage.setItem('allin-settings', JSON.stringify({ state: { soundOn: true, motion: 'system', tourSeen: false, tipsOn: false, tipsSeen: {} }, version: 1 })); });
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   await page.route('https://fonts.googleapis.com/**', (r) => r.abort());

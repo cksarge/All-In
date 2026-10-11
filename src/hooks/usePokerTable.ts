@@ -11,6 +11,8 @@ export function usePokerTable(tableId: string) {
     // Turn, draw and next-hand timers all need the server: it acts for players
     // who timed out and deals the next hand.
     getDeadline: (s) => ({ at: s.hand?.phase_ends_at, advance: Boolean(s.hand) }),
+    // A tournament seat is kept when you look away: leaving it is forfeiting.
+    keepSeat: (s) => Boolean(s.table.play_money),
   });
   const { call } = t;
   return {

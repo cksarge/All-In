@@ -143,7 +143,8 @@ as $$
   || '{"turn_seconds":20,"draw_seconds":20,"next_hand_seconds":4,"showdown_seconds":8,"max_draw":5}'::jsonb;
 $$;
 
--- Blinds, antes and stack limits for a table (from stake_tiers.params).
+-- Blinds, antes and stack limits for a table: from stake_tiers.params, unless the
+-- table carries its own (tournament tables, whose blinds rise).
 create or replace function private.pk_stakes(p_table uuid)
 returns jsonb
 language sql
@@ -151,7 +152,7 @@ stable
 security definer
 set search_path = ''
 as $$
-  select st.params from public.game_tables t
+  select coalesce(t.stakes, st.params) from public.game_tables t
     join public.stake_tiers st on st.game_key = t.game_key and st.tier = t.tier
    where t.id = p_table;
 $$;
@@ -595,7 +596,9 @@ begin
   end if;
   select * into h from public.pk_hands where id = p_hand;
   update public.table_seats set stack = stack + p_amount where table_id = h.table_id and user_id = p_user;
-  if not found and exists (select 1 from public.wallets where user_id = p_user) then
+  -- (At a tournament table the chips of a player who has gone are simply lost: they are never wallet chips.)
+  if not found and exists (select 1 from public.wallets where user_id = p_user)
+     and not exists (select 1 from public.game_tables where id = h.table_id and play_money) then
     perform private.apply_chips(p_user, p_amount, 'poker_pot', h.game_key, p_hand::text,
                                 jsonb_build_object('hand_no', h.hand_no));
   end if;
@@ -870,7 +873,8 @@ begin
 
   for r in select * from public.pk_players where hand_id = p_hand loop
     perform private.pk_pay(p_hand, r.user_id, r.won);
-    if r.committed > 0 or r.won > 0 then
+    -- Tournament hands are not rounds of their own: the tournament is recorded once, when it ends.
+    if (r.committed > 0 or r.won > 0) and not exists (select 1 from public.game_tables where id = h.table_id and play_money) then
       perform private.record_round(r.user_id, h.game_key, h.table_id, h.id, r.committed, r.won,
         jsonb_build_object('hand_no', h.hand_no, 'hand', coalesce(r.hand_name, case when r.status = 'folded' then 'Folded' end),
                            'low', r.low_name));
@@ -878,6 +882,12 @@ begin
   end loop;
 
   perform private.pk_apply_topups(h.table_id);
+
+  -- Tournament tables: knock out anyone with no chips left, raise the blinds, and
+  -- finish the tournament when one player remains (14_tournaments.sql).
+  if exists (select 1 from public.game_tables where id = h.table_id and play_money) then
+    perform private.sng_after_hand(h.table_id);
+  end if;
 end $$;
 
 -- First seat to act on a stud street: best showing hand.
@@ -1192,9 +1202,11 @@ begin
   st := private.pk_stakes(p_table);
   perform private.pk_apply_topups(p_table);
 
+  -- In a tournament everyone with chips is dealt in, present or not (their hands are folded for them).
   select array_agg(seat_no order by seat_no) into v_seats
     from public.table_seats
-   where table_id = p_table and status = 'active' and stack > 0 and last_seen_at > now() - v_disc;
+   where table_id = p_table and stack > 0
+     and (t.play_money or (status = 'active' and last_seen_at > now() - v_disc));
   if coalesce(cardinality(v_seats), 0) < 2 then
     return false;
   end if;
@@ -1301,8 +1313,8 @@ begin
       exit when v_present and h.phase_ends_at > now();
       perform private.pk_do_action(h.id, p.seat_no,
         case when h.current_bet > p.street_bet then 'fold' else 'check' end, null);
-      if v_present then
-        -- Ran out of time: sit them out from the next hand.
+      if v_present and not exists (select 1 from public.game_tables where id = p_table and play_money) then
+        -- Ran out of time: sit them out from the next hand. (Nobody sits out of a tournament.)
         update public.table_seats set status = 'sitting_out' where table_id = p_table and user_id = p.user_id;
       end if;
     elsif h.phase = 'drawing' then
@@ -1406,7 +1418,7 @@ begin
       'id', t.id, 'name', t.name, 'game_key', t.game_key, 'tier', t.tier, 'tier_label', st.label,
       'max_seats', t.max_seats, 'is_private', t.is_private, 'status', t.status,
       'invite_code', case when t.is_private then t.invite_code end,
-      'stakes', st.params
+      'stakes', private.pk_stakes(p_table), 'play_money', t.play_money
     ),
     'seats', coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -1550,6 +1562,9 @@ declare
   v_total bigint;
 begin
   t := private.pk_lock_table(p_table);
+  if t.play_money then
+    raise exception 'action_not_allowed' using hint = 'You can''t add chips in a tournament.';
+  end if;
   st := private.pk_stakes(p_table);
   select * into s from public.table_seats where table_id = p_table and user_id = v_uid for update;
   if not found then
@@ -1682,7 +1697,8 @@ security definer
 set search_path = ''
 as $$
   select (select coalesce(sum(p.committed), 0) from public.pk_players p join public.pk_hands h on h.id = p.hand_id
-           where p.user_id = p_user and h.phase <> 'settled')
+             join public.game_tables t on t.id = h.table_id
+           where p.user_id = p_user and h.phase <> 'settled' and not t.play_money)
        + (select coalesce(sum(amount), 0) from public.pk_topups where user_id = p_user);
 $$;
 

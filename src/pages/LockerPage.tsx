@@ -1,3 +1,4 @@
+import { SectionNav } from '@/components/layout/SectionNav';
 import { useEffect, useState } from 'react';
 import { CardBack } from '@/components/cards/PlayingCard';
 import { LevelBadge } from '@/components/progress/bits';
@@ -70,6 +71,7 @@ export default function LockerPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
+      <SectionNav />
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">Earned, never sold</p>
       <h1 className="font-display text-4xl font-bold text-ivory">Locker</h1>
       <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">

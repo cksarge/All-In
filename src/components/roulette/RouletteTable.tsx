@@ -85,7 +85,7 @@ export function RouletteTable({ tableId }: { tableId: string }) {
   // Spin start sound.
   const prevPhase = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (round?.phase === 'spinning' && prevPhase.current === 'betting') playSound('whoosh');
+    if (round?.phase === 'spinning' && prevPhase.current === 'betting') playSound('wheel');
     prevPhase.current = round?.phase;
   }, [round?.phase]);
 

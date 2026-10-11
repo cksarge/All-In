@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ChipIcon } from '@/components/ui/ChipIcon';
+import { GitHubLink } from '@/components/ui/GitHubLink';
 import { useUi } from '@/stores/uiStore';
 import { NO_REAL_MONEY_FOOTER } from './NoRealMoneyNotice';
 
@@ -19,6 +20,7 @@ export function SiteFooter() {
           <button type="button" onClick={openSettings} className="hover:text-ivory">
             Settings
           </button>
+          <GitHubLink className="hover:text-ivory">Open source on GitHub</GitHubLink>
           <span className="text-subtle">© {new Date().getFullYear()} All In</span>
         </nav>
       </div>

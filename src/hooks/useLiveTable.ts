@@ -55,6 +55,8 @@ export function useLiveTable<S extends LiveTableState>(opts: {
   advanceFn: string;
   realtimeTables: string[];
   getDeadline: (s: S) => Deadline;
+  /** True for tables whose seat must survive leaving the page (tournaments). */
+  keepSeat?: (s: S) => boolean;
 }) {
   const { tableId, stateFn, advanceFn, getDeadline } = opts;
   const realtimeKey = opts.realtimeTables.join(',');
@@ -69,6 +71,7 @@ export function useLiveTable<S extends LiveTableState>(opts: {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const refetchTimer = useRef<number | undefined>(undefined);
   const lastReactionAt = useRef(0);
+  const seatedIds = useRef<Set<string>>(new Set());
   const inflight = useRef(false);
   const queued = useRef(false);
 
@@ -119,6 +122,8 @@ export function useLiveTable<S extends LiveTableState>(opts: {
         // Only render known phrase/emote IDs: there is no free-text chat.
         const max = p.kind === 'phrase' ? QUICK_PHRASES.length : p.kind === 'emote' ? EMOTES.length : 0;
         if (typeof p.user_id !== 'string' || typeof p.index !== 'number' || p.index < 0 || p.index >= max) return;
+        // Broadcasts are open to anyone on the channel: only show ones from players with a seat here.
+        if (!seatedIds.current.has(p.user_id)) return;
         const r: Reaction = { id: Date.now() + Math.random(), user_id: p.user_id, kind: p.kind!, index: p.index };
         setReactions((list) => [...list.filter((x) => x.user_id !== r.user_id), r]);
         window.setTimeout(() => setReactions((list) => list.filter((x) => x.id !== r.id)), REACTION_SHOW_MS);
@@ -148,12 +153,13 @@ export function useLiveTable<S extends LiveTableState>(opts: {
     };
   }, [tableId, user, username, refetch, scheduleRefetch, realtimeKey]);
 
+  seatedIds.current = new Set(state?.seats.map((s) => s.user_id) ?? []);
   const mySeat = state?.seats.find((s) => s.user_id === user?.id) ?? null;
   const mySeatNo = mySeat?.seat_no;
 
   // Leave the seat when navigating away inside the app.
   const seatedRef = useRef(false);
-  seatedRef.current = Boolean(mySeatNo);
+  seatedRef.current = Boolean(mySeatNo) && !(state && opts.keepSeat?.(state));
   useEffect(() => {
     window.clearTimeout(pendingLeave.get(tableId));
     pendingLeave.delete(tableId);
@@ -211,7 +217,7 @@ export function useLiveTable<S extends LiveTableState>(opts: {
 
   const sendReaction = useCallback(
     (kind: 'phrase' | 'emote', index: number) => {
-      if (!user || !channelRef.current) return false;
+      if (!user || !channelRef.current || !seatedIds.current.has(user.id)) return false;
       if (Date.now() - lastReactionAt.current < REACTION_COOLDOWN_MS) return false;
       lastReactionAt.current = Date.now();
       void channelRef.current.send({ type: 'broadcast', event: 'react', payload: { user_id: user.id, kind, index } });

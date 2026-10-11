@@ -74,6 +74,9 @@ function UserMenu() {
           <Link role="menuitem" to="/lobby" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Lobby
           </Link>
+          <Link role="menuitem" to="/tournaments" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Tournaments
+          </Link>
           <Link role="menuitem" to="/profile" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Profile
             {me && me.unclaimed_chips > 0 && <span className="ml-2 text-xs text-gold-300">rewards waiting</span>}
@@ -141,6 +144,9 @@ export function SiteHeader() {
               </NavLink>
               <NavLink to="/lobby" className={navCls}>
                 Lobby
+              </NavLink>
+              <NavLink to="/tournaments" className={navCls}>
+                Tournaments
               </NavLink>
               <NavLink to="/profile" className={navCls}>
                 Profile

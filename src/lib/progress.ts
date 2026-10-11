@@ -35,7 +35,7 @@ export interface Achievement {
   key: string;
   name: string;
   description: string;
-  category: 'play' | 'wins' | 'games' | 'feats' | 'social';
+  category: 'play' | 'wins' | 'games' | 'feats' | 'tournaments' | 'social';
   metric: string;
   goal: number;
   reward_chips: number;
@@ -76,6 +76,7 @@ export const ACHIEVEMENT_GROUPS: { key: Achievement['category']; label: string }
   { key: 'wins', label: 'Winning' },
   { key: 'games', label: 'Around the lounge' },
   { key: 'feats', label: 'Feats' },
+  { key: 'tournaments', label: 'Tournaments' },
   { key: 'social', label: 'Friends' },
 ];
 
@@ -99,6 +100,7 @@ export const AVATAR_GLYPH: Record<string, string | null> = {
   avatar_fire: '🔥',
   avatar_diamond: '💎',
   avatar_whale: '🐋',
+  avatar_medal: '🥇',
 };
 
 /** Ring around the avatar: a border colour, or a gradient for the fancy ones. */
@@ -110,6 +112,7 @@ export const FRAMES: Record<string, { color: string; gradient?: string; glow?: s
   frame_gold: { color: '#f0d688', glow: 'rgba(240,214,136,0.45)' },
   frame_royal: { color: '#c9a4f5', glow: 'rgba(201,164,245,0.45)' },
   frame_diamond: { color: '#e8f4ff', gradient: 'conic-gradient(#e8f4ff, #8fb0f0, #c9a4f5, #e8f4ff, #5cc392, #e8f4ff)', glow: 'rgba(232,244,255,0.5)' },
+  frame_laurel: { color: '#5cc392', gradient: 'conic-gradient(#5cc392, #f0d688, #1a774f, #f0d688, #5cc392)', glow: 'rgba(92,195,146,0.5)' },
   frame_jackpot: { color: '#f0d688', gradient: 'conic-gradient(#f0d688, #c9303f, #f0d688, #ad872b, #f0d688)', glow: 'rgba(240,214,136,0.6)' },
 };
 
@@ -121,6 +124,7 @@ export const CARD_BACKS: Record<string, { base: string; line: string }> = {
   back_onyx: { base: '#141816', line: '212,175,55' },
   back_royal: { base: '#3d2470', line: '201,164,245' },
   back_diamond: { base: '#28506b', line: '232,244,255' },
+  back_tournament: { base: '#5f4812', line: '255,244,207' },
 };
 
 /** Table felts: base colour and the soft light in the middle. */
@@ -130,4 +134,5 @@ export const FELTS: Record<string, { base: string; glow: string }> = {
   felt_burgundy: { base: '#3d0910', glow: '168 28 44' },
   felt_charcoal: { base: '#141816', glow: '91 100 95' },
   felt_royal: { base: '#22123f', glow: '140 96 220' },
+  felt_final_table: { base: '#1c1508', glow: '212 175 55' },
 };

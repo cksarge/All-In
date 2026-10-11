@@ -108,6 +108,13 @@ create index if not exists game_tables_lobby_idx on public.game_tables (game_key
 -- Game-specific table style, e.g. roulette 'european' / 'american'. Null for most games.
 alter table public.game_tables add column if not exists variant text;
 
+-- Tournament tables (14_tournaments.sql). At a play_money table the chips in front
+-- of a player are tournament chips: they never come from or go back to a wallet,
+-- and seats are kept through disconnections so absent players are blinded out.
+-- `stakes` overrides the stake level's blinds (tournament blinds rise over time).
+alter table public.game_tables add column if not exists play_money boolean not null default false;
+alter table public.game_tables add column if not exists stakes jsonb;
+
 create or replace function private.default_variant(p_game text)
 returns text
 language sql
@@ -193,7 +200,9 @@ set search_path = ''
 as $$
 begin
   delete from public.table_seats s
-   where s.last_seen_at < now() - (select release from private.seat_timeouts());
+   where s.last_seen_at < now() - (select release from private.seat_timeouts())
+     -- Tournament seats are held: a player who has gone is blinded out, not removed.
+     and not exists (select 1 from public.game_tables t where t.id = s.table_id and t.play_money);
 
   update public.game_tables t
      set status = 'closed'
@@ -229,7 +238,7 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.game_tables t
-     where t.game_key = p_game and t.tier = p_tier and t.status = 'open' and not t.is_private
+     where t.game_key = p_game and t.tier = p_tier and t.status = 'open' and not t.is_private and not t.play_money
        and (select count(*) from public.table_seats s where s.table_id = t.id) < t.max_seats
   );
 $$;
@@ -303,7 +312,9 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_total bigint := coalesce((select sum(stack) from public.table_seats where user_id = p_user), 0);
+  -- (Tournament chips are not wallet chips, so play_money tables don't count.)
+  v_total bigint := coalesce((select sum(s.stack) from public.table_seats s join public.game_tables t on t.id = s.table_id
+                               where s.user_id = p_user and not t.play_money), 0);
   v bigint;
   f text;
 begin
@@ -340,6 +351,11 @@ begin
     update public.table_seats set last_seen_at = now(), status = 'active'
      where table_id = p_table and user_id = p_user;
     return v_seat;
+  end if;
+
+  -- Tournament seats are handed out by the tournament, never taken.
+  if t.play_money then
+    raise exception 'action_not_allowed' using hint = 'This is a tournament table. You can watch, but not sit down.';
   end if;
 
   perform private.assert_tier_access(p_user, t.game_key, t.tier);
@@ -385,7 +401,9 @@ declare
   f text;
   v_game text;
 begin
-  if old.stack > 0 and exists (select 1 from public.wallets where user_id = old.user_id) then
+  -- Tournament chips (play_money tables) are worth nothing outside the tournament.
+  if old.stack > 0 and exists (select 1 from public.wallets where user_id = old.user_id)
+     and not exists (select 1 from public.game_tables where id = old.table_id and play_money) then
     select game_key into v_game from public.game_tables where id = old.table_id;
     perform private.apply_chips(old.user_id, old.stack, 'table_chips_out', v_game, old.table_id::text,
                                 jsonb_build_object('seat_no', old.seat_no));
@@ -454,6 +472,7 @@ begin
           join public.stake_tiers st on st.game_key = t.game_key and st.tier = t.tier
          where t.game_key = p_game
            and t.status = 'open'
+           and not t.play_money
            and (not t.is_private
                 or exists (select 1 from public.table_seats s where s.table_id = t.id and s.user_id = v_uid))
       ) x
@@ -645,11 +664,12 @@ stable
 security definer
 set search_path = ''
 as $$
-  select jsonb_build_object('table_id', t.id, 'game_key', t.game_key, 'name', t.name, 'seat_no', s.seat_no)
+  select jsonb_build_object('table_id', t.id, 'game_key', t.game_key, 'name', t.name, 'seat_no', s.seat_no, 'play_money', t.play_money)
     from public.table_seats s
     join public.game_tables t on t.id = s.table_id
    where s.user_id = auth.uid()
-     and s.last_seen_at > now() - (select release from private.seat_timeouts())
+     -- A tournament seat is kept however long you are away.
+     and (t.play_money or s.last_seen_at > now() - (select release from private.seat_timeouts()))
    limit 1;
 $$;
 

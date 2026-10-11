@@ -20,6 +20,8 @@ import { POKER_GAMES, seatLayout, stakesLabel, type PkAction, type PkHand, type 
 import { playSound } from '@/lib/sound';
 import { toast } from '@/stores/toastStore';
 import { useWallet } from '@/stores/walletStore';
+import { SngBar, SngResult, useSngStatus } from '@/components/tournaments/SngBar';
+import { Modal } from '@/components/ui/Modal';
 import { BringChipsModal } from './BringChipsModal';
 import { BettingControls, DrawControls } from './PokerActions';
 import { PokerHistoryModal, PokerRulesModal } from './PokerInfo';
@@ -37,6 +39,10 @@ export function PokerTable({ tableId }: { tableId: string }) {
   const [bringOpen, setBringOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [burst, setBurst] = useState(0);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const tourney = Boolean(state?.table.play_money);
+  // Refreshed as hands and seats change: that is when blinds, places and prizes move.
+  const sng = useSngStatus(tableId, tourney, `${state?.hand?.id ?? ''}-${state?.hand?.phase ?? ''}-${state?.seats.length ?? 0}`);
 
   const hand = state?.hand ?? null;
   // A finished hand stays on the felt for its results pause (plus a moment for the next deal).
@@ -66,7 +72,7 @@ export function PokerTable({ tableId }: { tableId: string }) {
 
   // Seated with nothing in front of you: offer to bring chips (once per visit).
   const prompted = useRef(false);
-  const needsChips = Boolean(mySeat && me && me.stack + me.pending_topup === 0 && !me.in_hand);
+  const needsChips = Boolean(!tourney && mySeat && me && me.stack + me.pending_topup === 0 && !me.in_hand);
   useEffect(() => {
     if (needsChips && !prompted.current) {
       prompted.current = true;
@@ -93,6 +99,11 @@ export function PokerTable({ tableId }: { tableId: string }) {
   useEffect(() => {
     if (myTurnKey) playSound('turn');
   }, [myTurnKey]);
+
+  // The last five seconds of your turn tick.
+  useEffect(() => {
+    if (myTurnKey && secondsLeft !== null && secondsLeft > 0 && secondsLeft <= 5) playSound('tick');
+  }, [myTurnKey, secondsLeft]);
 
   const celebrated = useRef<string | null>(null);
   useEffect(() => {
@@ -133,11 +144,20 @@ export function PokerTable({ tableId }: { tableId: string }) {
   const status = statusLine(state, viewHand, userId);
   const sittingOut = mySeat?.status === 'sitting_out';
   const atTable = (me?.stack ?? 0) + (me?.pending_topup ?? 0);
-  const canTopUp = Boolean(mySeat && me && atTable < stakes.max_stack);
+  const canTopUp = Boolean(!tourney && mySeat && me && atTable < stakes.max_stack);
   const showBoard = config.family === 'board' || (viewHand?.board.length ?? 0) > 0;
   const phaseSeconds = viewHand?.phase === 'drawing' ? config.draw_seconds : viewHand?.phase === 'settled' ? (viewHand.showdown ? config.showdown_seconds : config.next_hand_seconds) : config.turn_seconds;
 
   const leaveTable = async () => {
+    if (tourney) {
+      // Leaving a running tournament is giving up: ask first.
+      if (mySeat && sng?.status === 'running' && !leaveOpen) return setLeaveOpen(true);
+      if (mySeat) {
+        const err = await t.leave();
+        if (err) return void toast.error(err);
+      }
+      return void navigate('/tournaments');
+    }
     if (mySeat) {
       const err = await t.leave();
       if (err) {
@@ -166,7 +186,8 @@ export function PokerTable({ tableId }: { tableId: string }) {
         onLeave={() => void leaveTable()}
         onRules={() => setRulesOpen(true)}
         onHistory={() => setHistoryOpen(true)}
-        onSitOut={toggleSitOut}
+        onSitOut={tourney ? undefined : toggleSitOut}
+        tournament={tourney}
         extra={
           canTopUp && (
             <Button size="sm" variant="ghost" onClick={() => setBringOpen(true)}>
@@ -175,6 +196,8 @@ export function PokerTable({ tableId }: { tableId: string }) {
           )
         }
       />
+
+      {tourney && sng && <SngBar status={sng} offsetMs={offsetMs} />}
 
       {/* Felt */}
       <section
@@ -279,7 +302,7 @@ export function PokerTable({ tableId }: { tableId: string }) {
               isMe={isMe}
               myHole={isMe && viewHand ? me?.hole ?? null : null}
               myBest={null}
-              canSit={!mySeat}
+              canSit={!mySeat && !tourney}
               onSit={() => void run(`sit-${pos.seatNo}`, () => t.sit(pos.seatNo), 'chip')}
               reaction={seat ? reactionsByUser.get(seat.user_id) : undefined}
               offsetMs={offsetMs}
@@ -307,7 +330,11 @@ export function PokerTable({ tableId }: { tableId: string }) {
 
           {!mySeat ? (
             <p className="flex-1 text-sm text-cream/80">
-              You&apos;re watching. {state.seats.length < table.max_seats ? 'Pick an open seat to play.' : 'This table is full.'}
+              {tourney
+                ? sng?.status === 'finished'
+                  ? 'This tournament is over.'
+                  : 'You’re watching this tournament.'
+                : `You’re watching. ${state.seats.length < table.max_seats ? 'Pick an open seat to play.' : 'This table is full.'}`}
             </p>
           ) : me?.can_draw && me.hole && viewHand?.phase === 'drawing' ? (
             <DrawControls
@@ -349,6 +376,21 @@ export function PokerTable({ tableId }: { tableId: string }) {
         balance={balance}
         onConfirm={(amount) => run('bring', () => t.bringChips(amount), 'chip')}
       />
+      {tourney && sng && <SngResult status={sng} />}
+      <Modal open={leaveOpen} onClose={() => setLeaveOpen(false)} title="Leave the tournament?" className="max-w-md">
+        <p className="text-sm text-cream/85">
+          Leaving now counts as being knocked out: you give up your chips and your place. If you just need a minute, stay seated. You&apos;ll be
+          folded each hand until you&apos;re back.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button variant="outline" onClick={() => setLeaveOpen(false)} data-autofocus>
+            Keep playing
+          </Button>
+          <Button variant="ruby" loading={busy === 'leave'} onClick={() => void run('leave', async () => { const err = await t.leave(); if (!err) navigate('/tournaments'); return err; })}>
+            Leave and forfeit
+          </Button>
+        </div>
+      </Modal>
       <PokerRulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} game={game} config={config} stakes={stakes} />
       <PokerHistoryModal open={historyOpen} onClose={() => setHistoryOpen(false)} tableId={tableId} />
     </div>

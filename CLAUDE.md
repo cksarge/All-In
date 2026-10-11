@@ -77,12 +77,11 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 6 | Baccarat, video poker (Jacks or Better, Deuces Wild), Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six wheel | ✅ on `main` |
 | 6.5 | Ultimate Texas Hold'em, Dragon Tiger, Casino War, Crash, Plinko, Mines, Scratch Cards, Power Draw, Bingo; lounge sections; every game in the lobby picker | ✅ on `main` |
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
-| 8 | **Polish: sounds, animations, tutorials, accessibility, mobile pass, Sit & Go poker tournaments** | **Next** |
-| 9 | More games (the user's list, below) | |
+| 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
+| 9 | **More games (the user's list, below)** | **Next** |
 
-**User action pending for stage 7:** run `13_progression.sql` (new) in the Supabase SQL Editor. Nothing else
-changed in the database and there are no dashboard settings (the file adds three tables to Realtime by itself).
-Earlier files if any haven't been run yet (`03` again, then `10`, `11`, `12`).
+**User action pending for stage 8:** re-run `03_games_and_stakes.sql`, `05_tables.sql`, `09_poker.sql`, `10_slots.sql`
+and `13_progression.sql`, then run the new `14_tournaments.sql`. No dashboard settings.
 
 ### Stage 9: more games (the user's list, saved on 2026-10-11; not designed yet)
 - **Table poker against the dealer:** Caribbean Stud, Let It Ride, Mississippi Stud, Four Card Poker, Casino Hold'em.
@@ -299,6 +298,25 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
    - The `achievements` and `cosmetics` rows are upserted, so editing the file and re-running it changes them.
      Removing one needs a `delete` by hand.
 
+14. `14_tournaments.sql` (stage 8): `tournaments` + `tournament_entries` (public read, both in realtime).
+   - **Sit & Go** (`sng_register(size, entry_fee)`, `sng_unregister`, `sng_status(table)`): when the last seat fills,
+     `private.sng_start` makes a `poker_holdem` table with **`game_tables.play_money = true`** and seats everyone with
+     1,500 tournament chips. `play_money` tables (handled in 05 and 09) never move wallet chips: stacks are not
+     returned on leaving, no top-ups, no sitting out, no `record_round` per hand, not in `list_tables`, nobody can sit
+     down, seats are never released for being away, and blinds come from `game_tables.stakes` (set per level by
+     `private.sng_sync`, which also knocks players out and finishes the game; poker calls it after every hand).
+     Leaving the seat = knocked out. The frontend keeps the seat on navigation (`keepSeat` in `useLiveTable`).
+   - **Slot Showdown / Daily Freeroll** (`showdown_enter`, `showdown_spin`, `showdown_state`): rounds are created
+     lazily by `private.showdown_ensure` (one per stake level per 15 minutes, one freeroll per UTC day) and settled
+     lazily by `private.tourney_tick`. Spins use `private.slot_play` and move no chips; score = units won.
+     Fewer than 2 entrants: void and refunded. All numbers live in `private.tourney_cfg()`.
+   - `tournaments_state()` feeds `/tournaments`; `/tournaments/:id` is one showdown. One `game_history` row per
+     player per tournament (`sng_poker` / `slot_showdown`, summary `{kind, place, players}`), which drives the eight
+     tournament achievements in 13. Ledger reasons `tournament_entry`, `tournament_prize`.
+   - The copy guard rejects the word "buy" even in identifiers, hence `entry_fee`.
+   - **Standing request:** every new feature adds its achievements and cosmetic prizes (catalogues in 13, looks in
+     `src/lib/progress.ts`) and its menu entries.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -320,7 +338,7 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
   `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`, `level_up`, `achievement`. Solo games use `bet` and `payout` only (a returned
   stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
-**Realtime publication** now has 20 tables: wallets, chip_ledger, game_tables, table_seats, bj_rounds,
+**Realtime publication** now has 22 tables (the last two are tournaments, tournament_entries): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
 bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots, crash_rounds,
 crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Postgres Changes enforce RLS.
 
@@ -383,7 +401,16 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
     or a friend request are waiting.
 - Table pages share `TableHeader`: a single "← Leave table" / "← Lobby" button that leaves the seat, plus
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
+- Stage 8 polish: `QuickStart` (first-visit guide per game, text in `src/lib/quickstart.ts`, mounted once in
+  `TablePage`, `PlayPage` and `TournamentsPage`; switch and reset in Settings), `SectionNav` (Profile / Locker /
+  Friends / Leaderboards / Tournaments links), `SeatTitle` (equipped title under every seated player's name),
+  roulette's list of line and corner bets for keyboard users, emotes shown only from seated players, a page fade
+  (`.page-in`, opacity only: a transform would trap the fixed control bars) and a rolling header balance.
+  The site links to its public repo from the landing page and the footer (`GitHubLink`).
 - **UX decisions the user asked for (keep them):**
+  - Top bar: Lounge, Lobby, Tournaments, Profile.
+  - Equipped titles are visible to everyone at the tables.
+  - The landing page says the project is open source and links to the repo; so does the footer.
   - Settings is a popup opened by the gear next to the sound icon.
   - Status lines are keyed by phase/turn, so the countdown seconds tick without re-animating.
   - Result banners have their own timer.
@@ -421,6 +448,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/solo.cjs /tmp/shots         # the eight Phase 6 games, a resumed hand, phone widths (29 checks)
    node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (44 checks)
    node scripts/e2e/social.cjs /tmp/shots       # stage 7: rewards, profile, locker, friends, join their table, leaderboards (24 checks)
+   node scripts/e2e/tournaments.cjs /tmp/shots  # stage 8: freeroll, showdown, heads-up Sit & Go, first-visit guide (30 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:
@@ -440,6 +468,9 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    - Kill background node processes with a bracket pattern, e.g. `pkill -f "[m]ini-supabase"`.
      The bracket stops the pattern from matching the pkill command itself, but avoid running it in the
      same command line that restarts the server: that line contains the name too and gets killed.
+   - `setup-db.sh` does not stop an older test database on the same port: stop it first. Re-applying a SQL file
+     to the test database wipes the rigging: re-run `scripts/e2e/test-helpers.sql` afterwards.
+   - The scripts switch first-visit guides off through localStorage (`allin-settings`), except `tournaments.cjs`.
    - Always look at the screenshots, desktop (1280 px) and phone (390 px), before calling UI work done.
 
 ## 10. Deployment and Supabase dashboard

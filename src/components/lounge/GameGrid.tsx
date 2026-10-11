@@ -16,6 +16,7 @@ const MODE_TAG = {
   tables: { text: 'Live', className: 'bg-felt-600/60 text-felt-300' },
   room: { text: 'Live', className: 'bg-felt-600/60 text-felt-300' },
   solo: { text: 'Solo', className: 'bg-white/[0.07] text-cream/75' },
+  tournament: { text: 'Tournament', className: 'bg-gold-500/20 text-gold-200' },
 } as const;
 
 function GameCard({ g, jackpot, index }: { g: GameRow; jackpot: number | undefined; index: number }) {
@@ -54,7 +55,7 @@ function GameCard({ g, jackpot, index }: { g: GameRow; jackpot: number | undefin
             to={gameHref(g)}
             className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-gold-300 after:absolute after:inset-0 hover:underline"
           >
-            {g.multiplayer ? 'Find a table →' : 'Play now →'}
+            {gameMode(g) === 'tournament' ? 'See tournaments →' : g.multiplayer ? 'Find a table →' : 'Play now →'}
           </Link>
         )}
       </div>

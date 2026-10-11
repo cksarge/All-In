@@ -74,6 +74,10 @@
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.08); }
   }
+  @keyframes page-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
   @keyframes float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
@@ -118,6 +122,10 @@
 }
 
 @layer components {
+  /* Opacity only: a transform here would trap the fixed control bars inside it. */
+  .page-in {
+    animation: page-in 0.22s ease-out;
+  }
   .surface {
     @apply rounded-2xl border border-white/[0.06] bg-ink-800/80 backdrop-blur-sm;
     box-shadow: var(--shadow-card);

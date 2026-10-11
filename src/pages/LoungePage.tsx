@@ -60,9 +60,14 @@ export default function LoungePage() {
           <p className="text-sm font-medium text-gold-400">{greeting()},</p>
           <h1 className="font-display text-3xl font-bold text-ivory sm:text-4xl">{profile?.username ?? '…'}</h1>
         </div>
-        <ButtonLink to="/lobby" size="lg">
-          Find a table
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink to="/tournaments" size="lg" variant="outline">
+            Tournaments
+          </ButtonLink>
+          <ButtonLink to="/lobby" size="lg">
+            Find a table
+          </ButtonLink>
+        </div>
       </header>
       <ReturnToTable />
 

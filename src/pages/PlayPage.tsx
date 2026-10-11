@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { QuickStart } from '@/components/onboarding/QuickStart';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { BingoGame } from '@/components/more/BingoGame';
 import { CasinoWarGame } from '@/components/more/CasinoWarGame';
 import { CrashGame } from '@/components/more/CrashGame';
@@ -22,6 +23,15 @@ import { ErrorState } from '@/components/ui/States';
 /** /play/:gameKey: solo games (no table to join). */
 export default function PlayPage() {
   const { gameKey = '' } = useParams();
+  return (
+    <>
+      <Game gameKey={gameKey} />
+      <QuickStart key={gameKey} guide={gameKey} />
+    </>
+  );
+}
+
+function Game({ gameKey }: { gameKey: string }) {
   const navigate = useNavigate();
   if (gameKey.startsWith('slots_')) return <SlotMachine key={gameKey} gameKey={gameKey} />;
   if (gameKey.startsWith('video_poker_')) return <VideoPokerGame key={gameKey} gameKey={gameKey} />;
@@ -40,6 +50,7 @@ export default function PlayPage() {
   if (gameKey === 'power_draw') return <PowerDrawGame />;
   if (gameKey === 'crash') return <CrashGame />;
   if (gameKey === 'bingo') return <BingoGame />;
+  if (gameKey === 'sng_poker' || gameKey === 'slot_showdown') return <Navigate to="/tournaments" replace />;
   return (
     <div className="mx-auto max-w-lg px-4 py-16">
       <div className="surface">

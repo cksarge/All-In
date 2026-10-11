@@ -8,7 +8,7 @@ import { cn } from '@/components/ui/cn';
 import { handLabel, type BjHand, type BjRound, type BjSeat } from '@/lib/blackjack';
 import { formatChipsCompact } from '@/lib/format';
 import type { Reaction } from '@/hooks/useBlackjackTable';
-import { SeatAvatar } from '@/components/table/SeatAvatar';
+import { SeatAvatar, SeatTitle } from '@/components/table/SeatAvatar';
 
 const RESULT_STYLE: Record<string, { text: string; cls: string }> = {
   win: { text: 'Win', cls: 'bg-felt-500 text-ivory' },
@@ -127,6 +127,7 @@ export function SeatView({
             {seat.username}
             {isMe && <span className="sr-only"> (you)</span>}
           </p>
+          <SeatTitle userId={seat.user_id} isMe={isMe} className="max-w-[5.5rem] sm:max-w-[6.5rem]" />
           <p className="text-[0.65rem] text-cream/60">
             {!seat.connected ? 'Reconnecting…' : seat.status === 'sitting_out' ? 'Sitting out' : `Seat ${seatNo}`}
           </p>

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 
 /** "You're still seated" banner, so a dropped player can jump straight back in. */
 export function ReturnToTable() {
-  const [seat, setSeat] = useState<{ table_id: string; name: string; seat_no: number } | null>(null);
+  const [seat, setSeat] = useState<{ table_id: string; name: string; seat_no: number; play_money?: boolean } | null>(null);
   useEffect(() => {
     // Short delay: leaving a table by navigating here releases the seat a moment later.
     const t = window.setTimeout(() => {
@@ -22,8 +22,16 @@ export function ReturnToTable() {
       role="status"
     >
       <p className="text-sm text-cream/90">
-        You still have a seat at <strong className="text-gold-200">{seat.name}</strong> (seat {seat.seat_no}). It&apos;s held
-        for 2 minutes after you leave.
+        {seat.play_money ? (
+          <>
+            Your tournament <strong className="text-gold-200">{seat.name}</strong> is still going. You&apos;re folded each hand until you&apos;re back.
+          </>
+        ) : (
+          <>
+            You still have a seat at <strong className="text-gold-200">{seat.name}</strong> (seat {seat.seat_no}). It&apos;s held for 2 minutes after
+            you leave.
+          </>
+        )}
       </p>
       <Link
         to={`/table/${seat.table_id}`}

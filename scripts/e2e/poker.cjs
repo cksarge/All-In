@@ -14,6 +14,8 @@ const stack = async (email) => Number((await q1(`select s.stack from public.tabl
 
 async function login(browser, email, vp) {
   const page = await (await browser.newContext({ viewport: vp })).newPage();
+  // First-visit game guides off, so they don't cover the game under test.
+  await page.addInitScript(() => { if (!localStorage.getItem('allin-settings')) localStorage.setItem('allin-settings', JSON.stringify({ state: { soundOn: true, motion: 'system', tourSeen: false, tipsOn: false, tipsSeen: {} }, version: 1 })); });
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !/Failed to load resource|WebSocket/.test(m.text()) && page.errors.push(m.text()));

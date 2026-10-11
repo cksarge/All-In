@@ -8,7 +8,7 @@ import { cn } from '@/components/ui/cn';
 import type { Reaction } from '@/hooks/useLiveTable';
 import { formatChipsCompact } from '@/lib/format';
 import type { PkConfig, PkHand, PkPlayer, PkSeat } from '@/lib/poker';
-import { SeatAvatar } from '@/components/table/SeatAvatar';
+import { SeatAvatar, SeatTitle } from '@/components/table/SeatAvatar';
 
 export function PokerSeat({
   seatNo,
@@ -133,6 +133,7 @@ export function PokerSeat({
           {name}
           {isMe && <span className="sr-only"> (you)</span>}
         </p>
+        {seat && <SeatTitle userId={seat.user_id} isMe={isMe} className="max-w-[4.6rem] text-[0.5rem] sm:max-w-[6rem] sm:text-[0.55rem]" />}
         <p className="text-[0.65rem] text-cream/75 sm:text-[0.7rem]">
           {!seat ? (
             'Left'

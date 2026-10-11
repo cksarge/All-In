@@ -117,6 +117,11 @@ create index if not exists friendships_requester_idx on public.friendships (requ
 
 create index if not exists player_progress_xp_idx on public.player_progress (xp desc);
 
+-- Stage 8 added a 'tournaments' group of achievements.
+alter table public.achievements drop constraint if exists achievements_category_check;
+alter table public.achievements add constraint achievements_category_check
+  check (category in ('play', 'wins', 'games', 'feats', 'tournaments', 'social'));
+
 -- -----------------------------------------------------------------------------
 -- Catalogue: cosmetics
 -- -----------------------------------------------------------------------------
@@ -135,6 +140,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('avatar_fire',     'avatar', 'On Fire',        null, 120),
   ('avatar_diamond',  'avatar', 'Diamond',        null, 130),
   ('avatar_whale',    'avatar', 'The Whale',      null, 140),
+  ('avatar_medal',    'avatar', 'Gold Medal',     null, 150),
 
   ('frame_none',      'frame',  'No frame',       1,    10),
   ('frame_felt',      'frame',  'Felt Green',     3,    20),
@@ -144,6 +150,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('frame_royal',     'frame',  'Royal Purple',   18,   60),
   ('frame_diamond',   'frame',  'Diamond',        30,   70),
   ('frame_jackpot',   'frame',  'Jackpot',        null, 80),
+  ('frame_laurel',    'frame',  'Laurel Wreath',  null, 90),
 
   ('title_newcomer',     'title', 'Newcomer',       1,    10),
   ('title_sharp',        'title', 'Sharp',          10,   20),
@@ -158,6 +165,8 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_millionaire',  'title', 'Millionaire',    null, 110),
   ('title_veteran',      'title', 'Veteran',        null, 120),
   ('title_socialite',    'title', 'Socialite',      null, 130),
+  ('title_contender',    'title', 'Contender',      null, 140),
+  ('title_tournament_champion', 'title', 'Tournament Champion', null, 150),
 
   ('back_ruby',       'card_back', 'Ruby Lattice',   1,  10),
   ('back_sapphire',   'card_back', 'Sapphire',       4,  20),
@@ -165,12 +174,14 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('back_onyx',       'card_back', 'Onyx and Gold',  12, 40),
   ('back_royal',      'card_back', 'Royal Purple',   20, 50),
   ('back_diamond',    'card_back', 'Diamond',        35, 60),
+  ('back_tournament', 'card_back', 'Tournament Gold', null, 70),
 
   ('felt_classic',    'felt', 'Classic Green',  1,  10),
   ('felt_midnight',   'felt', 'Midnight Blue',  6,  20),
   ('felt_burgundy',   'felt', 'Burgundy',       9,  30),
   ('felt_charcoal',   'felt', 'Charcoal',       14, 40),
-  ('felt_royal',      'felt', 'Royal Purple',   22, 50)
+  ('felt_royal',      'felt', 'Royal Purple',   22, 50),
+  ('felt_final_table', 'felt', 'Final Table',   null, 60)
 on conflict (key) do update set
   kind = excluded.kind, name = excluded.name, unlock_level = excluded.unlock_level, sort_order = excluded.sort_order;
 
@@ -217,6 +228,15 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('mines_cleared',   'Bomb Squad',        'Find every gem in a game of Mines.',                 'feats', 'mines_cleared',    1,       2500,  250,  null,                 460),
   ('bingo_fast',      'Quick Line',        'Complete a bingo line within 20 calls.',             'feats', 'bingo_fast',       1,       2500,  250,  null,                 470),
   ('keno_perfect',    'Perfect Card',      'Hit every number on a keno card of 5 or more.',      'feats', 'keno_perfect',     1,       5000,  500,  null,                 480),
+
+  ('tourney_first',   'Contender',         'Enter your first tournament.',                       'tournaments', 'tourney_played', 1,   500,   50,   'title_contender',    610),
+  ('tourney_10',      'Regular Contender', 'Enter 10 tournaments.',                              'tournaments', 'tourney_played', 10,  2500,  250,  null,                 620),
+  ('tourney_50',      'Circuit Grinder',   'Enter 50 tournaments.',                              'tournaments', 'tourney_played', 50,  10000, 800,  'felt_final_table',   630),
+  ('tourney_win',     'Champion',          'Win a tournament against at least one other player.', 'tournaments', 'tourney_wins',  1,   2500,  300,  'title_tournament_champion', 640),
+  ('tourney_win_10',  'Dynasty',           'Win 10 tournaments.',                                'tournaments', 'tourney_wins',   10,  25000, 1500, 'frame_laurel',       650),
+  ('sng_win',         'Last One Standing', 'Win a Sit & Go poker tournament.',                   'tournaments', 'sng_wins',       1,   2500,  300,  'avatar_medal',       660),
+  ('showdown_win',    'Showstopper',       'Win a Slot Showdown.',                               'tournaments', 'showdown_wins',  1,   2500,  300,  'back_tournament',    670),
+  ('freeroll_podium', 'Free Lunch',        'Finish in the top three of a Daily Freeroll with four or more players.', 'tournaments', 'freeroll_podiums', 1, 1000, 150, null, 680),
 
   ('friend_1',        'Friendly',          'Make a friend.',                                     'social', 'friends',         1,       500,   50,   null,                 510),
   ('friend_5',        'Popular',           'Have 5 friends.',                                    'social', 'friends',         5,       2500,  200,  'title_socialite',    520)
@@ -298,6 +318,18 @@ begin
   if r.game_key = 'crash' and (s ->> 'collected_at')::numeric >= 10 then v_bump := array_append(v_bump, 'crash_10x'); end if;
   if r.game_key = 'bingo' and (s ->> 'line_at')::integer <= 20 then v_bump := array_append(v_bump, 'bingo_fast'); end if;
   if r.game_key = 'keno' and (s ->> 'picks')::integer >= 5 and s ->> 'hits' = s ->> 'picks' then v_bump := array_append(v_bump, 'keno_perfect'); end if;
+  -- Tournaments (14_tournaments.sql) record one round per player when they end.
+  if r.game_key in ('sng_poker', 'slot_showdown') then
+    v_bump := array_append(v_bump, 'tourney_played');
+    if (s ->> 'place')::integer = 1 and (s ->> 'players')::integer >= 2 then
+      v_bump := array_append(v_bump, 'tourney_wins');
+      if s ->> 'kind' = 'sng' then v_bump := array_append(v_bump, 'sng_wins'); end if;
+      if s ->> 'kind' = 'showdown' then v_bump := array_append(v_bump, 'showdown_wins'); end if;
+    end if;
+    if s ->> 'kind' = 'freeroll' and (s ->> 'place')::integer <= 3 and (s ->> 'players')::integer >= 4 then
+      v_bump := array_append(v_bump, 'freeroll_podiums');
+    end if;
+  end if;
 
   foreach k in array v_bump loop
     c := c || jsonb_build_object(k, coalesce((c ->> k)::integer, 0) + 1);

@@ -73,13 +73,13 @@ update public.jackpots set pool_hundredths = seed * 100, last_winner = null, las
 -- ----------------------------------------------------------------------------
 -- Setup and maths
 -- ----------------------------------------------------------------------------
-select tests.ok((select count(*) from public.games where category = 'slots' and released) = 6, 'six machines released');
+select tests.ok((select count(*) from public.games where key like 'slots\_%' and released) = 6, 'six machines released');
 select tests.ok((select amount from public.jackpots where key = 'grand') = 100000, 'jackpot seeded');
 select tests.ok(private.slot_cfg('blackjack') is null, 'no config for other games');
 select tests.ok(not exists (
   select 1 from public.games g, jsonb_each(private.slot_cfg(g.key) -> 'pays') p, jsonb_each(case jsonb_typeof(p.value) when 'object' then p.value else jsonb_build_object('x', p.value) end) v,
          jsonb_array_elements(case jsonb_typeof(v.value) when 'array' then v.value else jsonb_build_array(v.value) end) u
-   where g.category = 'slots' and (u.value::text)::integer % 10 <> 0
+   where g.key like 'slots\_%' and (u.value::text)::integer % 10 <> 0
 ), 'every pay is a multiple of 10 units, so chips are always whole numbers');
 
 -- Lucky Sevens: every one of the 64,000 centre lines, exactly.

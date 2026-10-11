@@ -4,7 +4,7 @@ import { ChipAmount } from '@/components/ui/ChipAmount';
 import { cn } from '@/components/ui/cn';
 import type { LiveSeat, Reaction } from '@/hooks/useLiveTable';
 import { ReactionBubble } from './ReactionBar';
-import { SeatAvatar } from './SeatAvatar';
+import { SeatAvatar, SeatTitle } from './SeatAvatar';
 
 /** Row of seated players for shared tables (roulette, craps). */
 export function PlayerStrip({
@@ -60,6 +60,7 @@ export function PlayerStrip({
                 {s.username}
                 {me && <span className="sr-only"> (you)</span>}
               </p>
+              <SeatTitle userId={s.user_id} isMe={me} className="max-w-[7rem]" />
               <p className="text-[0.65rem] text-cream/60">
                 {lit && highlightLabel ? (
                   <span className="text-gold-300">{highlightLabel}</span>

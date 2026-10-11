@@ -63,14 +63,14 @@ export const useProgress = create<ProgressState>()((set, get) => ({
     const fresh = next.achievements.filter((a) => !known.has(a.key));
     if (fresh.length > 0) {
       const names = fresh.map((a) => get().achievements.find((x) => x.key === a.key)?.name ?? 'Achievement');
-      playSound('success');
+      playSound('achievement');
       toast.success(
         fresh.length === 1 ? `Achievement unlocked: ${names[0]}` : `${fresh.length} achievements unlocked`,
         fresh.length === 1 ? 'See it on your profile.' : names.join(', '),
       );
     }
     if (next.level > prev.level) {
-      playSound('success');
+      playSound('levelup');
       toast.success(`Level ${next.level}!`, 'New rewards are waiting in the lounge.');
     }
     if (next.friend_requests > prev.friend_requests) toast.info('New friend request', 'Answer it on the Friends page.');

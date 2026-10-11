@@ -105,6 +105,11 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
     if (myTurnHand && prevTurn.current !== myTurnHand.id) playSound('turn');
     prevTurn.current = myTurnHand?.id;
   }, [myTurnHand]);
+  // The last five seconds of your turn tick.
+  const myTurnId = myTurnHand?.id;
+  useEffect(() => {
+    if (myTurnId && secondsLeft !== null && secondsLeft > 0 && secondsLeft <= 5) playSound('tick');
+  }, [myTurnId, secondsLeft]);
 
   const celebrated = useRef<string | null>(null);
   useEffect(() => {

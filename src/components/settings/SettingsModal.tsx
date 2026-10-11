@@ -16,7 +16,7 @@ const MOTION_OPTIONS: { value: MotionPreference; label: string; hint: string }[]
 /** Settings popup. Opened from the gear in the top bar, the account menu, the footer, or /settings. */
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUi();
-  const { soundOn, setSoundOn, motion, setMotion, setTourSeen } = useSettings();
+  const { soundOn, setSoundOn, motion, setMotion, setTourSeen, tipsOn, setTipsOn, resetTips } = useSettings();
   const { status, user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -102,6 +102,38 @@ export function SettingsModal() {
             ))}
           </div>
         </fieldset>
+      </section>
+
+      <div className="gold-rule my-6" />
+
+      <section aria-labelledby="guides-h">
+        <h3 id="guides-h" className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-400">Game guides</h3>
+        <div className="mt-3 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-medium text-cream" id="guides-label">Show a short guide the first time I open a game</p>
+            <p className="text-sm text-muted">A few plain steps. The full rules are always behind each game&apos;s Rules button.</p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={tipsOn}
+            aria-labelledby="guides-label"
+            onClick={() => setTipsOn(!tipsOn)}
+            className={cn('relative h-7 w-12 shrink-0 rounded-full border transition', tipsOn ? 'border-gold-500 bg-gold-500' : 'border-white/20 bg-ink-950')}
+          >
+            <span className={cn('absolute top-0.5 h-5.5 w-5.5 rounded-full bg-ivory shadow transition-all', tipsOn ? 'left-[calc(100%-1.5rem)]' : 'left-0.5')} />
+          </button>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-2 -ml-2"
+          onClick={() => {
+            resetTips();
+            playSound('click');
+          }}
+        >
+          Show every guide again
+        </Button>
       </section>
 
       {status === 'signedIn' && (

@@ -11,6 +11,8 @@ const fits = (page) => page.evaluate(() => document.documentElement.scrollWidth 
 
 async function login(browser, email, vp) {
   const page = await (await browser.newContext({ viewport: vp })).newPage();
+  // First-visit game guides off, so they don't cover the game under test.
+  await page.addInitScript(() => { if (!localStorage.getItem('allin-settings')) localStorage.setItem('allin-settings', JSON.stringify({ state: { soundOn: true, motion: 'system', tourSeen: false, tipsOn: false, tipsSeen: {} }, version: 1 })); });
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   await page.route('https://fonts.googleapis.com/**', (r) => r.abort());
@@ -58,7 +60,7 @@ async function login(browser, email, vp) {
   // Profile
   await ann.goto(`${BASE}/profile`);
   await ann.getByRole('heading', { name: 'Achievements' }).waitFor();
-  await ann.getByText(/of 38 unlocked/).waitFor();
+  await ann.getByText(/of 46 unlocked/).waitFor();
   ok((await ann.getByText('(unlocked)').count()) >= 4, 'profile lists the unlocked achievements');
   await ann.waitForTimeout(400);
   await ann.screenshot({ path: `${SHOTS}/s-profile.png`, fullPage: true });

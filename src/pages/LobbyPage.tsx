@@ -159,13 +159,15 @@ export default function LobbyPage() {
             icon={<GameIcon gameKey={current.key} className="h-12 w-12" />}
             title={current.name}
             message={
-              gameMode(current) === 'room'
+              gameMode(current) === 'tournament'
+                ? `${current.tagline} Tournaments have their own page.`
+                : gameMode(current) === 'room'
                 ? `${current.tagline} There is one live room that everyone shares, so there's no table to pick.`
                 : `${current.tagline} This is a solo game against the house, so there's no table to join.`
             }
             action={
               <ButtonLink to={gameHref(current)} className="mt-3">
-                {gameMode(current) === 'room' ? 'Join the room' : 'Play now'}
+                {gameMode(current) === 'tournament' ? 'See tournaments' : gameMode(current) === 'room' ? 'Join the room' : 'Play now'}
               </ButtonLink>
             }
           />
