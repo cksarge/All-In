@@ -91,7 +91,8 @@ export const AVATAR_GLYPH: Record<string, string | null> = {
   avatar_fox: '🦊',
   avatar_owl: '🦉',
   avatar_star: '⭐',
-  avatar_crown: '👑',
+  avatar_crown: '🏆', // "Champion" (the key is older than the name): the crown itself is the developer's alone
+  avatar_developer: '👑',
   avatar_dragon: '🐉',
   avatar_rocket: '🚀',
   avatar_joker: '🃏',

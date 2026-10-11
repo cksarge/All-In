@@ -48,7 +48,9 @@ export default function LockerPage() {
   if (!me || !username || cosmetics.length === 0) return <FullPageLoader label="Opening your locker…" />;
 
   const owned = new Set(me.owned);
-  const items = cosmetics.filter((c) => c.kind === kind);
+  // One-of-a-kind items (granted by hand, with no level or achievement behind them) are only shown to their owner.
+  const listed = cosmetics.filter((c) => owned.has(c.key) || c.unlock_level !== null || achievements.some((a) => a.cosmetic_key === c.key));
+  const items = listed.filter((c) => c.kind === kind);
   const how = (c: Cosmetic) => {
     if (c.unlock_level) return `Reach level ${c.unlock_level}`;
     const a = achievements.find((x) => x.cosmetic_key === c.key);
@@ -72,7 +74,7 @@ export default function LockerPage() {
       <h1 className="font-display text-4xl font-bold text-ivory">Locker</h1>
       <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
         Everything here is unlocked by playing: reaching levels and earning achievements. You are <LevelBadge level={me.level} /> and own{' '}
-        {me.owned.length} of {cosmetics.length}.
+        {me.owned.length} of {listed.length}.
       </p>
 
       <div role="tablist" aria-label="Kind of item" className="mt-6 flex flex-wrap gap-1.5">
@@ -89,7 +91,7 @@ export default function LockerPage() {
           >
             {KIND_LABELS[k]}
             <span className="ml-1.5 text-xs opacity-60">
-              {cosmetics.filter((c) => c.kind === k && owned.has(c.key)).length}/{cosmetics.filter((c) => c.kind === k).length}
+              {listed.filter((c) => c.kind === k && owned.has(c.key)).length}/{listed.filter((c) => c.kind === k).length}
             </span>
           </button>
         ))}

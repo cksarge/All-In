@@ -291,6 +291,11 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
    - Friends are mutual (`friend_request` / `friend_respond` / `friend_remove`; asking someone who already
      asked you accepts). `friends_list()` includes the **public** table a friend is seated at ("Join their
      table" is just a link to `/table/:id`); for a private table only the fact is shown, never the id.
+   - **One-of-a-kind cosmetics** exist only in the live database, not in this file: the user ran SQL that added
+     `title_developer` ("Developer") and `avatar_developer` (the crown emoji) with no level and no achievement,
+     and granted them to their own account (username Carter) in `player_cosmetics`. The locker hides such items
+     from everyone who doesn't own them. `avatar_developer`'s emoji is in `AVATAR_GLYPH`; the level-15
+     `avatar_crown` was renamed "Champion" with a trophy so the crown stays theirs alone.
    - The `achievements` and `cosmetics` rows are upserted, so editing the file and re-running it changes them.
      Removing one needs a `delete` by hand.
 

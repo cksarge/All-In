@@ -128,7 +128,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('avatar_fox',      'avatar', 'Sly Fox',        6,    50),
   ('avatar_owl',      'avatar', 'Night Owl',      8,    60),
   ('avatar_star',     'avatar', 'Rising Star',    10,   70),
-  ('avatar_crown',    'avatar', 'The Crown',      15,   80),
+  ('avatar_crown',    'avatar', 'Champion',       15,   80),
   ('avatar_dragon',   'avatar', 'Dragon',         20,   90),
   ('avatar_rocket',   'avatar', 'Rocket',         null, 100),
   ('avatar_joker',    'avatar', 'Joker',          null, 110),
