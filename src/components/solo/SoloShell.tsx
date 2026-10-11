@@ -318,7 +318,7 @@ export function Outcome({ staked, win }: { staked: number; win: number }) {
 }
 
 /** − bet + for games with one bet. */
-export function BetStepper({ bets, index, onChange, disabled, tiers }: { bets: number[]; index: number; onChange: (i: number) => void; disabled?: boolean; tiers: SoloTier[] }) {
+export function BetStepper({ bets, index, onChange, disabled, tiers, label = 'Bet' }: { bets: number[]; index: number; onChange: (i: number) => void; disabled?: boolean; tiers: SoloTier[]; label?: string }) {
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const next = bets[index + 1];
   const nextTier = next ? tiers.find((t) => next >= t.min_bet && next <= t.max_bet) : undefined;
@@ -328,15 +328,15 @@ export function BetStepper({ bets, index, onChange, disabled, tiers }: { bets: n
     playSound('chip');
   };
   return (
-    <div className="flex items-center gap-2" role="group" aria-label="Bet">
-      <Button size="sm" variant="outline" aria-label="Lower bet" disabled={disabled || index === 0} onClick={() => step(-1)}>
+    <div className="flex items-center gap-2" role="group" aria-label={label}>
+      <Button size="sm" variant="outline" aria-label={`Lower ${label.toLowerCase()}`} disabled={disabled || index === 0} onClick={() => step(-1)}>
         −
       </Button>
       <div className="min-w-24 text-center">
-        <p className="text-[0.65rem] uppercase tracking-wider text-muted">Bet</p>
+        <p className="text-[0.65rem] uppercase tracking-wider text-muted">{label}</p>
         <ChipAmount value={bets[index]} className="font-bold text-ivory" iconClassName="h-4 w-4" />
       </div>
-      <Button size="sm" variant="outline" aria-label="Raise bet" disabled={disabled || !canRaise} onClick={() => step(1)}>
+      <Button size="sm" variant="outline" aria-label={`Raise ${label.toLowerCase()}`} disabled={disabled || !canRaise} onClick={() => step(1)}>
         +
       </Button>
     </div>

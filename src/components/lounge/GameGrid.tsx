@@ -6,19 +6,63 @@ import { GameIcon } from '@/components/ui/GameIcon';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States';
 import { cn } from '@/components/ui/cn';
 import { friendlyError } from '@/lib/errors';
+import { CATEGORIES, gameHref, gameMode, modeLabel, type CategoryKey } from '@/lib/games';
 import { supabase } from '@/lib/supabase';
 import type { GameRow } from '@/lib/types';
 
-const FILTERS = [
-  { key: 'all', label: 'All games' },
-  { key: 'table', label: 'Table' },
-  { key: 'poker', label: 'Poker' },
-  { key: 'slots', label: 'Slots' },
-  { key: 'specialty', label: 'Specialty' },
-] as const;
+type Filter = 'all' | CategoryKey;
 
-type Filter = (typeof FILTERS)[number]['key'];
+const MODE_TAG = {
+  tables: { text: 'Live', className: 'bg-felt-600/60 text-felt-300' },
+  room: { text: 'Live', className: 'bg-felt-600/60 text-felt-300' },
+  solo: { text: 'Solo', className: 'bg-white/[0.07] text-cream/75' },
+} as const;
 
+function GameCard({ g, jackpot, index }: { g: GameRow; jackpot: number | undefined; index: number }) {
+  const tag = MODE_TAG[gameMode(g)];
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.03, 0.3) }}
+      className="surface group relative flex gap-4 p-4 transition hover:border-gold-500/30"
+    >
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-gradient-to-br from-felt-800 to-ink-900">
+        <GameIcon gameKey={g.key} className="h-9 w-9" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="font-display text-lg font-bold leading-tight text-ivory">{g.name}</h4>
+          {g.released ? (
+            <span className={cn('rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider', tag.className)}>{tag.text}</span>
+          ) : (
+            <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted">
+              Opening soon
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-sm text-muted">{g.tagline}</p>
+        {g.released && jackpot !== undefined && (
+          <p className="mt-1.5 text-sm text-gold-200">
+            Jackpot now <ChipAmount value={jackpot} className="font-bold" iconClassName="h-4 w-4" color="gold" />
+          </p>
+        )}
+        {/* The tag already says "Solo"; only add a line when there is more to say. */}
+        {modeLabel(g) !== 'Solo' && <p className="mt-1.5 text-xs text-subtle">{modeLabel(g)}</p>}
+        {g.released && (
+          <Link
+            to={gameHref(g)}
+            className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-gold-300 after:absolute after:inset-0 hover:underline"
+          >
+            {g.multiplayer ? 'Find a table →' : 'Play now →'}
+          </Link>
+        )}
+      </div>
+    </motion.li>
+  );
+}
+
+/** Every game, grouped into the four sections of the lounge. */
 export function GameGrid() {
   const [games, setGames] = useState<GameRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,10 +86,15 @@ export function GameGrid() {
     void load();
   }, []);
 
-  const visible = useMemo(
-    () => (games ?? []).filter((g) => filter === 'all' || g.category === filter),
+  const sections = useMemo(
+    () =>
+      CATEGORIES.filter((c) => filter === 'all' || c.key === filter).map((c) => ({
+        ...c,
+        games: (games ?? []).filter((g) => g.category === c.key),
+      })),
     [games, filter],
   );
+  const count = (key: CategoryKey) => (games ?? []).filter((g) => g.category === key).length;
 
   return (
     <section aria-labelledby="games-title" className="mt-10">
@@ -54,10 +103,13 @@ export function GameGrid() {
           <h2 id="games-title" className="font-display text-2xl font-bold text-ivory sm:text-3xl">
             The games
           </h2>
-          <p className="mt-1 text-sm text-muted">Every game is open. Table games are live with other players; the rest you play solo.</p>
+          <p className="mt-1 text-sm text-muted">
+            <span className="font-semibold text-felt-300">Live</span> games are played with other people.{' '}
+            <span className="font-semibold text-cream/80">Solo</span> games are just you and the house.
+          </p>
         </div>
         <div role="tablist" aria-label="Filter games" className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => (
+          {[{ key: 'all' as const, label: 'All games' }, ...CATEGORIES].map((f) => (
             <button
               key={f.key}
               role="tab"
@@ -70,7 +122,8 @@ export function GameGrid() {
                   : 'border-white/10 text-cream/75 hover:border-white/20 hover:text-ivory',
               )}
             >
-              {f.label}
+              {f.key === 'all' ? f.label : f.label.replace(' games', '')}
+              {games && f.key !== 'all' && <span className="ml-1.5 text-xs opacity-60">{count(f.key)}</span>}
             </button>
           ))}
         </div>
@@ -86,57 +139,30 @@ export function GameGrid() {
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
-      ) : visible.length === 0 ? (
+      ) : games.length === 0 ? (
         <div className="surface mt-6">
           <EmptyState title="No games here yet" message="Check back soon." />
         </div>
       ) : (
-        <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((g, i) => (
-            <motion.li
-              key={g.key}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.03, 0.4) }}
-              className="surface group relative flex gap-4 p-5 transition hover:border-gold-500/30"
-            >
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-gradient-to-br from-felt-800 to-ink-900">
-                <GameIcon gameKey={g.key} />
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-display text-lg font-bold text-ivory">{g.name}</h3>
-                  {g.released ? (
-                    <span className="rounded-full bg-felt-600/60 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-felt-300">
-                      Open
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted">
-                      Opening soon
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-muted">{g.tagline}</p>
-                {g.released && jackpots[g.key] !== undefined && (
-                  <p className="mt-1.5 text-sm text-gold-200">
-                    Jackpot now <ChipAmount value={jackpots[g.key]} className="font-bold" iconClassName="h-4 w-4" color="gold" />
-                  </p>
-                )}
-                <p className="mt-2 text-xs text-subtle">
-                  {g.multiplayer ? `Multiplayer · up to ${g.max_seats} seats` : 'Solo play'}
-                </p>
-                {g.released && (
-                  <Link
-                    to={g.multiplayer ? `/lobby?game=${g.key}` : `/play/${g.key}`}
-                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-gold-300 after:absolute after:inset-0 hover:underline"
-                  >
-                    Play now →
-                  </Link>
-                )}
-              </div>
-            </motion.li>
-          ))}
-        </ul>
+        sections.map((s) => (
+          <section key={s.key} aria-labelledby={`games-${s.key}`} className="mt-8">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 id={`games-${s.key}`} className="font-display text-xl font-bold text-gold-200">
+                {s.label}
+              </h3>
+              <p className="text-sm text-muted">{s.blurb}</p>
+              <span className="ml-auto text-xs text-subtle">
+                {s.games.length} game{s.games.length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <div className="gold-rule mt-2 opacity-50" />
+            <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {s.games.map((g, i) => (
+                <GameCard key={g.key} g={g} jackpot={jackpots[g.key]} index={i} />
+              ))}
+            </ul>
+          </section>
+        ))
       )}
     </section>
   );

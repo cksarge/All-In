@@ -74,12 +74,29 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 3 | Roulette (European/American), craps | ✅ merged |
 | 4 | Poker: Hold'em (NL), Omaha (PL), Omaha Hi-Lo (PL), Seven-Card Stud (FL), Five-Card Draw (NL) | ✅ merged (PR #6) |
 | 5 | Six slot machines + one shared progressive jackpot | ✅ on `main` |
-| 6 | Baccarat, video poker (Jacks or Better, Deuces Wild), Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six wheel | ✅ built on `main` |
+| 6 | Baccarat, video poker (Jacks or Better, Deuces Wild), Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six wheel | ✅ on `main` |
+| 6.5 | Ultimate Texas Hold'em, Dragon Tiger, Casino War, Crash, Plinko, Mines, Scratch Cards, Power Draw, Bingo; lounge sections; every game in the lobby picker | ✅ built on `main` |
 | 7 | **XP, achievements, earned cosmetics + locker, leaderboards, profile, friends with "join their table"** | **Next** |
 | 8 | Polish: sounds, animations, tutorials, accessibility, mobile pass, Sit & Go poker tournaments | |
+| 9 | More games (the user's list, below) | |
 
-**User action pending for Phase 6:** run `11_solo_games.sql` (new) in the Supabase SQL Editor (and `10_slots.sql`
-if they haven't yet). No other database changes and no dashboard settings. Every game in the catalogue is now released.
+**User action pending for stage 6.5:** run `03_games_and_stakes.sql` again (changed: nine new catalogue rows, and
+Sic Bo, the Big Six wheel, Three Card Poker and Pai Gow moved to other lounge sections), then
+`12_more_games.sql` (new). File 12 refuses to run with a clear message if file 3 hasn't been re-run. No dashboard
+settings (it adds three tables to Realtime by itself). Earlier files (`10`, `11`) if they haven't been run yet.
+
+### Stage 9: more games (the user's list, saved on 2026-10-11; not designed yet)
+- **Table poker against the dealer:** Caribbean Stud, Let It Ride, Mississippi Stud, Four Card Poker, Casino Hold'em.
+- **Blackjack variants:** Spanish 21, Blackjack Switch, Free Bet Blackjack, Pontoon.
+- **Player-against-player poker:** Short Deck (6+) Hold'em, Razz, 2-7 Triple Draw, Badugi.
+- **Video poker:** Joker Poker, Double Bonus, Bonus Poker (mostly new paytables on the Jacks or Better engine).
+- **Other:** Red Dog, Hi-Lo (is the next card higher or lower), Teen Patti, Andar Bahar, Chuck-a-Luck, virtual horse racing.
+
+Where each would plug in: the dealer poker games follow Three Card Poker / Ultimate Hold'em (`solo_rounds`,
+`private.pk_best` or `private.cg_score5`); the video pokers are new entries in `private.solo_cfg` plus an
+evaluator branch in `private.vp_eval`; the player-against-player pokers are new `pk_config` families in
+`09_poker.sql` (Razz and 2-7 need low-hand ranking; Badugi needs its own evaluator); the blackjack variants
+need changes to `06_blackjack.sql`'s rules, which is multiplayer.
 
 ### Phase 7 starting points
 Nothing has been designed or agreed with the user yet. Useful facts: `player_game_stats` (rounds, wagered,
@@ -107,7 +124,7 @@ vite.config.ts                       VITE_BASE base path, spaFallback plugin (40
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner
 scripts/e2e/                         local end-to-end harness (see §9)
-supabase/sql/01…11_*.sql             the database, applied in order (see §7)
+supabase/sql/01…12_*.sql             the database, applied in order (see §7)
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
 supabase/tests/0N_*_test.sql         tests: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
@@ -116,20 +133,26 @@ src/App.tsx                          routes: / signup login verify forgot-passwo
 src/lib/                             supabase client, errors (friendlyError), format, cards, sound (WebAudio),
                                      turnstile, validation, types, and per-game helpers: blackjack, roulette, craps, poker,
                                      slots (result types, symbol art, themes, and buildScenes: result -> playback),
-                                     solo (useSoloGame, holdBalance/settleBalance, hand names, history lines)
+                                     solo (useSoloGame, holdBalance/settleBalance, hand names, history lines),
+                                     games (the four lounge sections; gameMode: tables / live room / solo; gameHref)
 src/stores/                          zustand: auth, wallet (balance, ledger, displayBalance), presence, settings, toast, ui
 src/hooks/useLiveTable.ts            shared live-table plumbing (see §8); useBlackjackTable / usePokerTable wrap it
 src/hooks/useLobby.ts                lobby table list + online presence
+src/hooks/useLiveRoom.ts             a shared room with no tables or seats (Crash, Bingo): polls its state RPC, listens to Realtime
 src/components/table/                TableHeader, PlayerStrip, PhaseBar, TimerRing(+useSecondsLeft), ReactionBar,
                                      ChipStack, InfoModal(+TabButtons), GameHistoryModal
 src/components/{blackjack,roulette,craps,poker}/   one folder per game; *Table.tsx is the entry
 src/components/slots/                SlotMachine (the entry, all six machines), SlotReels, SlotSymbol, SlotRules, JackpotTicker
 src/components/solo/                 SoloShell (page frame, TierPicker, ChipRack, BetSpot, useSpotBets, BetStepper) and one
                                      file per game: Baccarat, VideoPoker (both), ThreeCard, PaiGow, SicBo, Keno, Wheel
-src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay)
+src/components/more/                 stage 6.5, one file per game: DragonTiger, CasinoWar, UltimateHoldem, Plinko, Mines,
+                                     Scratch, PowerDraw, Crash, Bingo (they reuse SoloShell and its pieces)
+src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
+src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay; 52 = joker)
 src/pages/TablePage.tsx              loads game_tables.game_key and dispatches to the right *Table component
-src/pages/PlayPage.tsx               /play/:gameKey: dispatches every solo game (slots and the Phase 6 games)
-src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tables, join by code, live tables
+src/pages/PlayPage.tsx               /play/:gameKey: dispatches every game that isn't played at a table
+src/pages/LobbyPage.tsx              a picker with every game (by section); table games show quick join, private
+                                     tables, join by code and live tables; the rest show a Play / Join the room panel
 ```
 
 ## 7. Database architecture
@@ -215,6 +238,31 @@ src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tab
      the tables need regenerating the same way.
    - Commissions (baccarat Banker, Pai Gow) are 5% **rounded up to a whole chip**, so chips stay whole.
    - Keno prizes are hundredths of the bet in multiples of 10, the same rule as the slots.
+12. `12_more_games.sql`: nine more games. **Their `games` rows live in file 3**, so a new game here means editing
+    both files; file 12 starts with a guard that raises if file 3 is stale.
+   - Config in `private.more_cfg(game)`; the screen's info RPC is **`more_info(game)`** (same shape as
+     `solo_info`; `useSoloGame(key, 'more_info')`). Single-bet games validate with `private.more_bet_tier`.
+   - One call: `dragon_tiger_deal(tier, bets)` (ace low; a tie returns half, rounded down),
+     `plinko_drop(bet, rows, risk)` (the slot is the number of right bounces; nine tables, each about 99%),
+     `scratch_play(card, bet)` (prize drawn first from weights out of 100,000, then nine panels laid out to
+     show it: exactly three of the prize, never three of anything else; all three cards return 94%),
+     `power_draw_play(bet, picks[5], power)` (5 of 30 + 1 of 10; prize keys like `'3'` and `'3p'`).
+   - Decisions, in `solo_rounds`: `war_deal(tier, ante, tie)` returns a finished result unless the cards tie,
+     then `war_act(war)`; `uth_deal(tier, ante, trips)` then `uth_act('bet4'|'bet3'|'check'|'bet2'|'bet1'|'fold')`
+     (the Blind always equals the ante; hands come from `private.pk_best` in file 9);
+     `mines_start(bet, mines)`, `mines_pick(tile)`, `mines_collect()` (prize = fair odds less 3%, in
+     hundredths of the bet, rounded down: `private.mines_units`).
+   - **Live rooms** (one global round each, serialised with an advisory lock; rounds only advance when a
+     client calls the state RPC, or from the lobby's stale tick):
+     - Crash: `crash_state()` / `crash_bet(amount, auto)` / `crash_collect()`. betting 8 s → flying → crashed
+       4 s. Multiplier = `exp(0.07 * seconds)`; crash point drawn at close of betting with
+       P(point ≥ x) = 0.97 / x and kept in the hidden `crash_secrets`. A collect is priced at the **server's**
+       clock when the call arrives. Automatic collects are paid by the tick as the flight passes them.
+     - Bingo: `bingo_state()` / `bingo_buy(price, count)`. The first card opens a 20 s sale, then 40 of 75
+       balls are drawn at once into the hidden `bingo_secrets` and **revealed by time** (`bingo_state` returns
+       only the prefix called so far), then cards are paid by how early their first line completed
+       (`private.bingo_units`), by the house, not from a pot. `bingo_cards` are readable by their owner only.
+   - Both rooms define `private.<game>_tick_stale()` and `private.<game>_in_play(uuid)` like the table games.
 
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
@@ -237,8 +285,9 @@ src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tab
   `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`. Solo games use `bet` and `payout` only (a returned
   stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
-**Realtime publication** now has 14 tables: wallets, chip_ledger, game_tables, table_seats, bj_rounds,
-bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots. Postgres Changes enforce RLS.
+**Realtime publication** now has 17 tables: wallets, chip_ledger, game_tables, table_seats, bj_rounds,
+bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots, crash_rounds,
+crash_bets, bingo_rounds. Postgres Changes enforce RLS.
 
 **Cards** everywhere: integers 0–51, `rank = c % 13` (0 = Ace … 12 = King), `suit = c / 13` in ♠ ♥ ♦ ♣ order.
 
@@ -271,6 +320,17 @@ bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players,
   `call(fn, args)` returns `[result, null]` or `[null, message]`: test `err !== null`, not `if (err)`, or
   TypeScript won't narrow the result. Rules text lives in each game file and reads its numbers from the config.
   A two-call game starts from `info.round` so a hand left open is picked up after a reload.
+- **Live rooms (Crash, Bingo)** use `useLiveRoom({ stateFn, tables, pollMs })`: the state RPC both reports and
+  advances the round, so the screen polls it (400 ms while a Crash round flies, about 1 s otherwise) and also
+  refetches on Realtime changes. Crash draws its multiplier locally from `started_at` and the server clock
+  offset, so it can run a fraction of a second past the real crash point before the next poll corrects it.
+- **Copy:** the word for taking a win is **"Collect"** (the user's choice; the copy guard also rejects
+  identifiers like `buy`, so name functions `takeCards`, not `buy`).
+- **Lounge and lobby:** the lounge lists games in four sections (`CATEGORIES` in `src/lib/games.ts`, driven
+  by `games.category`) with a Live or Solo tag per card. The lobby's picker lists **every** game; games
+  without tables show a panel linking to `/play/:key`.
+- Roulette keeps a just-settled number out of "Last numbers" and the hot/cold stats until the ball has
+  landed on screen, and shows the last 8 only (both asked for by the user).
 - Table pages share `TableHeader`: a single "← Leave table" / "← Lobby" button that leaves the seat, plus
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
 - **UX decisions the user asked for (keep them):**
@@ -309,6 +369,7 @@ bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players,
    node scripts/e2e/phase3.cjs /tmp/shots       # roulette + craps
    node scripts/e2e/slots.cjs /tmp/shots        # all six machines, features, jackpot, phone widths (21 checks)
    node scripts/e2e/solo.cjs /tmp/shots         # the eight Phase 6 games, a resumed hand, phone widths (29 checks)
+   node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (42 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

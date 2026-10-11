@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/Button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { GameIcon } from '@/components/ui/GameIcon';
 import { Modal } from '@/components/ui/Modal';
@@ -12,6 +12,7 @@ import { cn } from '@/components/ui/cn';
 import { useLobbyTables, type LobbyTable } from '@/hooks/useLobby';
 import { friendlyError } from '@/lib/errors';
 import { formatChips } from '@/lib/format';
+import { CATEGORIES, gameHref, gameMode } from '@/lib/games';
 import { playSound } from '@/lib/sound';
 import { isPokerGame, stackRangeLabel, stakesLabel } from '@/lib/poker';
 import { supabase } from '@/lib/supabase';
@@ -42,7 +43,7 @@ export default function LobbyPage() {
   useEffect(() => {
     void (async () => {
       const [g, t] = await Promise.all([
-        supabase.from('games').select('key, name, category, tagline, multiplayer, max_seats, sort_order, released').eq('multiplayer', true).order('sort_order'),
+        supabase.from('games').select('key, name, category, tagline, multiplayer, max_seats, sort_order, released').order('sort_order'),
         supabase.from('stake_tiers').select('*').order('tier_rank'),
       ]);
       const err = g.error ?? t.error;
@@ -55,6 +56,11 @@ export default function LobbyPage() {
   }, []);
 
   const current = games?.find((g) => g.key === game);
+  // With every game in the picker it scrolls a long way: keep the chosen one in view.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    tabsRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [game, games]);
   const gameTiers = useMemo(() => tiers.filter((t) => t.game_key === game), [tiers, game]);
 
   const go = async (key: string, fn: () => PromiseLike<{ data: unknown; error: unknown }>) => {
@@ -94,7 +100,7 @@ export default function LobbyPage() {
     <div className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">Multiplayer</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">Every game</p>
           <h1 className="font-display text-4xl font-bold text-ivory">Lobby</h1>
         </div>
         <p className="flex items-center gap-2 text-sm text-cream/80" aria-live="polite">
@@ -104,23 +110,33 @@ export default function LobbyPage() {
       </header>
 
       {/* Game tabs */}
-      <div role="tablist" aria-label="Games" className="scrollbar-thin mt-6 flex gap-2 overflow-x-auto pb-1">
-        {(games ?? []).map((g) => (
-          <button
-            key={g.key}
-            role="tab"
-            aria-selected={g.key === game}
-            onClick={() => setParams({ game: g.key })}
-            className={cn(
-              'flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
-              g.key === game ? 'border-gold-500/60 bg-gold-500/15 text-gold-200' : 'border-white/10 text-cream/80 hover:border-white/20',
-            )}
-          >
-            <GameIcon gameKey={g.key} className="h-6 w-6" />
-            {g.name}
-            {!g.released && <span className="text-[0.6rem] uppercase tracking-wider text-muted">Soon</span>}
-          </button>
-        ))}
+      <div ref={tabsRef} role="tablist" aria-label="Games" className="scrollbar-thin mt-6 flex gap-2 overflow-x-auto pb-2">
+        {/* Every game, section by section. Table games open their tables below; the rest open the game. */}
+        {CATEGORIES.flatMap((c) => {
+          const list = (games ?? []).filter((g) => g.category === c.key);
+          if (list.length === 0) return [];
+          return [
+            <span key={`label-${c.key}`} role="presentation" className="flex shrink-0 items-center pl-2 pr-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-gold-400/80 first:pl-0">
+              {c.label.replace(' games', '')}
+            </span>,
+            ...list.map((g) => (
+              <button
+                key={g.key}
+                role="tab"
+                aria-selected={g.key === game}
+                onClick={() => setParams({ game: g.key })}
+                className={cn(
+                  'flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
+                  g.key === game ? 'border-gold-500/60 bg-gold-500/15 text-gold-200' : 'border-white/10 text-cream/80 hover:border-white/20',
+                )}
+              >
+                <GameIcon gameKey={g.key} className="h-6 w-6" />
+                {g.name}
+                {!g.released && <span className="text-[0.6rem] uppercase tracking-wider text-muted">Soon</span>}
+              </button>
+            )),
+          ];
+        })}
         {games === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-32 shrink-0" />)}
       </div>
 
@@ -134,6 +150,23 @@ export default function LobbyPage() {
               <Button size="sm" className="mt-2" onClick={() => setParams({ game: 'blackjack' })}>
                 Play blackjack
               </Button>
+            }
+          />
+        </div>
+      ) : current && !current.multiplayer ? (
+        <div className="surface mt-8">
+          <EmptyState
+            icon={<GameIcon gameKey={current.key} className="h-12 w-12" />}
+            title={current.name}
+            message={
+              gameMode(current) === 'room'
+                ? `${current.tagline} There is one live room that everyone shares, so there's no table to pick.`
+                : `${current.tagline} This is a solo game against the house, so there's no table to join.`
+            }
+            action={
+              <ButtonLink to={gameHref(current)} className="mt-3">
+                {gameMode(current) === 'room' ? 'Join the room' : 'Play now'}
+              </ButtonLink>
             }
           />
         </div>

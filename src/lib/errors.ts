@@ -48,8 +48,8 @@ const RPC_MESSAGES: Record<string, string> = {
   unknown_game: "That game doesn't exist.",
   slow_down: 'Please wait a few seconds before opening another table.',
   // Blackjack
-  betting_closed: 'Betting is closed for this hand.',
-  next_round_pending: 'The next hand opens in a moment.',
+  betting_closed: 'Betting is closed for this round.',
+  next_round_pending: 'The next round opens in a moment.',
   not_your_turn: "It's not your turn.",
   action_not_allowed: "You can't do that with this hand.",
   insurance_closed: 'Insurance is closed for this hand.',

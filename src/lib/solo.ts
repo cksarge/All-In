@@ -30,17 +30,20 @@ export type Spots = Record<string, number>;
 
 export const spotTotal = (bets: Spots) => Object.values(bets).reduce((n, v) => n + v, 0);
 
-/** Loads a game's rules and any round in progress, and wraps its RPCs. */
-export function useSoloGame<C, R = Record<string, unknown>>(game: string) {
+/**
+ * Loads a game's rules and any round in progress, and wraps its RPCs.
+ * `infoFn`: 'solo_info' for the games in 11_solo_games.sql, 'more_info' for 12_more_games.sql.
+ */
+export function useSoloGame<C, R = Record<string, unknown>>(game: string, infoFn: 'solo_info' | 'more_info' = 'solo_info') {
   const [info, setInfo] = useState<SoloInfo<C, R> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
-    const { data, error: err } = await supabase.rpc('solo_info', { p_game: game });
+    const { data, error: err } = await supabase.rpc(infoFn, { p_game: game });
     if (err) setError(friendlyError(err));
     else setInfo(data as SoloInfo<C, R>);
-  }, [game]);
+  }, [game, infoFn]);
 
   useEffect(() => {
     void load();
@@ -74,6 +77,11 @@ export function holdBalance(shown: number) {
 export function settleBalance(balance: number) {
   useWallet.setState((s) => ({ status: s.status ? { ...s.status, balance } : s.status, displayBalance: null }));
   void useWallet.getState().fetchStatus();
+}
+
+/** Lets the real balance show again without changing it (e.g. after a failed call). */
+export function releaseBalance() {
+  useWallet.getState().setDisplayBalance(null);
 }
 
 export const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -128,6 +136,28 @@ export function historyLine(game: string, s: Record<string, unknown>): string {
       return `${s.hits} of ${s.picks} hit`;
     case 'money_wheel':
       return `Landed on ${WHEEL_LABELS[String(s.symbol)] ?? s.symbol}`;
+    case 'dragon_tiger':
+      return s.outcome === 'tie' ? 'Tie' : `${s.outcome === 'dragon' ? 'Dragon' : 'Tiger'} wins`;
+    case 'casino_war':
+      return (
+        { win: 'Won', lose: 'Lost', surrender: 'Tied and surrendered', war_win: 'Won the war', war_tie: 'Tied the war', war_lose: 'Lost the war' }[
+          String(s.outcome)
+        ] ?? 'Hand'
+      );
+    case 'ultimate_holdem':
+      return `${made ?? 'Hand'} · ${{ win: 'won', lose: 'lost', tie: 'tied', fold: 'folded' }[String(s.outcome)] ?? ''}`;
+    case 'plinko':
+      return `${s.rows} rows, ${s.risk} risk · ×${Number(s.units) / 100}`;
+    case 'mines':
+      return `${s.mines} mines · ${s.outcome === 'boom' ? `hit one after ${s.safe} safe` : `collected after ${s.safe} safe`}`;
+    case 'scratch_cards':
+      return `${{ clover: 'Lucky Clover', gold: 'Gold Rush', diamond: 'Diamond Mine' }[String(s.card)] ?? 'Card'} · ${Number(s.units) > 0 ? `×${Number(s.units) / 100}` : 'no match'}`;
+    case 'power_draw':
+      return `${s.hits} number${s.hits === 1 ? '' : 's'}${s.power_hit ? ' + power ball' : ''}`;
+    case 'crash':
+      return s.collected_at ? `Collected at ×${s.collected_at}` : 'Crashed before collecting';
+    case 'bingo':
+      return `${s.cards} card${s.cards === 1 ? '' : 's'} · ${s.line_at ? `line on call ${s.line_at}` : 'no line'}`;
     default:
       return 'Round';
   }

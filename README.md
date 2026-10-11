@@ -126,7 +126,9 @@ After deploying, set **Authentication → URL Configuration → Site URL** in Su
 | 4 | Poker: Hold'em, Omaha, Omaha Hi-Lo, Stud, Draw | ✅ Done |
 | 5 | Six slot machines + shared progressive jackpot | ✅ Done |
 | 6 | Baccarat, video poker, Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six | ✅ Done |
+| 6.5 | Ultimate Texas Hold'em, Dragon Tiger, Casino War, Crash, Plinko, Mines, Scratch Cards, Power Draw, Bingo | ✅ Done |
 | 7 | XP, achievements, cosmetics, locker, leaderboards, profile, friends | Next |
 | 8 | Polish: sounds, animations, tutorials, accessibility, mobile, Sit & Go | |
+| 9 | More games: table poker, blackjack and poker variants, more video poker, and others (list in CLAUDE.md) | |
 
 Free to play. No real money. No purchases. Chips have no cash value.

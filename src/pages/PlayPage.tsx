@@ -1,4 +1,13 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { BingoGame } from '@/components/more/BingoGame';
+import { CasinoWarGame } from '@/components/more/CasinoWarGame';
+import { CrashGame } from '@/components/more/CrashGame';
+import { DragonTigerGame } from '@/components/more/DragonTigerGame';
+import { MinesGame } from '@/components/more/MinesGame';
+import { PlinkoGame } from '@/components/more/PlinkoGame';
+import { PowerDrawGame } from '@/components/more/PowerDrawGame';
+import { ScratchGame } from '@/components/more/ScratchGame';
+import { UltimateHoldemGame } from '@/components/more/UltimateHoldemGame';
 import { SlotMachine } from '@/components/slots/SlotMachine';
 import { BaccaratGame } from '@/components/solo/BaccaratGame';
 import { KenoGame } from '@/components/solo/KenoGame';
@@ -22,6 +31,15 @@ export default function PlayPage() {
   if (gameKey === 'sic_bo') return <SicBoGame />;
   if (gameKey === 'keno') return <KenoGame />;
   if (gameKey === 'money_wheel') return <WheelGame />;
+  if (gameKey === 'dragon_tiger') return <DragonTigerGame />;
+  if (gameKey === 'casino_war') return <CasinoWarGame />;
+  if (gameKey === 'ultimate_holdem') return <UltimateHoldemGame />;
+  if (gameKey === 'plinko') return <PlinkoGame />;
+  if (gameKey === 'mines') return <MinesGame />;
+  if (gameKey === 'scratch_cards') return <ScratchGame />;
+  if (gameKey === 'power_draw') return <PowerDrawGame />;
+  if (gameKey === 'crash') return <CrashGame />;
+  if (gameKey === 'bingo') return <BingoGame />;
   return (
     <div className="mx-auto max-w-lg px-4 py-16">
       <div className="surface">

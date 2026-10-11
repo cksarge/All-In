@@ -10,3 +10,5 @@ update public.jackpots set pool_hundredths = seed * 100, last_winner = null, las
 delete from tests.dice;
 delete from tests.decks;
 delete from public.solo_rounds;
+delete from public.crash_rounds;
+delete from public.bingo_rounds;

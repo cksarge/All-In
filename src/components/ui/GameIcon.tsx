@@ -1,14 +1,17 @@
 import { cn } from './cn';
 
-type IconKind = 'cards' | 'spade' | 'wheel' | 'dice' | 'seven' | 'grid' | 'diamond';
+type IconKind = 'cards' | 'spade' | 'wheel' | 'dice' | 'seven' | 'grid' | 'diamond' | 'chart' | 'pegs' | 'ticket';
 
 export function iconForGame(key: string): IconKind {
-  if (key.startsWith('poker_') || key === 'three_card_poker' || key === 'pai_gow_poker') return 'spade';
-  if (key === 'blackjack' || key === 'baccarat' || key.startsWith('video_poker')) return 'cards';
+  if (key.startsWith('poker_') || key === 'three_card_poker' || key === 'pai_gow_poker' || key === 'ultimate_holdem') return 'spade';
+  if (['blackjack', 'baccarat', 'dragon_tiger', 'casino_war'].includes(key) || key.startsWith('video_poker')) return 'cards';
   if (key === 'roulette' || key === 'money_wheel') return 'wheel';
   if (key === 'craps' || key === 'sic_bo') return 'dice';
-  if (key === 'keno') return 'grid';
-  if (key === 'slots_cascade' || key === 'slots_holdwin') return 'diamond';
+  if (key === 'keno' || key === 'bingo' || key === 'power_draw') return 'grid';
+  if (key === 'slots_cascade' || key === 'slots_holdwin' || key === 'mines') return 'diamond';
+  if (key === 'crash') return 'chart';
+  if (key === 'plinko') return 'pegs';
+  if (key === 'scratch_cards') return 'ticket';
   return 'seven';
 }
 
@@ -64,6 +67,31 @@ export function GameIcon({ gameKey, className }: { gameKey: string; className?: 
         <>
           <path d="M12 18l6-8h12l6 8-12 20z" fill="#3566c4" stroke="#8fb0f0" strokeWidth="1.4" strokeLinejoin="round" />
           <path d="M12 18h24M18 10l6 8 6-8M24 18v20" stroke="#8fb0f0" strokeWidth="1" />
+        </>
+      )}
+      {kind === 'chart' && (
+        <>
+          <rect x="6" y="8" width="36" height="32" rx="6" fill="#0b0d0c" stroke="#d4af37" strokeWidth="1.6" />
+          <path d="M11 34c8-1 14-5 19-13l5-8" stroke="#5cc392" strokeWidth="3" strokeLinecap="round" />
+          <path d="M30 13h6v6" stroke="#5cc392" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+      {kind === 'pegs' && (
+        <>
+          {[0, 1, 2, 3].flatMap((r) =>
+            Array.from({ length: r + 2 }).map((_, i) => (
+              <circle key={`${r}-${i}`} cx={24 - r * 4 + i * 8 - 4} cy={12 + r * 8} r="2.2" fill="#f4ead2" />
+            )),
+          )}
+          <circle cx="24" cy="6" r="3.4" fill="#d4af37" />
+        </>
+      )}
+      {kind === 'ticket' && (
+        <>
+          <rect x="7" y="12" width="34" height="24" rx="4" fill="#135c3e" stroke="#d4af37" strokeWidth="1.5" />
+          {[0, 1, 2].map((i) => (
+            <rect key={i} x={12 + i * 9} y="19" width="6.5" height="10" rx="1.5" fill={i === 1 ? '#d4af37' : '#f4ead2'} />
+          ))}
         </>
       )}
       {kind === 'grid' && (

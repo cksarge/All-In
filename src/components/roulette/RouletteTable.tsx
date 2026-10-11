@@ -75,6 +75,7 @@ export function RouletteTable({ tableId }: { tableId: string }) {
   if (round?.phase === 'spinning') spunRounds.current.add(round.id);
   const animateLanding = round ? spunRounds.current.has(round.id) : false;
   const [landedRound, setLandedRound] = useState<string | null>(null);
+  const shownStats = useRef<RlState['stats'] | null>(null);
 
   // Default chip = table minimum.
   useEffect(() => {
@@ -171,6 +172,13 @@ export function RouletteTable({ tableId }: { tableId: string }) {
   const table = state.table;
   const spinning = round?.phase === 'spinning';
   const showResult = round?.phase === 'settled' && round.result !== null && (landedRound === round.id || !animateLanding);
+  // The server settles the moment the wheel stops turning, a few seconds before the ball has
+  // landed on screen. Until then, keep the new number out of the history and the hot/cold stats.
+  const landing = round?.phase === 'settled' && round.result !== null && !showResult;
+  // Only the last few: twenty in a row got cramped.
+  const recent = (landing ? state.recent.slice(1) : state.recent).slice(0, 8);
+  if (!landing) shownStats.current = state.stats;
+  const stats = shownStats.current ?? state.stats;
   const denoms = chipDenominations(table.min_bet, table.max_bet);
   const stakes = new Map<string, number>();
   for (const b of boardBets) stakes.set(b.user_id, (stakes.get(b.user_id) ?? 0) + b.amount);
@@ -269,23 +277,23 @@ export function RouletteTable({ tableId }: { tableId: string }) {
 
           <div className="w-full">
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-felt-300/80">Last numbers</p>
-            {state.recent.length === 0 ? (
+            {recent.length === 0 ? (
               <p className="mt-1 text-xs text-cream/60">No spins yet at this table.</p>
             ) : (
-              <div className="scrollbar-thin mt-1.5 flex gap-1 overflow-x-auto pb-1">
-                {state.recent.map((n, i) => (
+              <div className="mt-1.5 flex gap-1.5">
+                {recent.map((n, i) => (
                   <NumberBall key={i} n={n} size="sm" />
                 ))}
               </div>
             )}
           </div>
-          {state.stats.spins > 0 && (
+          {stats.spins > 0 && (
             <div className="grid w-full grid-cols-2 gap-3 text-xs">
               <div>
                 <p className="font-semibold uppercase tracking-wider text-gold-300">Hot</p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {state.stats.hot.map((h) => (
-                    <span key={h.n} title={`${h.hits} times in the last ${state.stats.spins} spins`}>
+                  {stats.hot.map((h) => (
+                    <span key={h.n} title={`${h.hits} times in the last ${stats.spins} spins`}>
                       <NumberBall n={h.n} size="sm" />
                     </span>
                   ))}
@@ -294,17 +302,17 @@ export function RouletteTable({ tableId }: { tableId: string }) {
               <div>
                 <p className="font-semibold uppercase tracking-wider text-sapphire-300">Cold</p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {state.stats.cold.map((h) => (
-                    <span key={h.n} title={`${h.hits} times in the last ${state.stats.spins} spins`}>
+                  {stats.cold.map((h) => (
+                    <span key={h.n} title={`${h.hits} times in the last ${stats.spins} spins`}>
                       <NumberBall n={h.n} size="sm" />
                     </span>
                   ))}
                 </div>
               </div>
               <p className="col-span-2 text-cream/60">
-                Last {state.stats.spins}: <span className="text-ruby-300">{state.stats.red} red</span> ·{' '}
-                <span className="text-cream">{state.stats.black} black</span> ·{' '}
-                <span className="text-felt-300">{state.stats.zero} zero</span>
+                Last {stats.spins}: <span className="text-ruby-300">{stats.red} red</span> ·{' '}
+                <span className="text-cream">{stats.black} black</span> ·{' '}
+                <span className="text-felt-300">{stats.zero} zero</span>
               </p>
             </div>
           )}
