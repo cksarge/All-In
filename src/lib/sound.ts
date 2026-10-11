@@ -4,7 +4,9 @@ import { useSettings } from '@/stores/settingsStore';
  * Tiny Web Audio synth: no audio files to load, and everything respects the
  * mute toggle. Later phases add richer per-game sounds on top of this.
  */
-export type SoundName = 'click' | 'chip' | 'coins' | 'success' | 'error' | 'whoosh' | 'card' | 'flip' | 'win' | 'lose' | 'turn' | 'pop';
+export type SoundName =
+  | 'click' | 'chip' | 'coins' | 'success' | 'error' | 'whoosh' | 'card' | 'flip' | 'win' | 'lose' | 'turn' | 'pop'
+  | 'spin' | 'reel' | 'feature' | 'jackpot';
 
 let ctx: AudioContext | null = null;
 
@@ -106,6 +108,26 @@ export function playSound(name: SoundName) {
       break;
     case 'pop':
       tone(c, { freq: 520, dur: 0.08, type: 'sine', gain: 0.08, slide: 900 });
+      break;
+    case 'spin':
+      for (let i = 0; i < 5; i++) tone(c, { freq: 300 + i * 45, start: i * 0.05, dur: 0.05, type: 'square', gain: 0.02 });
+      break;
+    case 'reel':
+      noise(c, { dur: 0.05, freq: 500, gain: 0.14 });
+      tone(c, { freq: 140, dur: 0.07, type: 'sine', gain: 0.08, slide: 90 });
+      break;
+    case 'feature':
+      [392, 523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) =>
+        tone(c, { freq: f, start: i * 0.09, dur: 0.3, type: 'triangle', gain: 0.07 }),
+      );
+      break;
+    case 'jackpot':
+      for (let r = 0; r < 3; r++) {
+        [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) =>
+          tone(c, { freq: f, start: r * 0.55 + i * 0.08, dur: 0.3, type: 'triangle', gain: 0.08 }),
+        );
+      }
+      for (let i = 0; i < 24; i++) noise(c, { start: 0.2 + i * 0.07, dur: 0.035, freq: 3600 + (i % 6) * 300, gain: 0.08 });
       break;
   }
 }

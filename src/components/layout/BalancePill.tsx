@@ -7,7 +7,7 @@ import { useWallet } from '@/stores/walletStore';
 
 /** Live chip balance with the "Play chips" badge. Flashes +/- on change. */
 export function BalancePill() {
-  const balance = useWallet((s) => s.status?.balance);
+  const balance = useWallet((s) => (s.status ? (s.displayBalance ?? s.status.balance) : undefined));
   const prev = useRef<number | undefined>(undefined);
   const [delta, setDelta] = useState<{ id: number; value: number } | null>(null);
 

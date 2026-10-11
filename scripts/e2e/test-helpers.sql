@@ -50,3 +50,19 @@ begin
   if found then delete from tests.dice where id = r.id; return r.v; end if;
   return floor(random() * p_n)::int;
 end $$;
+
+-- Slots: select tests.slot_reel('slots_classic', 0, 'BLANK', 'SEVEN', 'BLANK') queues the draws that
+-- land those symbols on one reel, top to bottom (reel 0 for Gem Cascade). Draws go reel by reel, so
+-- queue the reels in order; other draws (reel heights, pearl prizes, the jackpot) go in tests.dice raw.
+create or replace function tests.slot_reel(p_game text, p_reel integer, variadic p_syms text[]) returns void language plpgsql security definer as $$
+declare
+  v_bag jsonb := private.slot_ready(p_game) -> 'bags' -> p_reel;
+  s text;
+  i integer;
+begin
+  foreach s in array p_syms loop
+    select min(o)::integer - 1 into i from jsonb_array_elements_text(v_bag) with ordinality x(sym, o) where x.sym = s;
+    if i is null then raise exception 'no % on reel % of %', s, p_reel, p_game; end if;
+    insert into tests.dice (v) values (i);
+  end loop;
+end $$;

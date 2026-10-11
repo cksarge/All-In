@@ -21,6 +21,12 @@ interface WalletState {
   ledgerLoading: boolean;
   ledgerError: string | null;
   claiming: 'daily' | 'refill' | null;
+  /**
+   * Balance to show instead of the real one while a result is still being revealed
+   * (a slot spin is paid the moment it's sent, before the reels stop).
+   */
+  displayBalance: number | null;
+  setDisplayBalance: (n: number | null) => void;
   fetchStatus: () => Promise<void>;
   fetchLedger: () => Promise<void>;
   claimDaily: () => Promise<{ ok: true; result: ClaimResult } | { ok: false; error: string }>;
@@ -42,6 +48,8 @@ export const useWallet = create<WalletState>()((set, get) => ({
   ledgerLoading: false,
   ledgerError: null,
   claiming: null,
+  displayBalance: null,
+  setDisplayBalance: (displayBalance) => set({ displayBalance }),
 
   fetchStatus: async () => {
     set({ loading: get().status === null, error: null });
@@ -150,7 +158,7 @@ export const useWallet = create<WalletState>()((set, get) => ({
     };
   },
 
-  reset: () => set({ status: null, ledger: [], error: null, ledgerError: null, loading: false }),
+  reset: () => set({ status: null, ledger: [], error: null, ledgerError: null, loading: false, displayBalance: null }),
 }));
 
 export const serverNow = () => Date.now() + useWallet.getState().clockOffsetMs;

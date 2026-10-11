@@ -53,15 +53,16 @@ npm run test:sql     # throwaway Postgres: applies every SQL file twice, runs su
 ```
 
 `test:sql` needs Postgres 15+ binaries (`initdb`, `pg_ctl`, `psql`) on PATH (or `PG_BIN=…`). On macOS:
-`brew install postgresql@16`. On Windows use WSL. When run as root it switches to the `postgres` user.
+`brew install postgresql@16`, or Postgres.app in `/Applications` (the scripts find it by themselves; the user's
+Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root it switches to the `postgres` user.
 
 ## 4. Git and PR workflow
 
-- Phases so far were developed on a feature branch (`claude/youthful-turing-56segv`) and merged into
-  `main` through PRs #1 to #6. **Merging to `main` deploys the site** (GitHub Actions → Pages).
-- Create a PR only when the user asks; so far they have asked after every phase. No PR template.
-- If a branch's PR was merged, start follow-up work from the latest `main`.
-- Never put a model name in commits or PRs. Add attribution lines only as the harness instructs.
+- Phases 1 to 4 were built in cloud sessions on a feature branch (`claude/youthful-turing-56segv`) and merged
+  into `main` through PRs #1 to #6. Since Phase 5 the work happens on the user's Mac, **directly on `main`**
+  (their choice; no feature branches or PRs unless they ask). Keep the old local branch; don't delete it.
+- **Pushing to `main` deploys the site** (GitHub Actions → Pages), so commit and push only when the user says to.
+- Add attribution lines to commits as the harness instructs (the user is fine with the model name there).
 - Never commit `.env`, `dist/` or `node_modules/`.
 
 ## 5. Status and roadmap
@@ -72,41 +73,21 @@ npm run test:sql     # throwaway Postgres: applies every SQL file twice, runs su
 | 2 | Lobby, tables & seats, realtime plumbing, multiplayer blackjack | ✅ merged |
 | 3 | Roulette (European/American), craps | ✅ merged |
 | 4 | Poker: Hold'em (NL), Omaha (PL), Omaha Hi-Lo (PL), Seven-Card Stud (FL), Five-Card Draw (NL) | ✅ merged (PR #6) |
-| 5 | **Six slot machines + one shared progressive jackpot** | **Next** |
-| 6 | Baccarat, video poker (Jacks or Better, Deuces Wild), Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six wheel | |
+| 5 | Six slot machines + one shared progressive jackpot | ✅ built on `main` |
+| 6 | **Baccarat, video poker (Jacks or Better, Deuces Wild), Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six wheel** | **Next** |
 | 7 | XP, achievements, earned cosmetics + locker, leaderboards, profile, friends with "join their table" | |
 | 8 | Polish: sounds, animations, tutorials, accessibility, mobile pass, Sit & Go poker tournaments | |
 
-**User action pending for Phase 4:** run `05_tables.sql` (changed) then `09_poker.sql` (new) in the
-Supabase SQL Editor, if they haven't already. Re-running every file from `01` is always safe.
+**User action pending for Phase 5:** run `10_slots.sql` (new) in the Supabase SQL Editor. Nothing else changed
+in the database, and there are no new dashboard settings (the file adds `jackpots` to Realtime by itself).
 
-### Phase 5 plan (slots), as agreed with the user
-The game rows already exist in `03_games_and_stakes.sql` (stake profile `slots`: Low 10–100,
-Mid 100–1,000, High 1,000–10,000, VIP 5,000–50,000 per spin). They are single-player (`multiplayer = false`).
-`src/components/lounge/GameGrid.tsx` already links non-multiplayer games to **`/play/:gameKey`**, a route
-that doesn't exist yet: add it in `src/App.tsx` (a `PlayPage` dispatching by game key).
-
-| Key | Name | Mechanic |
-| --- | --- | --- |
-| `slots_classic` | Lucky Sevens | 3-reel fruit machine |
-| `slots_paylines` | Pharaoh's Fortune | 5 reels × 3 rows, 20 paylines, wilds, free spins |
-| `slots_cascade` | Gem Cascade | Cluster pays with cascading wins |
-| `slots_ways` | Wild Frontier | Ways-to-win (243+) with expanding reels |
-| `slots_holdwin` | Dragon Pearls | Hold-and-win bonus rounds |
-| `slots_progressive` | Grand Jackpot | One shared progressive jackpot for everyone |
-
-The design should follow the existing pattern:
-- New file `supabase/sql/10_slots.sql`.
-- Reel strips and paytables live in SQL. One spin RPC per game (or a generic `slot_spin(p_game, p_bet, …)`)
-  does all randomness with `private.random_int`, pays with `private.apply_chips`, and logs with
-  `private.record_round`.
-- A hidden RNG state is not needed (each spin is atomic), but free-spin and hold-and-win state must be
-  server-side.
-- Jackpot: a `jackpots` table, seeded and fed by a small % of each progressive spin, added to the realtime
-  publication so a live ticker updates. Winning resets it to its seed.
-- Aim for a sensible RTP (about 94–97%) and verify it with a SQL simulation test.
-- Re-check the copy guard: no "buy feature" wording.
-- Finish with SQL tests in `supabase/tests/06_slots_test.sql` and e2e screenshots.
+### Phase 6 starting points
+All seven games already have rows in `03_games_and_stakes.sql` and are solo (`multiplayer = false`), so they
+follow the **slots pattern** (§7, §8), not the table pattern: no `game_tables` row or seat, one RPC that takes
+the bet and settles, `/play/:gameKey` dispatched in `src/pages/PlayPage.tsx`. Games with a decision in the
+middle (video poker's hold/draw, Three Card Poker's play/fold, Pai Gow's hand setting) need a small per-player
+round table holding the hidden deck (RLS on, no policies) and a `private.<game>_in_play(uuid)` function for the
+chips riding on it. Nothing has been designed or agreed with the user yet.
 
 ### Deferred items already promised
 - Friends and "join their table" (Phase 7).
@@ -126,22 +107,25 @@ vite.config.ts                       VITE_BASE base path, spaFallback plugin (40
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner
 scripts/e2e/                         local end-to-end harness (see §9)
-supabase/sql/01…09_*.sql             the database, applied in order (see §7)
+supabase/sql/01…10_*.sql             the database, applied in order (see §7)
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
 supabase/tests/0N_*_test.sql         tests: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
 src/App.tsx                          routes: / signup login verify forgot-password how-chips-work settings
-                                     lounge lobby table/:id join/:code *
+                                     lounge lobby table/:id play/:gameKey join/:code *
 src/lib/                             supabase client, errors (friendlyError), format, cards, sound (WebAudio),
-                                     turnstile, validation, types, and per-game helpers: blackjack, roulette, craps, poker
-src/stores/                          zustand: auth, wallet (balance, ledger), presence, settings, toast, ui
+                                     turnstile, validation, types, and per-game helpers: blackjack, roulette, craps, poker,
+                                     slots (result types, symbol art, themes, and buildScenes: result -> playback)
+src/stores/                          zustand: auth, wallet (balance, ledger, displayBalance), presence, settings, toast, ui
 src/hooks/useLiveTable.ts            shared live-table plumbing (see §8); useBlackjackTable / usePokerTable wrap it
 src/hooks/useLobby.ts                lobby table list + online presence
 src/components/table/                TableHeader, PlayerStrip, PhaseBar, TimerRing(+useSecondsLeft), ReactionBar,
                                      ChipStack, InfoModal(+TabButtons), GameHistoryModal
 src/components/{blackjack,roulette,craps,poker}/   one folder per game; *Table.tsx is the entry
+src/components/slots/                SlotMachine (the entry, all six machines), SlotReels, SlotSymbol, SlotRules, JackpotTicker
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay)
 src/pages/TablePage.tsx              loads game_tables.game_key and dispatches to the right *Table component
+src/pages/PlayPage.tsx               /play/:gameKey: solo games; `slots_*` renders SlotMachine
 src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tables, join by code, live tables
 ```
 
@@ -188,6 +172,23 @@ src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tab
      uncalled bets returned (never to folded players), side pots, split pots (odd chip left of the button),
      hi-lo 8-or-better.
    - Timer 20 s → check if free else fold, then sit out; players who left or disconnected are acted for at once.
+10. `10_slots.sql`: six solo machines and the shared jackpot. No tables, seats or timers.
+   - `private.slot_cfg(game)` holds each machine's maths as JSON: per-reel symbol `weights`, `pays`, features.
+     Every visible cell is drawn independently from its reel's weighted bag, **reel by reel, top to bottom**.
+   - **Pays are in hundredths of the total bet ("units") and every value is a multiple of 10.** Bets must be
+     multiples of 10, so `bet * units / 100` is always whole chips. Keep both rules when editing a paytable.
+   - `slot_spin(game, bet)` is atomic: bet, all draws, the whole feature (free spins, hold-and-win respins,
+     cascades), payout, `record_round`. It returns the full sequence and the browser replays it. There is
+     **no session or half-played feature** on the server, by design.
+   - Stake level = the lowest tier whose range contains the bet (`private.slot_tier`), then `assert_tier_access`.
+   - `slot_info(game)` returns paytable, bets, tiers and jackpot, **never** `weights` / `heights` / pearl odds.
+   - `jackpots` (pot kept in hundredths of a chip so 10-chip bets feed it; `amount` is a generated column).
+     Grand Jackpot: 2% of each bet in, win chance = bet / 5,000,000 per spin, pays the pot, resets to 100,000.
+     Ledger reason `jackpot`.
+   - Tuned return: Lucky Sevens 95.8% (exact), Pharaoh 96.6, Gem Cascade 95.3, Wild Frontier 96.6,
+     Dragon Pearls 95.3, Grand Jackpot 91.4 + 4.0 from the pot. After changing any weight or pay, re-measure
+     with `select private.slot_simulate('slots_x', 1000000)` (about a minute; returns percent) and update the
+     `rtp` in the config and the expected numbers in `supabase/tests/06_slots_test.sql`.
 
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
@@ -207,10 +208,10 @@ src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tab
 - Seed persistent house tables with `insert … where not exists`; flip `games.released = true` in the
   game's own file.
 - Ledger reasons used so far: `signup_bonus`, `daily_bonus`, `refill`, `bet`, `payout`, `refund`, `push`,
-  `table_chips_in`, `table_chips_out`, `poker_pot`. Add labels in `src/components/economy/RecentActivity.tsx`.
+  `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`. Add labels in `src/components/economy/RecentActivity.tsx`.
 
-**Realtime publication** now has 13 tables: wallets, chip_ledger, game_tables, table_seats, bj_rounds,
-bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players. Postgres Changes enforce RLS.
+**Realtime publication** now has 14 tables: wallets, chip_ledger, game_tables, table_seats, bj_rounds,
+bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots. Postgres Changes enforce RLS.
 
 **Cards** everywhere: integers 0–51, `rank = c % 13` (0 = Ace … 12 = King), `suit = c / 13` in ♠ ♥ ♦ ♣ order.
 
@@ -228,6 +229,15 @@ bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players.
 - **supabase-js requests are lazy:** `void supabase.rpc(...)` never runs. Always `await` it or `.then()`.
   Also, supabase-js reports every HTTP 5xx as `AuthRetryableFetchError` with a status, so `friendlyError`
   treats only status 0 as a network failure.
+- **Solo games (slots)** don't use `useLiveTable`. `SlotMachine` calls `slot_info` once, then `slot_spin` per
+  spin and plays the answer back: `buildScenes()` in `src/lib/slots.ts` turns a result into a list of scenes
+  (base spin, each free spin, each respin, each cascade, banners) and `spin()` steps through them with timers.
+  **Skip** jumps to the end; leaving the page just stops the show (the chips are already settled).
+  - The server pays before the reels stop, so the header balance would give the result away. `spin()` sets
+    `useWallet().displayBalance` (what `BalancePill` shows) and raises it scene by scene, then clears it.
+    Use the same field for any future game that settles before its animation ends.
+  - Symbols are emoji, text or small SVGs sized with container-query units (`SlotSymbol`); add a machine's
+    symbols and theme in `SYMBOLS` / `THEMES`. The order of `SYMBOLS[game]` is the paytable order.
 - Table pages share `TableHeader`: a single "← Leave table" / "← Lobby" button that leaves the seat, plus
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
 - **UX decisions the user asked for (keep them):**
@@ -264,12 +274,18 @@ bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players.
    psql -h localhost -p 55432 -U postgres -f scripts/e2e/reset.sql   # fresh players before each run
    node scripts/e2e/poker.cjs /tmp/shots        # Hold'em, Draw, Stud (24 checks); screenshots to /tmp/shots
    node scripts/e2e/phase3.cjs /tmp/shots       # roulette + craps
+   node scripts/e2e/slots.cjs /tmp/shots        # all six machines, features, jackpot, phone widths (21 checks)
    ```
+   Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:
    - The stand-in has **no realtime**, so the scripts nudge a page to refetch by dispatching
      `visibilitychange`, and the header shows "Reconnecting…" (expected).
    - Test helpers: `select tests.deck('As Ah Kc Kd …')` stacks the next poker deck;
-     `insert into tests.dice (v) values (2),(3)` queues a craps roll of 3 + 4.
+     `insert into tests.dice (v) values (2),(3)` queues a craps roll of 3 + 4;
+     `select tests.slot_reel('slots_classic', 0, 'BLANK', 'SEVEN', 'BLANK')` stacks one reel of the next spin
+     (queue the reels in order; reel heights, pearl prizes and the jackpot draw are raw `tests.dice` values).
+   - `tests.dice` feeds **every** `private.random_int` call, so leftovers from one test rig the next game.
+     `reset.sql` clears it.
    - Use `exact: true` in Playwright name selectors ('50 chip' matches '250 chip').
    - Test emails need a TLD. The poker history step has timed out once on a cold start; re-run if so.
    - Kill background node processes with a bracket pattern, e.g. `pkill -f "[m]ini-supabase"`.

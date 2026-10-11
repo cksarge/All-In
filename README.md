@@ -34,7 +34,8 @@ It builds to a static site.
 ├── vercel.json              SPA fallback for Vercel
 ├── scripts/
 │   ├── check-copy.mjs       "no real money" copy guard
-│   └── test-sql.sh          runs the SQL against a throwaway local Postgres
+│   ├── test-sql.sh          runs the SQL against a throwaway local Postgres
+│   └── e2e/                 local two-browser end-to-end tests (see CLAUDE.md)
 ├── src/
 │   ├── App.tsx, main.tsx, index.css (design tokens)
 │   ├── components/
@@ -123,8 +124,8 @@ After deploying, set **Authentication → URL Configuration → Site URL** in Su
 | 2 | Lobby, tables & seats, Realtime plumbing, multiplayer blackjack | ✅ Done |
 | 3 | Roulette, craps | ✅ Done |
 | 4 | Poker: Hold'em, Omaha, Omaha Hi-Lo, Stud, Draw | ✅ Done |
-| 5 | Six slot machines + shared progressive jackpot | Next |
-| 6 | Baccarat, video poker, Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six | |
+| 5 | Six slot machines + shared progressive jackpot | ✅ Done |
+| 6 | Baccarat, video poker, Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six | Next |
 | 7 | XP, achievements, cosmetics, locker, leaderboards, profile, friends | |
 | 8 | Polish: sounds, animations, tutorials, accessibility, mobile, Sit & Go | |
 

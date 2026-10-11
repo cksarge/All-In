@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { ChipAmount } from '@/components/ui/ChipAmount';
 import { GameIcon } from '@/components/ui/GameIcon';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States';
 import { cn } from '@/components/ui/cn';
@@ -22,6 +23,7 @@ export function GameGrid() {
   const [games, setGames] = useState<GameRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
+  const [jackpots, setJackpots] = useState<Record<string, number>>({});
 
   const load = async () => {
     setError(null);
@@ -31,6 +33,9 @@ export function GameGrid() {
       .order('sort_order');
     if (err) setError(friendlyError(err));
     else setGames((data ?? []) as GameRow[]);
+    // The jackpot is a nice-to-have on the card: ignore errors (e.g. before 10_slots.sql is run).
+    const { data: pots } = await supabase.from('jackpots').select('game_key, amount');
+    if (pots) setJackpots(Object.fromEntries(pots.map((p) => [p.game_key as string, p.amount as number])));
   };
 
   useEffect(() => {
@@ -112,6 +117,11 @@ export function GameGrid() {
                   )}
                 </div>
                 <p className="mt-1 text-sm text-muted">{g.tagline}</p>
+                {g.released && jackpots[g.key] !== undefined && (
+                  <p className="mt-1.5 text-sm text-gold-200">
+                    Jackpot now <ChipAmount value={jackpots[g.key]} className="font-bold" iconClassName="h-4 w-4" color="gold" />
+                  </p>
+                )}
                 <p className="mt-2 text-xs text-subtle">
                   {g.multiplayer ? `Multiplayer · up to ${g.max_seats} seats` : 'Solo play'}
                 </p>

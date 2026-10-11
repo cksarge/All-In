@@ -13,6 +13,7 @@ import LogInPage from '@/pages/LogInPage';
 import LobbyPage from '@/pages/LobbyPage';
 import LoungePage from '@/pages/LoungePage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import PlayPage from '@/pages/PlayPage';
 import SettingsPage from '@/pages/SettingsPage';
 import SignUpPage from '@/pages/SignUpPage';
 import TablePage from '@/pages/TablePage';
@@ -38,7 +39,9 @@ const TITLES: Record<string, string> = {
 function RouteEffects() {
   const { pathname } = useLocation();
   useEffect(() => {
-    document.title = TITLES[pathname] ?? (pathname.startsWith('/table/') ? 'At the table · All In' : 'All In');
+    document.title =
+      TITLES[pathname] ??
+      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Slots · All In' : 'All In');
     window.scrollTo({ top: 0 });
   }, [pathname]);
   return null;
@@ -96,6 +99,7 @@ export default function App() {
             <Route path="lounge" element={<RequireAuth><LoungePage /></RequireAuth>} />
             <Route path="lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
             <Route path="table/:id" element={<RequireAuth><TablePage /></RequireAuth>} />
+            <Route path="play/:gameKey" element={<RequireAuth><PlayPage /></RequireAuth>} />
             <Route path="join/:code" element={<RequireAuth><JoinPage /></RequireAuth>} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>

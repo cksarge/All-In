@@ -59,10 +59,20 @@
   --animate-shimmer: shimmer 3.5s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
   --animate-spin-slow: spin 18s linear infinite;
+  --animate-reel: reel 0.3s linear infinite;
+  --animate-slot-win: slot-win 0.75s ease-in-out infinite;
 
   @keyframes shimmer {
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
+  }
+  @keyframes reel {
+    from { transform: translateY(-50%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes slot-win {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
   }
   @keyframes float {
     0%, 100% { transform: translateY(0); }

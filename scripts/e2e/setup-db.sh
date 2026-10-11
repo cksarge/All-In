@@ -4,7 +4,8 @@
 # Needs Postgres 15+ binaries (initdb, pg_ctl, psql). Prints how to stop it.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-PG_BIN="${PG_BIN:-$(dirname "$(command -v initdb 2>/dev/null || ls /usr/lib/postgresql/*/bin/initdb | tail -1)")}"
+PG_BIN="${PG_BIN:-$(dirname "$(command -v initdb 2>/dev/null || ls /usr/lib/postgresql/*/bin/initdb /Applications/Postgres.app/Contents/Versions/latest/bin/initdb 2>/dev/null | tail -1)")}"
+export PATH="$PG_BIN:$PATH"
 DIR="$(mktemp -d)"
 if [ "$(id -u)" = "0" ]; then RUNAS=(su postgres -s /bin/bash -c); chown -R postgres "$DIR"; else RUNAS=(bash -c); fi
 "${RUNAS[@]}" "'$PG_BIN/initdb' -D '$DIR/data' -U postgres -A trust >/dev/null"

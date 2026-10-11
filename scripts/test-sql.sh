@@ -4,7 +4,8 @@
 # Requires Postgres 15+ binaries (initdb, pg_ctl, psql) on PATH or in PG_BIN.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PG_BIN="${PG_BIN:-$(dirname "$(command -v initdb 2>/dev/null || ls /usr/lib/postgresql/*/bin/initdb | tail -1)")}"
+PG_BIN="${PG_BIN:-$(dirname "$(command -v initdb 2>/dev/null || ls /usr/lib/postgresql/*/bin/initdb /Applications/Postgres.app/Contents/Versions/latest/bin/initdb 2>/dev/null | tail -1)")}"
+export PATH="$PG_BIN:$PATH"
 WORK="$(mktemp -d)"
 PORT="${PGPORT_TEST:-54329}"
 cleanup() { "$PG_BIN/pg_ctl" -D "$WORK/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$WORK"; }
