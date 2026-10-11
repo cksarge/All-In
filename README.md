@@ -125,8 +125,8 @@ After deploying, set **Authentication → URL Configuration → Site URL** in Su
 | 3 | Roulette, craps | ✅ Done |
 | 4 | Poker: Hold'em, Omaha, Omaha Hi-Lo, Stud, Draw | ✅ Done |
 | 5 | Six slot machines + shared progressive jackpot | ✅ Done |
-| 6 | Baccarat, video poker, Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six | Next |
-| 7 | XP, achievements, cosmetics, locker, leaderboards, profile, friends | |
+| 6 | Baccarat, video poker, Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six | ✅ Done |
+| 7 | XP, achievements, cosmetics, locker, leaderboards, profile, friends | Next |
 | 8 | Polish: sounds, animations, tutorials, accessibility, mobile, Sit & Go | |
 
 Free to play. No real money. No purchases. Chips have no cash value.

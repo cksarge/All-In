@@ -54,7 +54,7 @@ export function GameGrid() {
           <h2 id="games-title" className="font-display text-2xl font-bold text-ivory sm:text-3xl">
             The games
           </h2>
-          <p className="mt-1 text-sm text-muted">Tables are being set up now. New games open as they’re ready.</p>
+          <p className="mt-1 text-sm text-muted">Every game is open. Table games are live with other players; the rest you play solo.</p>
         </div>
         <div role="tablist" aria-label="Filter games" className="flex flex-wrap gap-1.5">
           {FILTERS.map((f) => (

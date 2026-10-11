@@ -66,10 +66,15 @@ const RPC_MESSAGES: Record<string, string> = {
   above_max_stack: "That's more than this table allows in front of you.",
   invalid_discard: 'Pick cards from your own hand to swap.',
   deck_empty: 'The deck ran out. The hand goes on with the cards dealt.',
+  // Solo games
+  round_in_progress: 'Finish the hand you have open first.',
+  no_round: 'That hand is already finished.',
+  invalid_hand: "That isn't a legal way to set the hand.",
+  invalid_picks: 'Pick 1 to 10 different numbers.',
 };
 
 /** Errors whose server hint is already player-friendly. */
-const USE_HINT = new Set(['action_not_allowed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack']);
+const USE_HINT = new Set(['action_not_allowed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack', 'invalid_hand', 'insufficient_chips']);
 
 /**
  * Turns any Supabase/auth/RPC/network error into a short, friendly sentence.

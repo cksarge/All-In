@@ -8,3 +8,5 @@ insert into auth.users (email, raw_user_meta_data) values
 update public.profiles set onboarded_at = now();
 update public.jackpots set pool_hundredths = seed * 100, last_winner = null, last_amount = null, last_won_at = null;
 delete from tests.dice;
+delete from tests.decks;
+delete from public.solo_rounds;

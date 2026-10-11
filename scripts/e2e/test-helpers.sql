@@ -1,5 +1,5 @@
 -- Test-only helpers for the local end-to-end database (NEVER run on Supabase).
--- Lets a test stack the next poker deck and queue craps dice.
+-- Lets a test stack the next deck (poker, baccarat, video poker, …) and queue dice and other random numbers.
 create schema if not exists tests;
 
 -- Poker: 'As' -> 0, 'Kh' -> 25 (rank = c % 13 with A = 0, suit = c / 13 in s h d c order).
@@ -25,12 +25,11 @@ declare
   j integer;
   t smallint;
 begin
-  if p_decks = 1 then
-    select id, cards into r from tests.decks order by id limit 1;
-    if found then
-      delete from tests.decks where id = r.id;
-      return r.cards;
-    end if;
+  -- The next shoe of any size is the next stacked deck, if there is one.
+  select id, cards into r from tests.decks order by id limit 1;
+  if found then
+    delete from tests.decks where id = r.id;
+    return r.cards;
   end if;
   select array_agg((g % 52)::smallint) into v from generate_series(0, p_decks * 52 - 1) g;
   n := cardinality(v);

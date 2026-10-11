@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { cardName, cardRank, cardSuit, isRed } from '@/lib/cards';
+import { cardName, cardRank, cardSuit, isRed, JOKER } from '@/lib/cards';
 import { cn } from '@/components/ui/cn';
 
 const sizes = {
@@ -52,7 +52,8 @@ export function PlayingCard({
   still?: boolean;
 }) {
   const faceUp = card !== undefined && card !== null;
-  const red = faceUp && isRed(card);
+  const joker = card === JOKER;
+  const red = faceUp && !joker && isRed(card);
   return (
     <motion.div
       initial={still ? false : { opacity: 0, y: -40, x: 30, rotate: -8, scale: 0.85 }}
@@ -81,7 +82,13 @@ export function PlayingCard({
             highlight && 'ring-2 ring-gold-300',
           )}
         >
-          {faceUp && (
+          {joker && (
+            <div className="flex h-full flex-col items-center justify-center gap-[0.2em] font-bold leading-none text-sapphire-700">
+              <span className="text-[2em] leading-none" aria-hidden="true">★</span>
+              <span className="text-[0.62em] tracking-wider">JOKER</span>
+            </div>
+          )}
+          {faceUp && !joker && (
             <div className={cn('flex h-full flex-col justify-between p-[0.28em] font-bold leading-none', red ? 'text-ruby-600' : 'text-ink-900')}>
               <span className="flex flex-col items-start">
                 <span>{cardRank(card)}</span>

@@ -73,21 +73,20 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 2 | Lobby, tables & seats, realtime plumbing, multiplayer blackjack | ✅ merged |
 | 3 | Roulette (European/American), craps | ✅ merged |
 | 4 | Poker: Hold'em (NL), Omaha (PL), Omaha Hi-Lo (PL), Seven-Card Stud (FL), Five-Card Draw (NL) | ✅ merged (PR #6) |
-| 5 | Six slot machines + one shared progressive jackpot | ✅ built on `main` |
-| 6 | **Baccarat, video poker (Jacks or Better, Deuces Wild), Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six wheel** | **Next** |
-| 7 | XP, achievements, earned cosmetics + locker, leaderboards, profile, friends with "join their table" | |
+| 5 | Six slot machines + one shared progressive jackpot | ✅ on `main` |
+| 6 | Baccarat, video poker (Jacks or Better, Deuces Wild), Three Card Poker, Pai Gow, Sic Bo, Keno, Big Six wheel | ✅ built on `main` |
+| 7 | **XP, achievements, earned cosmetics + locker, leaderboards, profile, friends with "join their table"** | **Next** |
 | 8 | Polish: sounds, animations, tutorials, accessibility, mobile pass, Sit & Go poker tournaments | |
 
-**User action pending for Phase 5:** run `10_slots.sql` (new) in the Supabase SQL Editor. Nothing else changed
-in the database, and there are no new dashboard settings (the file adds `jackpots` to Realtime by itself).
+**User action pending for Phase 6:** run `11_solo_games.sql` (new) in the Supabase SQL Editor (and `10_slots.sql`
+if they haven't yet). No other database changes and no dashboard settings. Every game in the catalogue is now released.
 
-### Phase 6 starting points
-All seven games already have rows in `03_games_and_stakes.sql` and are solo (`multiplayer = false`), so they
-follow the **slots pattern** (§7, §8), not the table pattern: no `game_tables` row or seat, one RPC that takes
-the bet and settles, `/play/:gameKey` dispatched in `src/pages/PlayPage.tsx`. Games with a decision in the
-middle (video poker's hold/draw, Three Card Poker's play/fold, Pai Gow's hand setting) need a small per-player
-round table holding the hidden deck (RLS on, no policies) and a `private.<game>_in_play(uuid)` function for the
-chips riding on it. Nothing has been designed or agreed with the user yet.
+### Phase 7 starting points
+Nothing has been designed or agreed with the user yet. Useful facts: `player_game_stats` (rounds, wagered,
+returned, biggest win per game) and `game_history` are already written by every game through
+`private.record_round`, so XP, achievements and leaderboards can be driven from that one function without
+touching the game files. `wallets.peak_balance` exists. `RecentActivity.tsx` already has an `achievement`
+ledger label. Cosmetics must be earned, never sold (§1).
 
 ### Deferred items already promised
 - Friends and "join their table" (Phase 7).
@@ -96,6 +95,7 @@ chips riding on it. Nothing has been designed or agreed with the user yet.
 - Hardening broadcast emotes so only seated players can send them (Phase 8).
 - Poker pre-action buttons (check/fold in turn) and showing cards voluntarily when everyone folds
   would be nice later.
+- Solo games: auto-spin / auto-play, and a strategy hint for video poker, would be nice later.
 
 ## 6. Repository map
 
@@ -107,7 +107,7 @@ vite.config.ts                       VITE_BASE base path, spaFallback plugin (40
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner
 scripts/e2e/                         local end-to-end harness (see §9)
-supabase/sql/01…10_*.sql             the database, applied in order (see §7)
+supabase/sql/01…11_*.sql             the database, applied in order (see §7)
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
 supabase/tests/0N_*_test.sql         tests: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
@@ -115,7 +115,8 @@ src/App.tsx                          routes: / signup login verify forgot-passwo
                                      lounge lobby table/:id play/:gameKey join/:code *
 src/lib/                             supabase client, errors (friendlyError), format, cards, sound (WebAudio),
                                      turnstile, validation, types, and per-game helpers: blackjack, roulette, craps, poker,
-                                     slots (result types, symbol art, themes, and buildScenes: result -> playback)
+                                     slots (result types, symbol art, themes, and buildScenes: result -> playback),
+                                     solo (useSoloGame, holdBalance/settleBalance, hand names, history lines)
 src/stores/                          zustand: auth, wallet (balance, ledger, displayBalance), presence, settings, toast, ui
 src/hooks/useLiveTable.ts            shared live-table plumbing (see §8); useBlackjackTable / usePokerTable wrap it
 src/hooks/useLobby.ts                lobby table list + online presence
@@ -123,9 +124,11 @@ src/components/table/                TableHeader, PlayerStrip, PhaseBar, TimerRi
                                      ChipStack, InfoModal(+TabButtons), GameHistoryModal
 src/components/{blackjack,roulette,craps,poker}/   one folder per game; *Table.tsx is the entry
 src/components/slots/                SlotMachine (the entry, all six machines), SlotReels, SlotSymbol, SlotRules, JackpotTicker
+src/components/solo/                 SoloShell (page frame, TierPicker, ChipRack, BetSpot, useSpotBets, BetStepper) and one
+                                     file per game: Baccarat, VideoPoker (both), ThreeCard, PaiGow, SicBo, Keno, Wheel
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay)
 src/pages/TablePage.tsx              loads game_tables.game_key and dispatches to the right *Table component
-src/pages/PlayPage.tsx               /play/:gameKey: solo games; `slots_*` renders SlotMachine
+src/pages/PlayPage.tsx               /play/:gameKey: dispatches every solo game (slots and the Phase 6 games)
 src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tables, join by code, live tables
 ```
 
@@ -189,6 +192,29 @@ src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tab
      Dragon Pearls 95.3, Grand Jackpot 91.4 + 4.0 from the pot. After changing any weight or pay, re-measure
      with `select private.slot_simulate('slots_x', 1000000)` (about a minute; returns percent) and update the
      `rtp` in the config and the expected numbers in `supabase/tests/06_slots_test.sql`.
+11. `11_solo_games.sql`: eight solo games against the house.
+   - **One call:** `baccarat_deal(tier, bets)`, `sicbo_roll(tier, bets)`, `wheel_spin(tier, bets)`,
+     `keno_draw(bet, picks)`. `bets` is JSON like `{"player": 100, "tie": 10}`; `private.solo_spots` checks every
+     spot name against a regex and every amount against the stake level, and `private.solo_settle` takes the
+     bets, pays and records.
+   - **Two calls** with the player's decision in between: `vp_deal` / `vp_draw(game, holds[5])`,
+     `tcp_deal(tier, ante, pair_plus)` / `tcp_act(play)`, `pgw_deal(tier, bet)` / `pgw_set(low[2] or null)`.
+     The open round is one row in `solo_rounds` (`state` = what the player may see; unique per user and game)
+     plus the **hidden** `solo_secrets` (rest of the deck, dealer's cards). It has **no timer**: it waits for the
+     player, `private.solo_in_play` counts its chips, and the row is deleted when the round ends.
+   - Stake level: multi-spot games take `p_tier` and each spot must be in range; single-bet games (video poker,
+     keno) use `private.slot_tier` like the slots.
+   - `solo_info(game)` returns `private.solo_cfg(game)` (paytables, shown as-is in the rules), tiers, bet steps
+     and the open round.
+   - Cards: 0..51 as everywhere, **52 = joker** (Pai Gow only). `private.cg_score5(ranks, suits)` is the
+     five-card evaluator (category = value / 15^5, 9 = five aces); it takes ranks and suits, not cards, so the
+     joker can be substituted. `private.tcp_score` is the three-card one (a straight beats a flush).
+   - **Pai Gow house way** (`private.pgw_house_way`): every legal split is scored by how often its two hands
+     beat the hands the same method produces; the two 50-entry tables in that function are those hands' 2%
+     to 100% points, found with an offline simulation (house edge 2.7%). If the scoring or joker rules change,
+     the tables need regenerating the same way.
+   - Commissions (baccarat Banker, Pai Gow) are 5% **rounded up to a whole chip**, so chips stay whole.
+   - Keno prizes are hundredths of the bet in multiples of 10, the same rule as the slots.
 
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
@@ -208,7 +234,8 @@ src/pages/LobbyPage.tsx              game tabs, quick join per tier, private tab
 - Seed persistent house tables with `insert … where not exists`; flip `games.released = true` in the
   game's own file.
 - Ledger reasons used so far: `signup_bonus`, `daily_bonus`, `refill`, `bet`, `payout`, `refund`, `push`,
-  `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`. Add labels in `src/components/economy/RecentActivity.tsx`.
+  `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`. Solo games use `bet` and `payout` only (a returned
+  stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
 **Realtime publication** now has 14 tables: wallets, chip_ledger, game_tables, table_seats, bj_rounds,
 bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots. Postgres Changes enforce RLS.
@@ -238,6 +265,12 @@ bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players,
     Use the same field for any future game that settles before its animation ends.
   - Symbols are emoji, text or small SVGs sized with container-query units (`SlotSymbol`); add a machine's
     symbols and theme in `SYMBOLS` / `THEMES`. The order of `SYMBOLS[game]` is the paytable order.
+- **Phase 6 solo games** share `src/components/solo/SoloShell.tsx`: each game file is a thin outer component
+  (`useSoloGame(key)` loads `solo_info`, shows `SoloGate` until it has it) around an inner one that owns the
+  round. Betting-spot games use `useSpotBets` + `SpotControls` + `BetSpot`; single-bet games use `BetStepper`.
+  `call(fn, args)` returns `[result, null]` or `[null, message]`: test `err !== null`, not `if (err)`, or
+  TypeScript won't narrow the result. Rules text lives in each game file and reads its numbers from the config.
+  A two-call game starts from `info.round` so a hand left open is picked up after a reload.
 - Table pages share `TableHeader`: a single "← Leave table" / "← Lobby" button that leaves the seat, plus
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
 - **UX decisions the user asked for (keep them):**
@@ -275,6 +308,7 @@ bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players,
    node scripts/e2e/poker.cjs /tmp/shots        # Hold'em, Draw, Stud (24 checks); screenshots to /tmp/shots
    node scripts/e2e/phase3.cjs /tmp/shots       # roulette + craps
    node scripts/e2e/slots.cjs /tmp/shots        # all six machines, features, jackpot, phone widths (21 checks)
+   node scripts/e2e/solo.cjs /tmp/shots         # the eight Phase 6 games, a resumed hand, phone widths (29 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:
@@ -284,8 +318,11 @@ bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players,
      `insert into tests.dice (v) values (2),(3)` queues a craps roll of 3 + 4;
      `select tests.slot_reel('slots_classic', 0, 'BLANK', 'SEVEN', 'BLANK')` stacks one reel of the next spin
      (queue the reels in order; reel heights, pearl prizes and the jackpot draw are raw `tests.dice` values).
-   - `tests.dice` feeds **every** `private.random_int` call, so leftovers from one test rig the next game.
-     `reset.sql` clears it.
+   - `tests.dice` feeds **every** `private.random_int` call, and `tests.deck(...)` is the next shoe of **any**
+     size (poker, baccarat, video poker, Three Card Poker, Pai Gow), so leftovers from one test rig the next
+     game. `reset.sql` clears both. For Pai Gow also queue one `tests.dice` value: where the joker goes
+     (52 = bottom of the deck, not dealt).
+   - `mini-supabase.cjs` passes JSON objects as `jsonb` and arrays as Postgres arrays.
    - Use `exact: true` in Playwright name selectors ('50 chip' matches '250 chip').
    - Test emails need a TLD. The poker history step has timed out once on a cold start; re-run if so.
    - Kill background node processes with a bracket pattern, e.g. `pkill -f "[m]ini-supabase"`.

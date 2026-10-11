@@ -22,6 +22,7 @@ look for the same setting name under **Authentication**.
 8. `08_craps.sql`
 9. `09_poker.sql`
 10. `10_slots.sql`
+11. `11_solo_games.sql`
 
 Every file is safe to re-run. See `supabase/sql/README.md` for what each one does.
 

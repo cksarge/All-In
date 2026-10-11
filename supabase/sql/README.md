@@ -17,6 +17,7 @@ When a later phase adds or changes a file, re-running everything from `01` is al
 | 8 | `08_craps.sql` | Shared-table craps with a rotating shooter. `cr_state` (point, shooter, roll timer), `cr_rolls` (history), `cr_bets` (bets that ride across rolls). Pass / don't pass, come / don't come, odds (up to 3×, true odds), place, field, hardways and proposition bets. Dice are rolled by the server; the shooter can roll after 3 s, otherwise it auto-rolls after 20 s. Players who leave get optional bets back; contract bets play out. RPCs: `cr_state`, `cr_place_bet`, `cr_add_odds`, `cr_remove_bet`, `cr_roll`, `cr_advance`. |
 | 9 | `09_poker.sql` | Multiplayer poker, 2 to 9 seats, one engine for five games: no-limit **Texas Hold'em**, pot-limit **Omaha** and **Omaha Hi-Lo** (8 or better), fixed-limit **Seven-Card Stud** (antes, bring-in, best hand showing acts first) and no-limit **Five-Card Draw**. Players bring chips from their wallet to the table (`table_seats.stack`) and can top up between hands. Blinds/antes, a moving dealer button, server-checked minimum raises, pot-limit maths and fixed-limit caps, short all-ins that don't reopen the betting, side pots, split pots (odd chip left of the button), showdowns with hand names and the winning five cards. Tables: `pk_hands`, `pk_players` (public to the table), **`pk_hole`** (each player can read only their own cards), and the **hidden** `pk_decks` and `pk_topups`. RPCs: `pk_state`, `pk_action`, `pk_draw`, `pk_bring_chips`, `pk_advance`, `pk_hand_history`. Opens all five games with four always-open house tables each. |
 | 10 | `10_slots.sql` | Six solo slot machines and one shared progressive jackpot. **Lucky Sevens** (3 reels, one line), **Pharaoh's Fortune** (5×3, 20 paylines, wilds, free spins with wins ×2), **Gem Cascade** (6×5 cluster pays, cascades with a rising multiplier), **Wild Frontier** (243 to 3,125 ways, free spins on full-height reels), **Dragon Pearls** (5×3, 10 paylines, hold-and-win respins) and **Grand Jackpot** (5×3, 10 paylines; 2% of each bet feeds the pot and every spin can win it, with a chance in proportion to the bet). One RPC, `slot_spin(game, bet)`, takes the bet, draws every symbol, plays any feature to the end and pays in a single transaction, then returns the whole sequence for the browser to replay; `slot_info(game)` returns the paytable, bets and live jackpot (never the reel weights). Table: `jackpots` (readable by signed-in players, live). Paytables are in hundredths of the bet and tuned to return about 95 to 97%; `private.slot_simulate(game, spins)` measures it. |
+| 11 | `11_solo_games.sql` | Eight solo games against the house. One call each: **Baccarat** (`baccarat_deal`: Player, Banker less 5%, Tie 8:1, pairs 11:1, eight-deck shoe), **Sic Bo** (`sicbo_roll`), **Keno** (`keno_draw`: 1 to 10 picks, 20 of 80 drawn, about 94 to 95% back) and the **Big Six wheel** (`wheel_spin`, 54 segments). Two calls each, with the decision in between: **Jacks or Better** and **Deuces Wild** video poker (`vp_deal`, `vp_draw`), **Three Card Poker** (`tcp_deal`, `tcp_act`: Ante, Play, Pair Plus, ante bonus) and **Pai Gow Poker** (`pgw_deal`, `pgw_set`: 53 cards with the joker, a computed house way for the dealer and for the "House way" button). `solo_info(game)` returns rules, paytables, stake levels and any round waiting. Tables: `solo_rounds` (a player's open round, own rows only) and the **hidden** `solo_secrets` (the undealt deck and the dealer's cards). |
 
 ## Turn timers without a server process
 
@@ -35,8 +36,10 @@ has to change: `private.<game>_tick_stale()` (finish that game's expired rounds)
 Chips a player brought to the table (`table_seats.stack`) are returned to their wallet automatically by the
 `table_seats_removed` trigger, however the seat is freed: leaving, switching tables, or the reconnect hold running out.
 
-Solo games (the slots) need none of that: there is no table or seat, and a spin settles in the same call that
-places the bet, so chips are never left in play.
+Solo games need none of that: there is no table or seat. The slots, baccarat, Sic Bo, keno and the wheel settle in
+the same call that places the bet, so chips are never left in play. Video poker, Three Card Poker and Pai Gow keep
+one open round per player in `solo_rounds` while the player decides; it has no timer and simply waits, and
+`private.solo_in_play` counts its chips.
 
 ## Security model
 
@@ -47,7 +50,7 @@ places the bet, so chips are never left in play.
 - **Internal functions live in `private`**, which is not exposed by the Data API. Execute is
   revoked on every function there; the only exception is `private.can_view_table()`, which RLS
   policies call as the `authenticated` role. Do **not** add `private` to *Settings → Data API → Exposed schemas*.
-- **Hidden information** (the undealt shoe and decks, the dealer's hole card, the next roulette pocket) lives in
+- **Hidden information** (the undealt shoe and decks, the dealer's hole card and solo-game hands, the next roulette pocket) lives in
   tables with RLS enabled and no policies and no privileges, so no client query can read them, and they are
   never added to the realtime publication. Poker hole cards (`pk_hole`) have a single policy: you can read
   your own rows and nobody else's. Other players' cards only become public (`pk_players.shown_cards`) at showdown.

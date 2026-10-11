@@ -1,4 +1,5 @@
-/** Cards are numbers 0..51 from the server: rank = c % 13 (0 = Ace … 12 = King), suit = floor(c / 13). */
+/** Cards are numbers 0..51 from the server: rank = c % 13 (0 = Ace … 12 = King), suit = floor(c / 13). 52 is the joker (Pai Gow). */
+export const JOKER = 52;
 export const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] as const;
 export const SUITS = ['♠', '♥', '♦', '♣'] as const;
 const SUIT_NAMES = ['spades', 'hearts', 'diamonds', 'clubs'] as const;
@@ -15,5 +16,6 @@ export function isRed(c: number) {
   return s === 1 || s === 2;
 }
 export function cardName(c: number) {
+  if (c === JOKER) return 'Joker';
   return `${RANK_NAMES[c % 13]} of ${SUIT_NAMES[Math.floor(c / 13) % 4]}`;
 }

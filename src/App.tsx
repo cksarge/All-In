@@ -41,7 +41,7 @@ function RouteEffects() {
   useEffect(() => {
     document.title =
       TITLES[pathname] ??
-      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Slots · All In' : 'All In');
+      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : 'All In');
     window.scrollTo({ top: 0 });
   }, [pathname]);
   return null;

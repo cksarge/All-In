@@ -46,6 +46,7 @@ const lit = (v) => {
   if (v === null || v === undefined) return 'null';
   if (typeof v === 'number') return String(v);
   if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (typeof v === 'object' && !Array.isArray(v)) return `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb`;
   if (Array.isArray(v)) return `'{${v.map((x) => (typeof x === 'number' ? x : `"${String(x).replace(/["\\]/g, '')}"`)).join(',')}}'`;
   return `'${String(v).replace(/'/g, "''")}'`;
 };
