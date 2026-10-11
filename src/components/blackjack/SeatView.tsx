@@ -8,6 +8,7 @@ import { cn } from '@/components/ui/cn';
 import { handLabel, type BjHand, type BjRound, type BjSeat } from '@/lib/blackjack';
 import { formatChipsCompact } from '@/lib/format';
 import type { Reaction } from '@/hooks/useBlackjackTable';
+import { SeatAvatar } from '@/components/table/SeatAvatar';
 
 const RESULT_STYLE: Record<string, { text: string; cls: string }> = {
   win: { text: 'Win', cls: 'bg-felt-500 text-ivory' },
@@ -114,15 +115,7 @@ export function SeatView({
           {active && round?.phase_ends_at && (
             <TimerRing endsAt={round.phase_ends_at} totalSeconds={turnSeconds} offsetMs={offsetMs} size={52} />
           )}
-          <div
-            className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-full border-2 font-display text-lg font-bold',
-              isMe ? 'border-gold-400 bg-gradient-to-br from-ruby-600 to-ruby-800 text-gold-200' : 'border-white/25 bg-ink-700 text-cream',
-              !seat.connected && 'opacity-50',
-            )}
-          >
-            {seat.username.slice(0, 1).toUpperCase()}
-          </div>
+          <SeatAvatar userId={seat.user_id} username={seat.username} isMe={isMe} size={44} dim={!seat.connected} className="block" />
           <span
             className={cn('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-felt-800', seat.connected ? 'bg-felt-300' : 'bg-ink-400')}
             title={seat.connected ? 'Connected' : 'Reconnecting…'}

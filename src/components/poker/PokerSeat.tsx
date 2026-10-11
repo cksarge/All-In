@@ -8,6 +8,7 @@ import { cn } from '@/components/ui/cn';
 import type { Reaction } from '@/hooks/useLiveTable';
 import { formatChipsCompact } from '@/lib/format';
 import type { PkConfig, PkHand, PkPlayer, PkSeat } from '@/lib/poker';
+import { SeatAvatar } from '@/components/table/SeatAvatar';
 
 export function PokerSeat({
   seatNo,
@@ -118,14 +119,7 @@ export function PokerSeat({
     >
       <div className="relative h-8 w-8 shrink-0">
         {isTurn && hand?.phase_ends_at && <TimerRing endsAt={hand.phase_ends_at} totalSeconds={config.turn_seconds} offsetMs={offsetMs} size={40} />}
-        <div
-          className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-full border font-display text-sm font-bold',
-            isMe ? 'border-gold-400 bg-gradient-to-br from-ruby-600 to-ruby-800 text-gold-200' : 'border-white/25 bg-ink-700 text-cream',
-          )}
-        >
-          {name.slice(0, 1).toUpperCase()}
-        </div>
+        <SeatAvatar userId={seat?.user_id} username={name} isMe={isMe} size={32} className="block" />
         {seat && (
           <span
             className={cn('absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-ink-950', seat.connected ? 'bg-felt-300' : 'bg-ink-400')}

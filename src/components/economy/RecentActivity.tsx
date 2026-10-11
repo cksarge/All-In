@@ -20,6 +20,7 @@ const REASONS: Record<string, string> = {
   poker_pot: 'Poker pot',
   jackpot: 'Jackpot win',
   achievement: 'Achievement reward',
+  level_up: 'Level-up reward',
 };
 
 export function describeLedger(e: LedgerEntry): string {

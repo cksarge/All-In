@@ -122,10 +122,11 @@
     @apply rounded-2xl border border-white/[0.06] bg-ink-800/80 backdrop-blur-sm;
     box-shadow: var(--shadow-card);
   }
+  /* The colour comes from the player's equipped felt (see applyFelt in progressStore). */
   .felt {
-    background-color: var(--color-felt-800);
+    background-color: var(--felt-base, var(--color-felt-800));
     background-image:
-      radial-gradient(ellipse at 50% 35%, rgb(44 154 104 / 0.35), transparent 65%),
+      radial-gradient(ellipse at 50% 35%, rgb(var(--felt-glow, 44 154 104) / 0.35), transparent 65%),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
   }
   .gold-text {

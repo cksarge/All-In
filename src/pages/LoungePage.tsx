@@ -12,6 +12,7 @@ import { ErrorState, FullPageLoader } from '@/components/ui/States';
 import { useAuth } from '@/stores/authStore';
 import { useSettings } from '@/stores/settingsStore';
 import { useWallet } from '@/stores/walletStore';
+import { ProgressCard } from '@/components/progress/ProgressCard';
 
 function greeting() {
   const h = new Date().getHours();
@@ -77,6 +78,7 @@ export default function LoungePage() {
           <DailyBonusCard />
         </div>
         <div className="flex flex-col gap-5">
+          <ProgressCard />
           <RefillCard />
           <RecentActivity />
         </div>

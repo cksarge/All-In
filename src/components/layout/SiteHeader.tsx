@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Avatar } from '@/components/ui/Avatar';
 import { ButtonLink } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
 import { cn } from '@/components/ui/cn';
 import { SettingsButton } from '@/components/settings/SettingsModal';
 import { useAuth } from '@/stores/authStore';
+import { useProgress } from '@/stores/progressStore';
 import { useUi } from '@/stores/uiStore';
 import { BalancePill } from './BalancePill';
 import { SoundToggle } from './SoundToggle';
@@ -37,7 +39,9 @@ function UserMenu() {
     };
   }, [open]);
 
-  const initial = (profile?.username ?? '?').slice(0, 1).toUpperCase();
+  const me = useProgress((s) => s.me);
+  // A dot on the avatar when something is waiting: rewards to collect or a friend request.
+  const waiting = Boolean(me && (me.unclaimed_chips > 0 || me.friend_requests > 0));
 
   return (
     <div className="relative" ref={ref}>
@@ -49,10 +53,12 @@ function UserMenu() {
         aria-label="Account menu"
         className="flex h-10 items-center gap-2 rounded-xl pl-0.5 pr-0.5 transition hover:bg-white/[0.06] md:pl-1 md:pr-2"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gold-500/50 bg-gradient-to-br from-ruby-600 to-ruby-800 font-display text-sm font-bold text-gold-200">
-          {initial}
+        <span className="relative">
+          <Avatar username={profile?.username ?? '?'} loadout={me?.loadout} size={34} me />
+          {waiting && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-ink-900 bg-gold-400" aria-hidden="true" />}
         </span>
         <span className="hidden max-w-28 truncate text-sm font-medium text-cream md:inline">{profile?.username ?? '…'}</span>
+        {me && <span className="hidden rounded-full border border-gold-500/40 px-1.5 text-[0.65rem] font-bold tabular-nums text-gold-200 lg:inline">Lv {me.level}</span>}
       </button>
       {open && (
         <div
@@ -67,6 +73,20 @@ function UserMenu() {
           </Link>
           <Link role="menuitem" to="/lobby" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Lobby
+          </Link>
+          <Link role="menuitem" to="/profile" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Profile
+            {me && me.unclaimed_chips > 0 && <span className="ml-2 text-xs text-gold-300">rewards waiting</span>}
+          </Link>
+          <Link role="menuitem" to="/locker" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Locker
+          </Link>
+          <Link role="menuitem" to="/friends" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Friends
+            {me && me.friend_requests > 0 && <span className="ml-2 rounded-full bg-gold-500 px-1.5 text-xs font-bold text-ink-950">{me.friend_requests}</span>}
+          </Link>
+          <Link role="menuitem" to="/leaderboards" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Leaderboards
           </Link>
           <button
             role="menuitem"
@@ -122,9 +142,15 @@ export function SiteHeader() {
               <NavLink to="/lobby" className={navCls}>
                 Lobby
               </NavLink>
+              <NavLink to="/leaderboards" className={({ isActive }) => cn(navCls({ isActive }), 'hidden lg:block')}>
+                Leaderboards
+              </NavLink>
+              <NavLink to="/friends" className={({ isActive }) => cn(navCls({ isActive }), 'hidden lg:block')}>
+                Friends
+              </NavLink>
             </>
           )}
-          <NavLink to="/how-chips-work" className={navCls}>
+          <NavLink to="/how-chips-work" className={({ isActive }) => cn(navCls({ isActive }), signedIn && 'hidden xl:block')}>
             How chips work
           </NavLink>
         </nav>

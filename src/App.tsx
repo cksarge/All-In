@@ -6,14 +6,18 @@ import { Toaster } from '@/components/ui/Toaster';
 import { supabaseConfigured } from '@/lib/supabase';
 import ConfigMissingPage from '@/pages/ConfigMissingPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import FriendsPage from '@/pages/FriendsPage';
 import HowChipsWorkPage from '@/pages/HowChipsWorkPage';
 import JoinPage from '@/pages/JoinPage';
 import LandingPage from '@/pages/LandingPage';
+import LeaderboardPage from '@/pages/LeaderboardPage';
+import LockerPage from '@/pages/LockerPage';
 import LogInPage from '@/pages/LogInPage';
 import LobbyPage from '@/pages/LobbyPage';
 import LoungePage from '@/pages/LoungePage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import PlayPage from '@/pages/PlayPage';
+import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
 import SignUpPage from '@/pages/SignUpPage';
 import TablePage from '@/pages/TablePage';
@@ -21,6 +25,7 @@ import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import { GuestOnly, RequireAuth } from '@/routes/guards';
 import { useOnlinePresence } from '@/hooks/useLobby';
 import { useAuth } from '@/stores/authStore';
+import { useProgress } from '@/stores/progressStore';
 import { prefersReducedMotion, useSettings } from '@/stores/settingsStore';
 import { useWallet } from '@/stores/walletStore';
 
@@ -34,6 +39,10 @@ const TITLES: Record<string, string> = {
   '/lobby': 'Lobby · All In',
   '/how-chips-work': 'How chips work · All In',
   '/settings': 'Settings · All In',
+  '/profile': 'Profile · All In',
+  '/locker': 'Locker · All In',
+  '/friends': 'Friends · All In',
+  '/leaderboards': 'Leaderboards · All In',
 };
 
 function RouteEffects() {
@@ -41,7 +50,7 @@ function RouteEffects() {
   useEffect(() => {
     document.title =
       TITLES[pathname] ??
-      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : 'All In');
+      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : pathname.startsWith('/profile/') ? 'Profile · All In' : 'All In');
     window.scrollTo({ top: 0 });
   }, [pathname]);
   return null;
@@ -68,6 +77,27 @@ function WalletConnector() {
   return null;
 }
 
+/** Keeps XP, achievements and the equipped look loaded while signed in, and refreshes them as you move around. */
+function ProgressConnector() {
+  const userId = useAuth((s) => s.user?.id);
+  const connect = useProgress((s) => s.connect);
+  const reset = useProgress((s) => s.reset);
+  const fetch = useProgress((s) => s.fetch);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (!userId) {
+      reset();
+      return;
+    }
+    return connect(userId);
+  }, [userId, connect, reset]);
+  // Leaving a game is when new XP and achievements are most likely to be waiting.
+  useEffect(() => {
+    if (userId && useProgress.getState().me) void fetch();
+  }, [pathname, userId, fetch]);
+  return null;
+}
+
 export default function App() {
   const init = useAuth((s) => s.init);
   const motionPref = useSettings((s) => s.motion);
@@ -86,6 +116,7 @@ export default function App() {
         <RouteEffects />
         <WalletConnector />
         <PresenceConnector />
+        <ProgressConnector />
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<LandingPage />} />
@@ -100,6 +131,11 @@ export default function App() {
             <Route path="lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
             <Route path="table/:id" element={<RequireAuth><TablePage /></RequireAuth>} />
             <Route path="play/:gameKey" element={<RequireAuth><PlayPage /></RequireAuth>} />
+            <Route path="profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+            <Route path="profile/:username" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+            <Route path="locker" element={<RequireAuth><LockerPage /></RequireAuth>} />
+            <Route path="friends" element={<RequireAuth><FriendsPage /></RequireAuth>} />
+            <Route path="leaderboards" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
             <Route path="join/:code" element={<RequireAuth><JoinPage /></RequireAuth>} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>

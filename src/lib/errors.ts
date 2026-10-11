@@ -71,6 +71,13 @@ const RPC_MESSAGES: Record<string, string> = {
   no_round: 'That hand is already finished.',
   invalid_hand: "That isn't a legal way to set the hand.",
   invalid_picks: 'Pick 1 to 10 different numbers.',
+  // Progress, cosmetics and friends
+  nothing_to_claim: 'There are no rewards waiting right now.',
+  cosmetic_locked: "You haven't unlocked that yet.",
+  unknown_cosmetic: "That item doesn't exist.",
+  player_not_found: "We couldn't find a player with that name.",
+  request_not_found: 'That friend request is no longer there.',
+  unknown_board: "That leaderboard doesn't exist.",
 };
 
 /** Errors whose server hint is already player-friendly. */

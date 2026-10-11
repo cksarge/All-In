@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { cardName, cardRank, cardSuit, isRed, JOKER } from '@/lib/cards';
 import { cn } from '@/components/ui/cn';
+import { CARD_BACKS } from '@/lib/progress';
+import { useProgress } from '@/stores/progressStore';
 
 const sizes = {
   xs: 'h-[2.5rem] w-[1.8rem] text-[0.55rem] rounded',
@@ -11,16 +13,20 @@ const sizes = {
 
 export type CardSize = keyof typeof sizes;
 
-function CardBack({ className }: { className?: string }) {
+/** The back of a card, in the design the player has equipped (`back` overrides it, for previews). */
+export function CardBack({ className, back }: { className?: string; back?: string }) {
+  const equipped = useProgress((s) => s.me?.loadout.card_back);
+  const b = CARD_BACKS[back ?? equipped ?? 'back_ruby'] ?? CARD_BACKS.back_ruby;
   return (
     <div
-      className={cn('absolute inset-0 overflow-hidden border border-gold-500/60 bg-ruby-700', className)}
+      className={cn('absolute inset-0 overflow-hidden border', className)}
       style={{
-        backgroundImage:
-          'repeating-linear-gradient(45deg, rgba(240,214,136,0.22) 0 2px, transparent 2px 9px), repeating-linear-gradient(-45deg, rgba(240,214,136,0.22) 0 2px, transparent 2px 9px)',
+        backgroundColor: b.base,
+        borderColor: `rgba(${b.line},0.6)`,
+        backgroundImage: `repeating-linear-gradient(45deg, rgba(${b.line},0.22) 0 2px, transparent 2px 9px), repeating-linear-gradient(-45deg, rgba(${b.line},0.22) 0 2px, transparent 2px 9px)`,
       }}
     >
-      <div className="absolute inset-[12%] rounded-[inherit] border border-gold-300/40" />
+      <div className="absolute inset-[12%] rounded-[inherit] border" style={{ borderColor: `rgba(${b.line},0.4)` }} />
     </div>
   );
 }

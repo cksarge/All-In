@@ -4,6 +4,7 @@ import { ChipAmount } from '@/components/ui/ChipAmount';
 import { cn } from '@/components/ui/cn';
 import type { LiveSeat, Reaction } from '@/hooks/useLiveTable';
 import { ReactionBubble } from './ReactionBar';
+import { SeatAvatar } from './SeatAvatar';
 
 /** Row of seated players for shared tables (roulette, craps). */
 export function PlayerStrip({
@@ -38,16 +39,14 @@ export function PlayerStrip({
         return (
           <li key={s.seat_no} className="relative flex items-center gap-2 rounded-xl bg-ink-950/40 py-1.5 pl-1.5 pr-3">
             <div className="relative">
-              <div
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-full border-2 font-display font-bold',
-                  me ? 'border-gold-400 bg-gradient-to-br from-ruby-600 to-ruby-800 text-gold-200' : 'border-white/25 bg-ink-700 text-cream',
-                  lit && 'ring-2 ring-gold-400 ring-offset-2 ring-offset-felt-800',
-                  !s.connected && 'opacity-50',
-                )}
-              >
-                {s.username.slice(0, 1).toUpperCase()}
-              </div>
+              <SeatAvatar
+                userId={s.user_id}
+                username={s.username}
+                isMe={me}
+                size={36}
+                dim={!s.connected}
+                className={cn('block', lit && 'ring-2 ring-gold-400 ring-offset-2 ring-offset-ink-900')}
+              />
               <span
                 className={cn('absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-ink-900', s.connected ? 'bg-felt-300' : 'bg-ink-400')}
                 title={s.connected ? 'Connected' : 'Reconnecting…'}
