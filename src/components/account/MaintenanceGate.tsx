@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/ui/Logo';
 import { FullPageLoader } from '@/components/ui/States';
 import { supabase } from '@/lib/supabase';
@@ -21,6 +22,9 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
   const userId = useAuth((s) => s.user?.id);
   const [status, setStatus] = useState<SiteStatus | null>(null);
   const [asked, setAsked] = useState(false);
+  // The Terms and the Privacy Policy stay readable whatever the site is doing.
+  const { pathname } = useLocation();
+  const legal = pathname === '/terms' || pathname === '/privacy';
 
   useEffect(() => {
     // Wait until we know who is asking: the answer says whether they are the admin.
@@ -47,7 +51,7 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
   }, [authStatus, userId]);
 
   if (!asked) return <FullPageLoader label="Shuffling up…" />;
-  if (status?.maintenance && !status.admin) {
+  if (status?.maintenance && !status.admin && !legal) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 py-16 text-center" role="alert">
         <Logo to="/" />
@@ -62,6 +66,14 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
           <p className="mt-4 text-xs text-muted">This page checks by itself and will let you back in as soon as the site reopens.</p>
         </div>
         <p className="text-xs text-muted">Free to play. No real money. No purchases. Chips have no cash value.</p>
+        <p className="flex gap-4 text-xs text-muted">
+          <Link to="/terms" className="hover:text-ivory">
+            Terms of Service
+          </Link>
+          <Link to="/privacy" className="hover:text-ivory">
+            Privacy Policy
+          </Link>
+        </p>
       </main>
     );
   }

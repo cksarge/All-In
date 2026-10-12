@@ -12,6 +12,8 @@ import ConfigMissingPage from '@/pages/ConfigMissingPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import FriendsPage from '@/pages/FriendsPage';
 import HowChipsWorkPage from '@/pages/HowChipsWorkPage';
+import TermsPage from '@/pages/TermsPage';
+import PrivacyPage from '@/pages/PrivacyPage';
 import JoinPage from '@/pages/JoinPage';
 import LandingPage from '@/pages/LandingPage';
 import LeaderboardPage from '@/pages/LeaderboardPage';
@@ -230,6 +232,8 @@ export default function App() {
               {/* Not GuestOnly: verifying the reset code signs you in mid-flow. */}
               <Route path="forgot-password" element={<ForgotPasswordPage />} />
               <Route path="how-chips-work" element={<HowChipsWorkPage />} />
+              <Route path="terms" element={<TermsPage />} />
+              <Route path="privacy" element={<PrivacyPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="lounge" element={<RequireAuth><LoungePage /></RequireAuth>} />
               <Route path="lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />

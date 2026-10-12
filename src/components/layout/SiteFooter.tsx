@@ -17,6 +17,12 @@ export function SiteFooter() {
           <Link to="/how-chips-work" className="hover:text-ivory">
             How chips work
           </Link>
+          <Link to="/terms" className="hover:text-ivory">
+            Terms
+          </Link>
+          <Link to="/privacy" className="hover:text-ivory">
+            Privacy
+          </Link>
           <button type="button" onClick={openSettings} className="hover:text-ivory">
             Settings
           </button>

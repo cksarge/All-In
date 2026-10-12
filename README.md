@@ -33,6 +33,8 @@ It builds to a static site.
 - **Progress:** XP and 100 levels, 81 achievements, earned cosmetics, daily and weekly missions, monthly seasons.
 - **Social:** friends, clubs, leaderboards, profiles with records, preset quick chat (no free text anywhere).
 - **Moderation:** reports, blocks, an admin page, and a site maintenance switch.
+- **Terms of Service and Privacy Policy** at `/terms` and `/privacy`, agreed to at sign-up (their shared facts,
+  such as the contact address and effective date, are in `src/lib/legal.ts`).
 
 ## Folder structure
 

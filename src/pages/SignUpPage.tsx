@@ -11,6 +11,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { PasswordField, TextField } from '@/components/ui/TextField';
 import { useUsernameCheck, type UsernameStatus } from '@/hooks/useUsernameCheck';
 import { friendlyError } from '@/lib/errors';
+import { LEGAL } from '@/lib/legal';
 import { setPending } from '@/lib/pendingAuth';
 import { playSound } from '@/lib/sound';
 import { supabase } from '@/lib/supabase';
@@ -28,6 +29,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [ack, setAck] = useState(false);
+  const [agree, setAgree] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,12 +45,13 @@ export default function SignUpPage() {
   const pwErr = !passwordIsValid(password) ? 'Your password needs to meet every requirement below.' : null;
   const confirmErr = confirm !== password ? "Passwords don't match." : !confirm ? 'Re-enter your password.' : null;
   const ackErr = !ack ? 'Please confirm you understand All In uses play chips only.' : null;
+  const agreeErr = !agree ? 'To create an account you need to agree to the Terms of Service and confirm you have read the Privacy Policy.' : null;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
     setFormError(null);
-    if (emailErr || nameErr || pwErr || confirmErr || ackErr) {
+    if (emailErr || nameErr || pwErr || confirmErr || ackErr || agreeErr) {
       playSound('error');
       return;
     }
@@ -68,7 +71,8 @@ export default function SignUpPage() {
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
-      options: { data: { username }, captchaToken },
+      // Which Terms and Privacy Policy were accepted, and when, is kept with the account.
+      options: { data: { username, legal_version: LEGAL.version, legal_accepted_at: new Date().toISOString() }, captchaToken },
     });
     captcha.current?.reset();
     setBusy(false);
@@ -158,6 +162,17 @@ export default function SignUpPage() {
         <Checkbox checked={ack} onChange={setAck} error={submitted ? ackErr : null}>
           I understand that All In is a free game that uses <strong className="text-ivory">play chips only</strong>.
           There is no gambling, no purchases and no real money, and chips have no cash value.
+        </Checkbox>
+        <Checkbox checked={agree} onChange={setAgree} error={submitted ? agreeErr : null}>
+          I am {LEGAL.minAge} or older, and if I am under 18 I have a parent&apos;s or guardian&apos;s permission. I agree to the{' '}
+          <Link to="/terms" target="_blank" rel="noopener" className="font-semibold text-gold-300 underline">
+            Terms of Service
+          </Link>{' '}
+          and I have read the{' '}
+          <Link to="/privacy" target="_blank" rel="noopener" className="font-semibold text-gold-300 underline">
+            Privacy Policy
+          </Link>
+          .
         </Checkbox>
 
         <Turnstile ref={captcha} action="signup" />

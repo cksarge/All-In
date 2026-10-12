@@ -180,7 +180,13 @@ sure the code is on `main`, and check that the latest **Deploy to GitHub Pages**
 3. **Table Editor**: `profiles`, `wallets` and `chip_ledger` each have a row for you
    (`chip_ledger.reason = signup_bonus`).
 
-## 12. The admin, and scripts you run by hand
+## 12. Terms, privacy and the contact address
+
+The Terms of Service and Privacy Policy publish **`contact@carterscoding.com`** for questions, privacy requests and
+account deletion. Make sure that address exists and reaches you. To delete a player's account when asked, remove
+the user under **Authentication → Users**: their profile, chips and game records are deleted with it.
+
+## 13. The admin, and scripts you run by hand
 
 - **The admin** is the account whose username is `Carter` when `15_moderation.sql` first runs. It gets the hidden
   `/admin` page (reports, bans, timeouts, renames, chip changes, clubs, a site notice, site maintenance).

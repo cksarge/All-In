@@ -150,7 +150,7 @@ supabase/maintenance/                run by hand, not numbered, not applied by t
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
 supabase/tests/NN_*_test.sql         18 test files: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
-src/App.tsx                          routes: / signup login verify forgot-password how-chips-work settings
+src/App.tsx                          routes: / signup login verify forgot-password how-chips-work terms privacy settings
                                      lounge lobby table/:id play/:gameKey join/:code
                                      profile profile/:username locker friends leaderboards clubs clubs/:id
                                      missions inbox tournaments tournaments/:id admin *
@@ -193,6 +193,7 @@ src/components/ui/Avatar.tsx         a player's picture and frame; src/component
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay; 52 = joker)
 src/pages/                           one file per route: Profile, Locker, Friends, Leaderboard, Clubs, Missions, Inbox,
                                      Tournaments, Showdown (one slot showdown), Admin, and the auth and info pages
+src/pages/{Terms,Privacy}Page.tsx    the Terms of Service and Privacy Policy (frame: components/legal/LegalDoc; facts: lib/legal.ts)
 src/pages/TablePage.tsx              loads game_tables.game_key and dispatches to the right *Table component
 src/pages/PlayPage.tsx               /play/:gameKey: dispatches every game that isn't played at a table
 src/pages/LobbyPage.tsx              a picker with every game (by section); table games show quick join, private
@@ -653,10 +654,20 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   - The favicon matches the logo chip.
   - Nothing may be clipped at 360–390 px wide.
 - Auth:
+  - Sign-up asks for two confirmations: play chips only, and the Terms / Privacy / age box.
   - Email + password. Sign-up confirmation and password reset use a 6-digit OTP (`{{ .Token }}`):
     `verifyOtp` type `'email'` for sign-up and `'recovery'` for reset.
   - Every `signUp`, `signInWithPassword`, `resend` and `resetPasswordForEmail` call gets a fresh Turnstile
     token (`TurnstileHandle.getToken()`, then `reset()`). The widget uses `appearance='always'` on the main forms.
+- **Terms of Service and Privacy Policy** (`/terms`, `/privacy`; written by Claude for the user to review, not by a
+  lawyer). The shared facts are in `src/lib/legal.ts` (`LEGAL`): effective date October 11, 2026, operator Carter K,
+  Arizona law, contact `contact@carterscoding.com`, minimum age 13 (under 18 with a parent's permission): the user's
+  choices. Both are linked from the footer and from the maintenance page, and stay readable during maintenance.
+  Sign-up has a second required checkbox (age, agree to the Terms, have read the Privacy Policy); the accepted
+  `legal_version` and `legal_accepted_at` are saved in the account's auth metadata, so no SQL was needed.
+  **When either document changes, change `LEGAL.version` and `LEGAL.effective`.** If the game starts collecting
+  something new or uses a new outside service, the Privacy Policy must say so. The copy guard applies to these
+  pages too: the banned words only pass on a line that also contains a disclaimer such as "no purchases".
 - Styling: Tailwind with custom colours (`ink`, `felt`, `ruby`, `gold`, `cream`, `ivory`), the `.felt` and
   `.surface` classes, Playfair Display headings and Inter body text. Sounds come from `playSound(...)` in
   `src/lib/sound.ts`.
