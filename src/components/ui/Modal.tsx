@@ -21,16 +21,23 @@ export function Modal({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+  // The page behind a dialog keeps re-rendering (timers, live tables) and hands over a new onClose each time.
+  // Reading it through a ref keeps the effect below tied to opening and closing only: otherwise every
+  // re-render moved focus back to the first button, which scrolled a long dialog back to the top.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const dismissibleRef = useRef(dismissible);
+  dismissibleRef.current = dismissible;
 
   useEffect(() => {
     if (!open) return;
     restoreRef.current = document.activeElement as HTMLElement | null;
     const t = window.setTimeout(() => {
       const el = panelRef.current?.querySelector<HTMLElement>('[data-autofocus], button, [href], input');
-      (el ?? panelRef.current)?.focus();
+      (el ?? panelRef.current)?.focus({ preventScroll: true });
     }, 30);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && dismissible) onClose();
+      if (e.key === 'Escape' && dismissibleRef.current) onCloseRef.current();
       if (e.key === 'Tab' && panelRef.current) {
         const items = panelRef.current.querySelectorAll<HTMLElement>(
           'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
@@ -56,7 +63,7 @@ export function Modal({
       document.body.style.overflow = prevOverflow;
       restoreRef.current?.focus?.();
     };
-  }, [open, onClose, dismissible]);
+  }, [open]);
 
   return createPortal(
     <AnimatePresence>
