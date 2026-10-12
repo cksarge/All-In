@@ -12,6 +12,14 @@ import type { GameRow } from '@/lib/types';
 import { useSettings } from '@/stores/settingsStore';
 
 type Filter = 'all' | CategoryKey;
+type Kind = 'any' | 'live' | 'solo' | 'tournament' | 'favourites';
+const KINDS: { key: Kind; label: string }[] = [
+  { key: 'any', label: 'Any kind' },
+  { key: 'live', label: 'Live' },
+  { key: 'solo', label: 'Solo' },
+  { key: 'tournament', label: 'Tournaments' },
+  { key: 'favourites', label: '★ Favourites' },
+];
 
 const MODE_TAG = {
   tables: { text: 'Live', className: 'bg-felt-600/60 text-felt-300' },
@@ -83,6 +91,8 @@ export function GameGrid() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [jackpots, setJackpots] = useState<Record<string, number>>({});
+  const [query, setQuery] = useState('');
+  const [kind, setKind] = useState<Kind>('any');
 
   const load = async () => {
     setError(null);
@@ -101,15 +111,23 @@ export function GameGrid() {
     void load();
   }, []);
 
-  const sections = useMemo(
-    () =>
-      CATEGORIES.filter((c) => filter === 'all' || c.key === filter).map((c) => ({
-        ...c,
-        games: (games ?? []).filter((g) => g.category === c.key),
-      })),
-    [games, filter],
-  );
   const favourites = useSettings((s) => s.favourites);
+  const q = query.trim().toLowerCase();
+  const narrowed = q !== '' || kind !== 'any';
+  const sections = useMemo(() => {
+    const matches = (g: GameRow) => {
+      const mode = gameMode(g);
+      if (kind === 'live' && mode !== 'tables' && mode !== 'room') return false;
+      if (kind === 'solo' && mode !== 'solo') return false;
+      if (kind === 'tournament' && mode !== 'tournament') return false;
+      if (kind === 'favourites' && !favourites.includes(g.key)) return false;
+      // Every word typed must appear in the name or the tagline.
+      return q === '' || q.split(/\s+/).every((w) => `${g.name} ${g.tagline}`.toLowerCase().includes(w));
+    };
+    return CATEGORIES.filter((c) => filter === 'all' || c.key === filter)
+      .map((c) => ({ ...c, games: (games ?? []).filter((g) => g.category === c.key && matches(g)) }))
+      .filter((c) => !narrowed || c.games.length > 0);
+  }, [games, filter, q, kind, favourites, narrowed]);
   const recent = useSettings((s) => s.recentGames);
   const byKey = new Map((games ?? []).map((g) => [g.key, g]));
   const shelf = (keys: string[]) => keys.map((k) => byKey.get(k)).filter((g): g is GameRow => Boolean(g && g.released));
@@ -148,7 +166,49 @@ export function GameGrid() {
         </div>
       </div>
 
-      {games && (shelf(recent).length > 0 || shelf(favourites).length > 0) && (
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <label className="sr-only" htmlFor="game-search">
+          Search the games
+        </label>
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <input
+            id="game-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search the games…"
+            autoComplete="off"
+            className="h-10 w-full rounded-xl border border-white/15 bg-ink-950/60 pl-9 pr-3 text-sm text-ivory placeholder:text-subtle"
+          />
+          <svg viewBox="0 0 20 20" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="9" cy="9" r="5.5" />
+            <path d="M13.5 13.5L17 17" />
+          </svg>
+        </div>
+        <div role="group" aria-label="Kind of game" className="flex flex-wrap gap-1.5">
+          {KINDS.map((k) => (
+            <button
+              key={k.key}
+              type="button"
+              aria-pressed={kind === k.key}
+              onClick={() => setKind(k.key)}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-xs font-medium transition',
+                kind === k.key ? 'border-felt-300/60 bg-felt-600/30 text-felt-300' : 'border-white/10 text-cream/75 hover:border-white/20 hover:text-ivory',
+              )}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+        {narrowed && (
+          <button type="button" onClick={() => { setQuery(''); setKind('any'); }} className="text-xs font-semibold text-gold-300 hover:underline">
+            Clear
+          </button>
+        )}
+      </div>
+
+      {games && !narrowed && (shelf(recent).length > 0 || shelf(favourites).length > 0) && (
         <div className="mt-5 space-y-2">
           {[
             { label: 'Jump back in', list: shelf(recent).slice(0, 5) },
@@ -182,6 +242,10 @@ export function GameGrid() {
       ) : games.length === 0 ? (
         <div className="surface mt-6">
           <EmptyState title="No games here yet" message="Check back soon." />
+        </div>
+      ) : sections.length === 0 ? (
+        <div className="surface mt-6">
+          <EmptyState title="No games match" message="Try a different word, or clear the search." />
         </div>
       ) : (
         sections.map((s) => (

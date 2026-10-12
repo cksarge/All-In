@@ -1,3 +1,4 @@
+import { useRemembered } from '@/hooks/useRemembered';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BetStepper, Outcome, SoloGate, SoloShell } from '@/components/solo/SoloShell';
@@ -41,8 +42,8 @@ export function ScratchGame() {
 
 function Counter({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof useSoloGame>['call'] }) {
   const balance = useWallet((s) => s.status?.balance ?? 0);
-  const [card, setCard] = useState<CardKey>('clover');
-  const [betIndex, setBetIndex] = useState(0);
+  const [card, setCard] = useRemembered<CardKey>('scratch:card', 'clover', (v) => ['clover', 'gold', 'diamond'].includes(v));
+  const [betIndex, setBetIndex] = useRemembered(`bet:${info.game}`, 0, (v) => Number.isInteger(v) && v >= 0 && v < info.bets.length);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [open, setOpen] = useState<boolean[]>(Array(9).fill(false));

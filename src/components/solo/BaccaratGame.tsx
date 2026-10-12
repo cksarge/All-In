@@ -55,7 +55,7 @@ function Hand({ title, cards, order, total, shown, won, roundId }: { title: stri
 }
 
 function Table({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof useSoloGame>['call'] }) {
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [shown, setShown] = useState(false);
@@ -111,7 +111,7 @@ function Table({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
       info={info}
       tier={s.tierKey}
       status={status}
-      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Deal" onAction={() => void deal()} />}
+      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Deal" onAction={() => void deal()} auto />}
       rules={
         <>
           <p>

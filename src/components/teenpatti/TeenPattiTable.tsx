@@ -147,6 +147,16 @@ export function TeenPattiTable({ tableId }: { tableId: string }) {
     void useWallet.getState().fetchStatus();
     return !err;
   };
+  // "Sit out next hand": finish the hand you are in, then sit out by yourself.
+  const [outNext, setOutNext] = useState(false);
+  const handOver = !hand || hand.phase === 'settled';
+  useEffect(() => {
+    if (!outNext || !handOver || !mySeat || mySeat.status === 'sitting_out') return;
+    setOutNext(false);
+    void t.sitOut(true).then((err) => (err ? toast.error(err) : toast.info('You are sitting out', 'Press "I\'m back" when you want to be dealt in again.')));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outNext, handOver, mySeat?.status]);
+
   const act = (a: TpAction) => void run(a, () => t.call('tpt_action', { p_action: a }), a === 'see' ? 'card' : a === 'pack' ? 'click' : 'chip');
 
   // Seated with nothing in front of you: offer to bring chips (once per visit).
@@ -240,6 +250,8 @@ export function TeenPattiTable({ tableId }: { tableId: string }) {
       <TableHeader
         table={{ ...table, min_bet: 0, max_bet: 0, variant: 'Blind or seen' }}
         stakes={`Boot ${formatChips(stakes.boot)}`}
+        game={table.game_key}
+        atStake={viewHand && viewHand.phase !== 'settled' && myPlayer && myPlayer.status !== 'folded' ? 'You are in this hand. Leaving packs it, and the chips you have put in stay in the pot.' : null}
         watchers={t.watchers}
         connected={t.connected}
         mySeat={mySeat}
@@ -376,6 +388,23 @@ export function TeenPattiTable({ tableId }: { tableId: string }) {
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
           {mySeat && <ReactionBar onSend={t.sendReaction} game="poker" channel={`table:${tableId}`} />}
+          {mySeat && !sittingOut && (
+            <button
+              type="button"
+              aria-pressed={outNext}
+              onClick={() => {
+                setOutNext(!outNext);
+                playSound('click');
+              }}
+              title="Finish this hand, then sit out until you say you are back"
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                outNext ? 'border-gold-400 bg-gold-500/20 text-gold-100' : 'border-white/15 text-cream/80 hover:border-white/30',
+              )}
+            >
+              {outNext ? '✓ ' : ''}Sit out next hand
+            </button>
+          )}
           {viewHand?.phase === 'betting' && myPlayer?.status === 'active' && (
             <p className="text-xs text-cream/75">
               {me?.hole ? (

@@ -40,7 +40,7 @@ import { useReputation } from '@/stores/reputationStore';
 import { useAuth } from '@/stores/authStore';
 import { useLive } from '@/stores/liveStore';
 import { useProgress } from '@/stores/progressStore';
-import { prefersReducedMotion, useSettings } from '@/stores/settingsStore';
+import { prefersReducedMotion, useSettings, TEXT_SCALE } from '@/stores/settingsStore';
 import { toast } from '@/stores/toastStore';
 import { useWallet } from '@/stores/walletStore';
 
@@ -219,12 +219,26 @@ function TournamentConnector() {
 export default function App() {
   const init = useAuth((s) => s.init);
   const motionPref = useSettings((s) => s.motion);
+  const textSize = useSettings((s) => s.textSize);
   const reduced = prefersReducedMotion(motionPref);
 
   useEffect(() => init(), [init]);
   useEffect(() => {
     document.documentElement.dataset.reducedMotion = String(reduced);
   }, [reduced]);
+
+  // Compact / normal / large: the whole site is sized from the page's base text size.
+  // On a narrow phone "large" takes a smaller step: the layouts are built to fit down to 360px wide,
+  // and a bigger base size makes the screen act narrower than that.
+  useEffect(() => {
+    const apply = () => {
+      const narrow = window.innerWidth < 430;
+      document.documentElement.style.fontSize = textSize === 'large' && narrow ? '106.25%' : (TEXT_SCALE[textSize] ?? '100%');
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [textSize]);
 
   if (!supabaseConfigured) return <ConfigMissingPage />;
 

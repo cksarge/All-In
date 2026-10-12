@@ -213,6 +213,8 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
     <div className="mx-auto max-w-6xl px-3 pb-36 pt-4 sm:px-4 sm:pb-10">
       <TableHeader
         table={table}
+        game="blackjack"
+        atStake={round && round.phase !== 'settled' && myHands.length > 0 ? 'You have a bet on this round. If you leave now, your hand is played out without you.' : null}
         watchers={t.watchers}
         connected={t.connected}
         mySeat={mySeat}

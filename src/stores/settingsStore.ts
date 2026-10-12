@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type MotionPreference = 'system' | 'reduce' | 'full';
+export type TextSize = 'compact' | 'normal' | 'large';
+/** What each text size sets the page's base size to: everything is sized from it. */
+export const TEXT_SCALE: Record<TextSize, string> = { compact: '93.75%', normal: '100%', large: '112.5%' };
 
 interface SettingsState {
   soundOn: boolean;
@@ -11,6 +14,8 @@ interface SettingsState {
   setMusicOn: (on: boolean) => void;
   setMusicVolume: (v: number) => void;
   motion: MotionPreference;
+  textSize: TextSize;
+  setTextSize: (t: TextSize) => void;
   tourSeen: boolean;
   /** First-visit game guides: on or off, and which have been shown. */
   tipsOn: boolean;
@@ -38,6 +43,8 @@ export const useSettings = create<SettingsState>()(
       setMusicOn: (musicOn) => set({ musicOn }),
       setMusicVolume: (musicVolume) => set({ musicVolume: Math.min(100, Math.max(0, Math.round(musicVolume))) }),
       motion: 'system',
+      textSize: 'normal',
+      setTextSize: (textSize) => set({ textSize }),
       tourSeen: false,
       tipsOn: true,
       tipsSeen: {},

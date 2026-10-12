@@ -313,7 +313,7 @@ export function AndarBaharGame() {
 }
 
 function AndarBahar({ info, call }: { info: SoloInfo<{ commission_pct: number }>; call: Call }) {
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const [result, setResult] = useState<AbResult | null>(null);
   // How many of the dealt cards are on the felt so far (they go down one by one).
   const [dealt, setDealt] = useState(0);
@@ -377,7 +377,7 @@ function AndarBahar({ info, call }: { info: SoloInfo<{ commission_pct: number }>
       info={info}
       tier={s.tierKey}
       status={status}
-      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Deal" onAction={() => void play()} />}
+      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Deal" onAction={() => void play()} auto />}
       rules={
         <>
           <p>
@@ -447,7 +447,7 @@ export function ChuckGame() {
 }
 
 function Chuck({ info, call }: { info: SoloInfo<ChConfig>; call: Call }) {
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const [result, setResult] = useState<ChResult | null>(null);
   const [shown, setShown] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -489,7 +489,7 @@ function Chuck({ info, call }: { info: SoloInfo<ChConfig>; call: Call }) {
       info={info}
       tier={s.tierKey}
       status={status}
-      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Roll" onAction={() => void roll()} />}
+      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Roll" onAction={() => void roll()} auto />}
       rules={
         <>
           <p>Three dice tumble in a wire cage. Bet on what they will show.</p>

@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GameHistoryModal } from '@/components/table/GameHistoryModal';
+import { GameStatsModal } from '@/components/table/GameStatsModal';
 import { chipColorFor, ChipStack } from '@/components/table/ChipStack';
 import { InfoModal } from '@/components/table/InfoModal';
 import { Button } from '@/components/ui/Button';
@@ -11,6 +12,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { ChatBox } from '@/components/chat/ChatBox';
 import { cn } from '@/components/ui/cn';
 import { useChat } from '@/hooks/useChat';
+import { useRemembered } from '@/hooks/useRemembered';
 import { chipDenominations } from '@/lib/blackjack';
 import { formatChips, formatChipsCompact } from '@/lib/format';
 import { historyLine, type SoloInfo, type SoloTier, type Spots } from '@/lib/solo';
@@ -65,6 +67,7 @@ export function SoloShell({
   const navigate = useNavigate();
   const [rulesOpen, setRulesOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   return (
     <div className={cn('mx-auto px-3 pb-48 pt-4 sm:px-4 md:pb-10', wide ? 'max-w-5xl' : 'max-w-3xl')}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -80,8 +83,12 @@ export function SoloShell({
           <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>
             History
           </Button>
+          <Button size="sm" variant="ghost" onClick={() => setStatsOpen(true)}>
+            Stats
+          </Button>
         </div>
       </div>
+      <GameStatsModal open={statsOpen} onClose={() => setStatsOpen(false)} game={info.game} name={info.name} />
 
       <section aria-label={`${info.name} table`} className="felt relative mt-4 rounded-3xl border border-gold-500/30 p-3 shadow-card sm:p-5">
         <p className="mb-3 min-h-6 text-center font-display text-base font-bold text-gold-200 sm:text-lg" aria-live="polite">
@@ -231,13 +238,18 @@ export function BetSpot({
 }
 
 /** State and rules for putting chips on spots: one stake level, a chip value, and the bets. */
-export function useSpotBets(tiers: SoloTier[]) {
+/** `game` (the game's key) makes the stake level, the chip and the last bets remembered on this device. */
+export function useSpotBets(tiers: SoloTier[], game?: string) {
   const balance = useWallet((s) => s.status?.balance ?? 0);
-  const [tierKey, setTierKey] = useState<TierKey>(tiers[0]?.tier ?? 'low');
+  const mem = game ? `spots:${game}` : null;
+  const [tierKey, setTierKey] = useRemembered<TierKey>(mem && `${mem}:tier`, tiers[0]?.tier ?? 'low', (t) => tiers.some((x) => x.tier === t));
   const tier = tiers.find((t) => t.tier === tierKey) ?? tiers[0];
-  const [chip, setChip] = useState(tier.min_bet);
+  const [chip, setChip] = useRemembered<number>(mem && `${mem}:chip`, tier.min_bet, (c) => typeof c === 'number' && c >= tier.min_bet && c <= tier.max_bet);
   const [bets, setBets] = useState<Spots>({});
-  const [last, setLast] = useState<Spots | null>(null);
+  // The last bets sent, for Rebet: kept across visits, as long as they still fit the stake level.
+  const [last, setLast] = useRemembered<Spots | null>(mem && `${mem}:last`, null, (l) =>
+    l === null || (typeof l === 'object' && Object.values(l).every((v) => typeof v === 'number' && v > 0 && v <= tier.max_bet)),
+  );
   const total = Object.values(bets).reduce((n, v) => n + v, 0);
 
   const add = (spot: string) => {
@@ -274,13 +286,36 @@ export function SpotControls({
   busy,
   action,
   onAction,
+  auto,
 }: {
   s: ReturnType<typeof useSpotBets>;
   tiers: SoloTier[];
   busy: boolean;
   action: string;
   onAction: () => void;
+  /** Offer auto-play: the same bets again for a number of rounds. Only for games with no decision after the bet. */
+  auto?: boolean;
 }) {
+  const [autoLeft, setAutoLeft] = useState(0);
+  const act = useRef(onAction);
+  act.current = onAction;
+  const lastTotal = s.last ? Object.values(s.last).reduce((n, v) => n + v, 0) : 0;
+  // Between rounds: put the last bets back, give the result a moment to be read, then play again.
+  useEffect(() => {
+    if (!auto || autoLeft <= 0 || busy) return;
+    if (s.total === 0) {
+      if (!s.last || lastTotal > s.balance) return setAutoLeft(0);
+      const id = window.setTimeout(() => s.rebet(), 1400);
+      return () => window.clearTimeout(id);
+    }
+    const id = window.setTimeout(() => {
+      setAutoLeft((n) => n - 1);
+      act.current();
+    }, 350);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, autoLeft, busy, s.total]);
+
   return (
     <>
       <TierPicker tiers={tiers} value={s.tierKey} onChange={s.changeTier} disabled={busy} />
@@ -295,7 +330,22 @@ export function SpotControls({
         <Button size="sm" variant="ghost" disabled={busy || !s.last || s.total > 0} onClick={s.rebet}>
           Rebet
         </Button>
-        <Button className="min-w-28" disabled={s.total === 0} loading={busy} onClick={onAction}>
+        {auto &&
+          (autoLeft > 0 ? (
+            <Button size="sm" variant="outline" onClick={() => setAutoLeft(0)}>
+              Stop auto ({autoLeft} left)
+            </Button>
+          ) : (
+            <span className="flex items-center gap-1" role="group" aria-label="Auto-play">
+              <span className="text-xs text-muted">Auto</span>
+              {[10, 25, 50].map((n) => (
+                <Button key={n} size="sm" variant="ghost" disabled={busy || (s.total === 0 && !s.last)} aria-label={`Auto: ${n} rounds`} onClick={() => setAutoLeft(n)}>
+                  {n}
+                </Button>
+              ))}
+            </span>
+          ))}
+        <Button className="min-w-28" disabled={s.total === 0 || autoLeft > 0} loading={busy} onClick={onAction}>
           {action}
         </Button>
       </div>

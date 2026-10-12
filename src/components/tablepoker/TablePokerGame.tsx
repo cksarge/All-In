@@ -208,7 +208,7 @@ function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
   const game = info.game;
   const cfg = info.config;
   const lay = LAYOUTS[game];
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const [round, setRound] = useState<Round | null>(info.round as Round | null);
   const [shown, setShown] = useState(true);
   // While the last cards are being turned, keep showing only what was face up before.

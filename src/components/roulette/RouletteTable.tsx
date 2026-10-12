@@ -219,6 +219,8 @@ export function RouletteTable({ tableId }: { tableId: string }) {
     <div className="mx-auto max-w-6xl px-3 pb-40 pt-4 sm:px-4 md:pb-10">
       <TableHeader
         table={table}
+        game="roulette"
+        atStake={myTotal > 0 && round && round.phase !== 'settled' ? 'Your bets are on the table. If you leave now, they stay there and are settled without you.' : null}
         watchers={t.watchers}
         connected={t.connected}
         mySeat={mySeat}

@@ -73,7 +73,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Table({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof useSoloGame>['call'] }) {
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [shown, setShown] = useState(false);
@@ -128,7 +128,7 @@ function Table({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
       wide
       tier={s.tierKey}
       status={status}
-      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Roll" onAction={() => void roll()} />}
+      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Roll" onAction={() => void roll()} auto />}
       rules={
         <>
           <p>

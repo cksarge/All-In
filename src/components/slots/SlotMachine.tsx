@@ -1,3 +1,5 @@
+import { GameStatsModal } from '@/components/table/GameStatsModal';
+import { useRemembered } from '@/hooks/useRemembered';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -43,7 +45,7 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
   const navigate = useNavigate();
   const [info, setInfo] = useState<SlotInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [betIndex, setBetIndex] = useState(0);
+  const [betIndex, setBetIndex] = useRemembered(`bet:${gameKey}`, 0, (v) => Number.isInteger(v) && v >= 0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [scene, setScene] = useState<Scene | null>(null);
   const [landed, setLanded] = useState(true);
@@ -54,6 +56,7 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   // Auto-spin: how many spins are left to play by themselves (0 = off).
   const [autoLeft, setAutoLeft] = useState(0);
+  const [statsOpen, setStatsOpen] = useState(false);
   const spinRef = useRef<(() => Promise<void>) | null>(null);
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const reduced = prefersReducedMotion(useSettings((s) => s.motion));
@@ -271,7 +274,11 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
           <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>
             History
           </Button>
+          <Button size="sm" variant="ghost" onClick={() => setStatsOpen(true)}>
+            Stats
+          </Button>
         </div>
+        <GameStatsModal open={statsOpen} onClose={() => setStatsOpen(false)} game={gameKey} name={info.name} />
       </div>
 
       {jackpot && (

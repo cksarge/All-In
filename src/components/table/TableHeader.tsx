@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { useLeaveWarning } from '@/hooks/useLeaveWarning';
+import { GameStatsModal } from './GameStatsModal';
 import { InviteModal } from './InviteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { formatChips } from '@/lib/format';
@@ -20,6 +23,8 @@ export function TableHeader({
   extra,
   stakes,
   tournament,
+  atStake,
+  game,
 }: {
   table: {
     name: string;
@@ -42,12 +47,41 @@ export function TableHeader({
   stakes?: string;
   /** Tournament tables have no stake level, and leaving goes back to the tournaments. */
   tournament?: boolean;
+  /**
+   * Set while the player has chips riding on an unfinished round: what happens to them on leaving.
+   * Leaving then asks first, and so does closing the tab. With nothing at stake, leaving is immediate.
+   */
+  atStake?: string | null;
+  /** The game's key: adds a Stats button with the player's own numbers at this game. */
+  game?: string;
 }) {
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  useLeaveWarning(Boolean(atStake));
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
-      <Button size="sm" variant={mySeat ? 'outline' : 'ghost'} onClick={onLeave}>
+      {game && <GameStatsModal open={statsOpen} onClose={() => setStatsOpen(false)} game={game} />}
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Leave with chips in play?" className="max-w-md">
+        <h2 className="font-display text-2xl font-bold text-ivory">Leave with chips in play?</h2>
+        <p className="mt-2 text-sm text-cream/85">{atStake}</p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button variant="outline" onClick={() => setConfirmOpen(false)} data-autofocus>
+            Stay
+          </Button>
+          <Button
+            variant="ruby"
+            onClick={() => {
+              setConfirmOpen(false);
+              onLeave();
+            }}
+          >
+            Leave anyway
+          </Button>
+        </div>
+      </Modal>
+      <Button size="sm" variant={mySeat ? 'outline' : 'ghost'} onClick={() => (atStake ? setConfirmOpen(true) : onLeave())}>
         ← {tournament ? (mySeat ? 'Leave tournament' : 'Tournaments') : mySeat ? 'Leave table' : 'Lobby'}
       </Button>
       <h1 className="font-display text-xl font-bold text-ivory sm:text-2xl">{table.name}</h1>
@@ -100,6 +134,11 @@ export function TableHeader({
         <Button size="sm" variant="ghost" onClick={onHistory}>
           History
         </Button>
+        {game && (
+          <Button size="sm" variant="ghost" onClick={() => setStatsOpen(true)}>
+            Stats
+          </Button>
+        )}
         {mySeat && onSitOut && (
           <Button size="sm" variant="ghost" onClick={onSitOut}>
             {mySeat.status === 'sitting_out' ? "I'm back" : 'Sit out'}

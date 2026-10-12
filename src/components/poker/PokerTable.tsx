@@ -15,6 +15,7 @@ import { cn } from '@/components/ui/cn';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useNow } from '@/hooks/useNow';
 import { usePokerTable } from '@/hooks/usePokerTable';
+import { useRemembered } from '@/hooks/useRemembered';
 import { formatChips } from '@/lib/format';
 import { POKER_GAMES, seatLayout, stakesLabel, type PkAction, type PkHand, type PkState } from '@/lib/poker';
 import { playSound } from '@/lib/sound';
@@ -101,6 +102,35 @@ export function PokerTable({ tableId }: { tableId: string }) {
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idleEvent, tableId]);
+
+  // "Sit out next hand": finish the hand you are in, then sit out by yourself.
+  const [outNext, setOutNext] = useState(false);
+  const handOver = !hand || hand.phase === 'settled';
+  useEffect(() => {
+    if (!outNext || !handOver || !mySeat || mySeat.status === 'sitting_out') return;
+    setOutNext(false);
+    void t.sitOut(true).then((err) => (err ? toast.error(err) : toast.info('You are sitting out', 'Press "I\'m back" when you want to be dealt in again.')));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outNext, handOver, mySeat?.status]);
+
+  // Auto top-up: between hands, bring your stack back up to what you first brought.
+  const [autoTop, setAutoTop] = useRemembered('poker:auto-topup', false);
+  const [topTo, setTopTo] = useRemembered<number>(`poker:top-to:${tableId}`, 0);
+  const toppedFor = useRef<string | null>(null);
+  const stackNow = (me?.stack ?? 0) + (me?.pending_topup ?? 0);
+  useEffect(() => {
+    if (!autoTop || tourney || !mySeat || !me || me.in_hand || !handOver || !state || topTo <= 0 || stackNow <= 0) return;
+    const want = Math.min(topTo, state.table.stakes.max_stack) - stackNow;
+    const amount = Math.min(want, balance);
+    const key = `${hand?.id ?? 'none'}-${stackNow}`;
+    if (amount <= 0 || toppedFor.current === key) return;
+    toppedFor.current = key;
+    void t.bringChips(amount).then((err) => {
+      if (!err) toast.info('Topped up', `${formatChips(amount)} chips brought to the table.`);
+      void useWallet.getState().fetchStatus();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTop, handOver, stackNow, topTo, me?.in_hand, mySeat?.seat_no]);
 
   const act = (a: PkAction, amount?: number) => void run(a, () => t.act(a, amount), a === 'fold' || a === 'check' ? 'click' : 'chip');
 
@@ -214,6 +244,8 @@ export function PokerTable({ tableId }: { tableId: string }) {
       <TableHeader
         table={{ ...table, min_bet: 0, max_bet: 0, variant: POKER_GAMES[game]?.limit ?? null }}
         stakes={stakesLabel(game, stakes)}
+        game={tourney ? undefined : game}
+        atStake={!tourney && viewHand && viewHand.phase !== 'settled' && myPlayer && myPlayer.status !== 'folded' ? 'You are in this hand. Leaving folds it, and the chips you have put in stay in the pot.' : null}
         watchers={t.watchers}
         connected={t.connected}
         mySeat={mySeat}
@@ -355,6 +387,40 @@ export function PokerTable({ tableId }: { tableId: string }) {
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
           {mySeat && <ReactionBar onSend={t.sendReaction} game="poker" channel={`table:${tableId}`} />}
+          {mySeat && !sittingOut && !tourney && (
+            <button
+              type="button"
+              aria-pressed={outNext}
+              onClick={() => {
+                setOutNext(!outNext);
+                playSound('click');
+              }}
+              title="Finish this hand, then sit out until you say you are back"
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                outNext ? 'border-gold-400 bg-gold-500/20 text-gold-100' : 'border-white/15 text-cream/80 hover:border-white/30',
+              )}
+            >
+              {outNext ? '✓ ' : ''}Sit out next hand
+            </button>
+          )}
+          {mySeat && !tourney && (
+            <button
+              type="button"
+              aria-pressed={autoTop}
+              onClick={() => {
+                setAutoTop(!autoTop);
+                playSound('click');
+              }}
+              title="Between hands, bring your stack back up to the amount you first brought"
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                autoTop ? 'border-gold-400 bg-gold-500/20 text-gold-100' : 'border-white/15 text-cream/80 hover:border-white/30',
+              )}
+            >
+              {autoTop ? '✓ ' : ''}Auto top-up{autoTop && topTo > 0 ? ` to ${formatChips(Math.min(topTo, stakes.max_stack))}` : ''}
+            </button>
+          )}
           {me?.hole && viewHand && myPlayer && myPlayer.status !== 'folded' && (me.hand_name || me.low_name) && (
             <p className="text-xs text-cream/75">
               You: <strong className="text-gold-200">{me.hand_name}</strong>
@@ -444,7 +510,12 @@ export function PokerTable({ tableId }: { tableId: string }) {
         pending={me?.pending_topup ?? 0}
         inHand={Boolean(me?.in_hand)}
         balance={balance}
-        onConfirm={(amount) => run('bring', () => t.bringChips(amount), 'chip')}
+        onConfirm={async (amount) => {
+          const ok = await run('bring', () => t.bringChips(amount), 'chip');
+          // What you chose to have in front of you is what auto top-up restores.
+          if (ok) setTopTo((me?.stack ?? 0) + (me?.pending_topup ?? 0) + amount);
+          return ok;
+        }}
       />
       {tourney && sng && <SngResult status={sng} />}
       <Modal open={leaveOpen} onClose={() => setLeaveOpen(false)} title="Leave the tournament?" className="max-w-md">

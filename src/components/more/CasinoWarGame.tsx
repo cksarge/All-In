@@ -47,7 +47,7 @@ export function CasinoWarGame() {
 }
 
 function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType<typeof useSoloGame>['call'] }) {
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const [round, setRound] = useState<(Round & { round_id: string }) | null>(info.round);
   const [result, setResult] = useState<Result | null>(null);
   const [shown, setShown] = useState(false);

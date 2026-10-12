@@ -108,7 +108,7 @@ function Wheel({ wheel, spinning, stop, size }: { wheel: string[]; spinning: boo
 }
 
 function Table({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof useSoloGame>['call'] }) {
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const big = useMediaQuery('(min-width: 640px)');
   const reduced = prefersReducedMotion(useSettings((st) => st.motion));
   const [busy, setBusy] = useState(false);
@@ -155,7 +155,7 @@ function Table({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
       info={info}
       tier={s.tierKey}
       status={status}
-      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Spin" onAction={() => void spin()} />}
+      controls={<SpotControls s={s} tiers={info.tiers} busy={busy} action="Spin" onAction={() => void spin()} auto />}
       rules={
         <>
           <p>

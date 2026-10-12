@@ -11,6 +11,7 @@ import { useLive } from '@/stores/liveStore';
 import { useProgress } from '@/stores/progressStore';
 import { useUi } from '@/stores/uiStore';
 import { BalancePill } from './BalancePill';
+import { MusicControl } from './MusicControl';
 import { SoundToggle } from './SoundToggle';
 
 const navCls = ({ isActive }: { isActive: boolean }) =>
@@ -201,6 +202,7 @@ export function SiteHeader() {
         <div className="flex items-center">
           {signedIn && <InboxBell />}
           <SoundToggle />
+          <MusicControl />
           <SettingsButton />
         </div>
         {signedIn ? (

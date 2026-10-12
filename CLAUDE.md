@@ -81,12 +81,24 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
 | 10 | **More games (the user's list, below), in four parts** | ✅ all four parts built on `main` |
 | 11 | **Reputation and typed chat** (`22_reputation_chat.sql`), Terms of Service and Privacy Policy | ✅ built on `main` |
+| 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | **Part 1 built on `main`; part 2 next** |
 
 **User action pending for phase 11:** re-run `13_progression.sql` and `15_moderation.sql`, then run the new
 `22_reputation_chat.sql`, then run `supabase/maintenance/special_cosmetics.sql` again (it gives Carter the five
 reputation cosmetics for good). No dashboard settings (the file adds `player_reputation` to Realtime: 33 in all).
 Afterwards `supabase/maintenance/check_database.sql` should say OK. Stage 10 part 4's SQL (`03`, `17`, `21`) too, if
 not run yet.
+
+### Stage 12 plan (the user's list of 2026-10-12, split into four parts like stages 9 and 10)
+1. ✅ **Quality of life, no SQL:** the music control in the top bar, bets and choices remembered per game, Rebet that
+   survives a reload, auto-play for the one-step games, lounge search and filters, "Sit out next hand" and auto
+   top-up, a confirmation before leaving with chips in play, a Stats button on every game, a size setting.
+2. **Social:** direct messages between friends, private tables with a waiting room, watching a friend's game.
+3. **Events and practice:** private tournaments, club events, practice modes ("as many as possible"), and a seasonal
+   game variant with **season-long missions worth up to 300 season points** tied to that season's game.
+4. **Admin:** a site stats page, chat log search, scheduled site notices and maintenance, an appeal form.
+Open questions to settle with the user before parts 2 to 4 (ask, don't guess): how long direct messages are kept;
+which game the seasonal variant is; what "practice" should cover first; who can watch a friend's table.
 
 ### Stage 10 plan (agreed 2026-10-11; the user's answers: blackjack variants solo, horse racing a shared live
 race, Teen Patti both against the dealer and at player-against-player tables)
@@ -145,7 +157,7 @@ vite.config.ts                       VITE_BASE base path, spaFallback plugin (40
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
-scripts/e2e/                         local end-to-end harness: 16 suites (see §9)
+scripts/e2e/                         local end-to-end harness: 17 suites (see §9)
 supabase/sql/01…22_*.sql             the database, applied in order (see §7)
 supabase/maintenance/                run by hand, not numbered, not applied by test:sql:
                                      check_database.sql (is the live database up to date? generated),
@@ -737,6 +749,25 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   Settings has a Music switch and a volume slider (`musicOn`, `musicVolume`; on at 30% by default). The user tried
   two other versions the same day and dropped both (several shuffled tracks; this track in the lounge only): don't
   bring either back unasked.
+- **Stage 12 part 1 (quality of life, all in the browser):**
+  - `useRemembered(key, initial, valid)` (`src/hooks/useRemembered.ts`, localStorage `allin-mem:<key>`, plus `recall` /
+    `remember`) keeps a choice on this device. Used for every single-bet game's bet (`bet:<game>`), Plinko rows and
+    risk, the Mines count, the scratch card, keno numbers, and by `useSpotBets(tiers, info.game)` for the stake level,
+    chip and **last bets, so Rebet works after a reload**. An open hand still decides the bet in Mines and video poker.
+  - **Auto-play:** `SpotControls` takes `auto` (Baccarat, Sic Bo, the wheel, Dragon Tiger, Andar Bahar, Chuck-a-Luck:
+    the games with no decision after the bet). It puts the last bets back and presses the game's own button for 10,
+    25 or 50 rounds; it stops when chips run out or on "Stop auto". Like the slots, it does not stop for a win.
+  - **Lounge:** a search box (every word must be in the name or tagline) and kind filters (Live / Solo / Tournaments /
+    Favourites) in `GameGrid`, alongside the section tabs.
+  - **Tables:** `TableHeader` takes `atStake` (a sentence saying what happens to the chips in play: leaving then asks
+    first, and `useLeaveWarning` makes the browser ask before the tab closes) and `game` (adds a Stats button).
+    Poker and Teen Patti have "Sit out next hand"; poker has "Auto top-up" (back to what you first brought, between
+    hands). Poker already had keyboard shortcuts (the Fold button's text is "Fold F").
+  - `GameStatsModal` reads the player's own `player_game_stats` row; it is on every table, `SoloShell` and the slots.
+  - **Music control** (`MusicControl`): a button in the top bar with the switch and volume, hidden below 430px wide
+    because the top bar has no room (the header must fit 360px).
+  - **Size** (Settings): compact / normal / large set the page's base font size (`TEXT_SCALE`; everything is in rem).
+    Large is 106.25% instead of 112.5% under 430px wide, so the 360px layouts still fit.
 - Styling: Tailwind with custom colours (`ink`, `felt`, `ruby`, `gold`, `cream`, `ivory`), the `.felt` and
   `.surface` classes, Playfair Display headings and Inter body text. Sounds come from `playSound(...)` in
   `src/lib/sound.ts`.
@@ -776,6 +807,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage10c.cjs /tmp/shots     # stage 10 part 3: a full Badugi hand with three draws, lobby entries, Grandmaster, seasonal tag (12 checks)
    node scripts/e2e/stage10d.cjs /tmp/shots     # stage 10 part 4: a horse race with two players, a Teen Patti hand with a show, phone widths (23 checks)
    node scripts/e2e/stage11.cjs /tmp/shots      # phase 11: room and table chat, the filter, reputation, a reported message, admin controls and reasons, notes, cosmetics (24 checks)
+   node scripts/e2e/stage12a.cjs /tmp/shots     # stage 12 part 1: lounge search, music control, auto-play, remembered bets, stats, size, leave confirmation, sit out next hand, auto top-up (22 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

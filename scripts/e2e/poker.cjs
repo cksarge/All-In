@@ -46,6 +46,13 @@ async function bring(page) {
   await page.waitForTimeout(500);
 }
 
+// Leaving in the middle of a hand asks first (stage 12): say yes.
+async function leave(page) {
+  await page.getByRole('button', { name: '← Leave table' }).click();
+  const sure = page.getByRole('button', { name: 'Leave anyway' });
+  await sure.waitFor({ timeout: 800 }).then(() => sure.click()).catch(() => undefined);
+}
+
 (async () => {
   const browser = await chromium.launch();
   const ann = await login(browser, 'ann@allin.test', { width: 1280, height: 900 });
@@ -136,13 +143,13 @@ async function bring(page) {
   const annBefore = await bal('ann@allin.test');
   const benStack = await stack('ben@allin.test');
   const benBal = await bal('ben@allin.test');
-  await ben.getByRole('button', { name: '← Leave table' }).click();
+  await leave(ben);
   await ben.waitForURL('**/lobby*');
   await ben.waitForTimeout(600);
   ok((await bal('ben@allin.test')) === benBal + benStack, 'leaving returns the stack to the wallet');
   await refresh(ann);
   ok(await ann.getByText(/You win/).isVisible(), 'Ann wins when Ben leaves');
-  await ann.getByRole('button', { name: '← Leave table' }).click();
+  await leave(ann);
   await ann.waitForURL('**/lobby*');
   await ann.waitForTimeout(500);
   ok((await bal('ann@allin.test')) > annBefore, 'Ann cashes her stack back to the wallet on leaving');
@@ -173,8 +180,8 @@ async function bring(page) {
   await ben.getByRole('button', { name: 'Stand pat' }).click();
   await ben.waitForTimeout(500);
   ok((await q1(`select phase, street from public.pk_hands h join public.game_tables t on t.id = h.table_id where t.name = 'Emerald Draw' order by hand_no desc limit 1`)).street === 1, 'second betting round');
-  await ben.getByRole('button', { name: '← Leave table' }).click();
-  await ann.getByRole('button', { name: '← Leave table' }).click();
+  await leave(ben);
+  await leave(ann);
   await ann.waitForURL('**/lobby*');
 
   // ---------- Seven-Card Stud ----------
@@ -195,8 +202,8 @@ async function bring(page) {
   await refresh(ben);
   await ann.screenshot({ path: `${SHOTS}/pk-stud-desktop.png` });
   await ben.screenshot({ path: `${SHOTS}/pk-stud-mobile.png`, fullPage: true });
-  await ben.getByRole('button', { name: '← Leave table' }).click();
-  await ann.getByRole('button', { name: '← Leave table' }).click();
+  await leave(ben);
+  await leave(ann);
   await ann.waitForURL('**/lobby*');
   await ann.waitForTimeout(500);
   ok((await bal('ann@allin.test')) + (await bal('ben@allin.test')) === 20000, 'all chips back in wallets after three games');
@@ -205,7 +212,7 @@ async function bring(page) {
   await sitAt(ben, 'poker_omaha', 'Emerald Omaha');
   await ben.screenshot({ path: `${SHOTS}/pk-omaha-empty-mobile.png`, fullPage: true });
   await ben.keyboard.press('Escape');
-  await ben.getByRole('button', { name: '← Leave table' }).click();
+  await leave(ben);
 
   ok(ann.errors.length === 0 && ben.errors.length === 0, `no page errors ${JSON.stringify([...ann.errors, ...ben.errors].slice(0, 3))}`);
   await browser.close();

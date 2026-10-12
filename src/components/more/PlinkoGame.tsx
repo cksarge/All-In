@@ -1,3 +1,4 @@
+import { useRemembered } from '@/hooks/useRemembered';
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BetStepper, Outcome, SoloGate, SoloShell } from '@/components/solo/SoloShell';
@@ -74,10 +75,10 @@ interface Ball extends Result {
 function Board({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof useSoloGame>['call'] }) {
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const reduced = prefersReducedMotion(useSettings((s) => s.motion));
-  const [rows, setRows] = useState(12);
-  const [risk, setRisk] = useState<Risk>('medium');
+  const [rows, setRows] = useRemembered('plinko:rows', 12, (v) => [8, 12, 16].includes(v));
+  const [risk, setRisk] = useRemembered<Risk>('plinko:risk', 'medium', (v) => ['low', 'medium', 'high'].includes(v));
   const [count, setCount] = useState(1);
-  const [betIndex, setBetIndex] = useState(0);
+  const [betIndex, setBetIndex] = useRemembered(`bet:${info.game}`, 0, (v) => Number.isInteger(v) && v >= 0 && v < info.bets.length);
   const [balls, setBalls] = useState<Ball[]>([]);
   /** Balls sent to the server or still bouncing. */
   const [inFlight, setInFlight] = useState(0);

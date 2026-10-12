@@ -1,3 +1,4 @@
+import { useRemembered } from '@/hooks/useRemembered';
 import { useEffect, useRef, useState } from 'react';
 import { BetStepper, SoloGate, SoloShell } from '@/components/solo/SoloShell';
 import { ChipAmount } from '@/components/ui/ChipAmount';
@@ -95,7 +96,7 @@ function Room({ info }: { info: SoloInfo<Config> }) {
     pollMs: () => 1000,
   });
   const now = useNow(60, offsetMs);
-  const [betIndex, setBetIndex] = useState(0);
+  const [betIndex, setBetIndex] = useRemembered(`bet:${info.game}`, 0, (v) => Number.isInteger(v) && v >= 0 && v < info.bets.length);
   const [busy, setBusy] = useState<string | null>(null);
   const bet = info.bets[betIndex];
   const tier = info.tiers.find((t) => bet >= t.min_bet && bet <= t.max_bet);

@@ -81,7 +81,7 @@ function Row({ who, low, high, lowMade, highMade, lowWon, highWon, id }: { who: 
 }
 
 function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType<typeof useSoloGame>['call'] }) {
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const [round, setRound] = useState<(Round & { round_id: string }) | null>(info.round);
   const [low, setLow] = useState<number[]>([]);
   const [result, setResult] = useState<Result | null>(null);

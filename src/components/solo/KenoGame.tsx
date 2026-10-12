@@ -1,3 +1,4 @@
+import { useRemembered } from '@/hooks/useRemembered';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
@@ -38,8 +39,9 @@ function Board({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
   const c = info.config;
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const reduced = prefersReducedMotion(useSettings((s) => s.motion));
-  const [picks, setPicks] = useState<number[]>([]);
-  const [betIndex, setBetIndex] = useState(0);
+  // Your numbers stay picked between draws and visits.
+  const [picks, setPicks] = useRemembered<number[]>('keno:picks', [], (v) => Array.isArray(v) && v.length <= info.config.max_picks && v.every((n) => Number.isInteger(n) && n >= 1 && n <= info.config.numbers));
+  const [betIndex, setBetIndex] = useRemembered(`bet:${info.game}`, 0, (v) => Number.isInteger(v) && v >= 0 && v < info.bets.length);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [revealed, setRevealed] = useState(0);

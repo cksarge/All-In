@@ -1,3 +1,4 @@
+import { recall, remember } from '@/hooks/useRemembered';
 import { useState } from 'react';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { Button } from '@/components/ui/Button';
@@ -51,7 +52,14 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
   const big = useMediaQuery('(min-width: 640px)');
   // A hand left open (page closed before the draw) is picked up where it was.
   const [round, setRound] = useState<(Round & { round_id: string }) | null>(info.round);
-  const [betIndex, setBetIndex] = useState(() => Math.max(0, info.bets.indexOf(info.round?.bet ?? info.bets[0])));
+  // A hand left open decides the bet; otherwise the last one used here.
+  const [betIndex, setBetIndexRaw] = useState(() =>
+    info.round ? Math.max(0, info.bets.indexOf(info.round.bet)) : recall(`bet:${info.game}`, 0, (v) => Number.isInteger(v) && v >= 0 && v < info.bets.length),
+  );
+  const setBetIndex = (i: number) => {
+    setBetIndexRaw(i);
+    remember(`bet:${info.game}`, i);
+  };
   const [holds, setHolds] = useState<boolean[]>([false, false, false, false, false]);
   const [final, setFinal] = useState<Final | null>(null);
   const [busy, setBusy] = useState(false);

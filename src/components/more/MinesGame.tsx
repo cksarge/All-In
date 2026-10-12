@@ -1,3 +1,4 @@
+import { recall, remember, useRemembered } from '@/hooks/useRemembered';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BetStepper, Outcome, SoloGate, SoloShell } from '@/components/solo/SoloShell';
@@ -45,8 +46,15 @@ function Field({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const [round, setRound] = useState<Live | null>(info.round);
   const [end, setEnd] = useState<Finished | null>(null);
-  const [mines, setMines] = useState(3);
-  const [betIndex, setBetIndex] = useState(() => Math.max(0, info.bets.indexOf(info.round?.bet ?? info.bets[0])));
+  const [mines, setMines] = useRemembered('mines:count', 3, (v) => Number.isInteger(v) && v >= 1 && v <= 24);
+  // A hand left open decides the bet; otherwise the last one used here.
+  const [betIndex, setBetIndexRaw] = useState(() =>
+    info.round ? Math.max(0, info.bets.indexOf(info.round.bet)) : recall(`bet:${info.game}`, 0, (v) => Number.isInteger(v) && v >= 0 && v < info.bets.length),
+  );
+  const setBetIndex = (i: number) => {
+    setBetIndexRaw(i);
+    remember(`bet:${info.game}`, i);
+  };
   const [busy, setBusy] = useState(false);
   const bet = round?.bet ?? info.bets[betIndex];
   const tier = info.tiers.find((t) => bet >= t.min_bet && bet <= t.max_bet);

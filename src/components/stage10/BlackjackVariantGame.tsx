@@ -162,7 +162,7 @@ export function BlackjackVariantGame({ gameKey }: { gameKey: string }) {
 function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType<typeof useSoloGame>['call'] }) {
   const game = info.game;
   const cfg = info.config;
-  const s = useSpotBets(info.tiers);
+  const s = useSpotBets(info.tiers, info.game);
   const [round, setRound] = useState<Round | null>(info.round as Round | null);
   const [shown, setShown] = useState(true);
   const [dealerBefore, setDealerBefore] = useState(0);

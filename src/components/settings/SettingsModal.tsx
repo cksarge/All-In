@@ -17,7 +17,7 @@ const MOTION_OPTIONS: { value: MotionPreference; label: string; hint: string }[]
 /** Settings popup. Opened from the gear in the top bar, the account menu, the footer, or /settings. */
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUi();
-  const { soundOn, setSoundOn, musicOn, setMusicOn, musicVolume, setMusicVolume, motion, setMotion, setTourSeen, tipsOn, setTipsOn, resetTips } = useSettings();
+  const { textSize, setTextSize, soundOn, setSoundOn, musicOn, setMusicOn, musicVolume, setMusicVolume, motion, setMotion, setTourSeen, tipsOn, setTipsOn, resetTips } = useSettings();
   const { status, user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -118,6 +118,34 @@ export function SettingsModal() {
             <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted [overflow-wrap:anywhere]">{MUSIC_CREDITS}</p>
           </details>
         )}
+      </section>
+
+      <div className="gold-rule my-6" />
+
+      <section aria-labelledby="size-h">
+        <h3 id="size-h" className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-400">Size</h3>
+        <p className="mt-2 text-sm text-muted">Makes everything on the site smaller or larger: text, cards, buttons and tables.</p>
+        <div role="radiogroup" aria-label="Size of the site" className="mt-3 grid grid-cols-3 gap-2">
+          {(
+            [
+              ['compact', 'Compact', 'Fits more in'],
+              ['normal', 'Normal', 'The default'],
+              ['large', 'Large', 'Easier to read'],
+            ] as const
+          ).map(([k, label, hint]) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={textSize === k}
+              onClick={() => setTextSize(k)}
+              className={cn('rounded-xl border px-2 py-2 text-center transition', textSize === k ? 'border-gold-500/70 bg-gold-500/10' : 'border-white/10 hover:border-white/25')}
+            >
+              <span className="block text-sm font-medium text-cream">{label}</span>
+              <span className="block text-xs text-muted">{hint}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
       <div className="gold-rule my-6" />
