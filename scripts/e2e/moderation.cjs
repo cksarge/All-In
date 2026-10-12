@@ -28,7 +28,7 @@ async function login(browser, email, vp) {
 
 (async () => {
   // In production the admin is the account called Carter; here Ann is made the admin.
-  await pool.query(`delete from public.admins; insert into public.admins (user_id) select id from auth.users where email = 'ann@allin.test'; delete from public.admin_log; update public.site_notice set message = null`);
+  await pool.query(`delete from public.admins; insert into public.admins (user_id) select id from auth.users where email = 'ann@allin.test'; delete from public.admin_log; update public.site_notice set message = null; update public.site_status set maintenance = false, message = null`);
   const browser = await chromium.launch();
 
   // Nobody else gets in, signed in or not.
@@ -143,6 +143,37 @@ async function login(browser, email, vp) {
   await ann.screenshot({ path: `${SHOTS}/a-overview.png`, fullPage: true });
   await ann.getByRole('button', { name: 'Take down' }).click();
   await ann.getByText('Notice taken down').waitFor();
+
+  // ---- Site maintenance ---------------------------------------------------------
+  await ann.getByLabel('Message for players (optional)').fill('Back at nine');
+  await ann.getByRole('button', { name: 'Close the site for maintenance' }).click();
+  await ann.getByText('The site is closed for maintenance', { exact: true }).waitFor();
+  await ann.getByText(/Maintenance mode is ON/).waitFor({ timeout: 8000 }).catch(() => nudge(ann));
+  await nudge(ann);
+  await ann.getByText(/Maintenance mode is ON/).waitFor();
+  await ann.screenshot({ path: `${SHOTS}/a-maintenance-admin.png`, fullPage: true });
+  await nudge(ben);
+  await ben.getByRole('heading', { name: 'Site maintenance' }).waitFor({ timeout: 8000 });
+  ok(await ben.getByText('Back at nine').isVisible() && (await ben.getByRole('navigation').count()) === 0, 'maintenance: a signed-in player sees only the maintenance page, with the message');
+  await ben.screenshot({ path: `${SHOTS}/a-maintenance.png` });
+  await ben.goto(BASE + '/play/slots_classic');
+  await ben.getByRole('heading', { name: 'Site maintenance' }).waitFor();
+  const visitor = await (await browser.newContext({ viewport: { width: 390, height: 800 } })).newPage();
+  await visitor.goto(BASE + '/login');
+  await visitor.getByRole('heading', { name: 'Site maintenance' }).waitFor();
+  ok((await visitor.getByLabel('Email').count()) === 0, 'a signed-out visitor sees it too, and cannot reach the login form');
+  await visitor.screenshot({ path: `${SHOTS}/a-maintenance-phone.png` });
+  await ann.goto(BASE + '/play/slots_classic');
+  await ann.getByRole('button', { name: 'Spin' }).click();
+  await ann.getByText(/No win this time|You win|Big win/).first().waitFor({ timeout: 15000 });
+  ok(true, 'the admin keeps full access while it is on');
+  await ann.goto(BASE + '/admin');
+  await ann.getByRole('tab', { name: 'overview' }).click();
+  await ann.getByRole('button', { name: 'Open the site' }).click();
+  await ann.getByText('The site is open again').waitFor();
+  await nudge(ben);
+  await ben.getByRole('button', { name: 'Spin' }).waitFor({ timeout: 8000 });
+  ok(true, 'opening the site lets everyone back in without a reload');
 
   ok(ann.errors.length === 0 && ben.errors.length === 0 && cat.errors.length === 0, `no page errors ${JSON.stringify([...ann.errors, ...ben.errors, ...cat.errors])}`);
   await browser.close();

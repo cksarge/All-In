@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { MaintenanceGate } from '@/components/account/MaintenanceGate';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Toaster } from '@/components/ui/Toaster';
 import { playSound } from '@/lib/sound';
@@ -211,44 +212,47 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={motionPref === 'system' ? 'user' : reduced ? 'always' : 'never'}>
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <RouteEffects />
-        <WalletConnector />
-        <PresenceConnector />
-        <ProgressConnector />
-        <TournamentConnector />
-        <AccountConnector />
-        <LiveConnector />
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route index element={<LandingPage />} />
-            <Route path="signup" element={<GuestOnly><SignUpPage /></GuestOnly>} />
-            <Route path="login" element={<GuestOnly><LogInPage /></GuestOnly>} />
-            <Route path="verify" element={<GuestOnly><VerifyEmailPage /></GuestOnly>} />
-            {/* Not GuestOnly: verifying the reset code signs you in mid-flow. */}
-            <Route path="forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="how-chips-work" element={<HowChipsWorkPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="lounge" element={<RequireAuth><LoungePage /></RequireAuth>} />
-            <Route path="lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
-            <Route path="table/:id" element={<RequireAuth><TablePage /></RequireAuth>} />
-            <Route path="play/:gameKey" element={<RequireAuth><PlayPage /></RequireAuth>} />
-            <Route path="profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-            <Route path="profile/:username" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-            <Route path="locker" element={<RequireAuth><LockerPage /></RequireAuth>} />
-            <Route path="friends" element={<RequireAuth><FriendsPage /></RequireAuth>} />
-            <Route path="leaderboards" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
-            <Route path="clubs" element={<RequireAuth><ClubsPage /></RequireAuth>} />
-            <Route path="clubs/:id" element={<RequireAuth><ClubsPage /></RequireAuth>} />
-            <Route path="missions" element={<RequireAuth><MissionsPage /></RequireAuth>} />
-            <Route path="inbox" element={<RequireAuth><InboxPage /></RequireAuth>} />
-            <Route path="tournaments" element={<RequireAuth><TournamentsPage /></RequireAuth>} />
-            <Route path="tournaments/:id" element={<RequireAuth><ShowdownPage /></RequireAuth>} />
-            {/* No link leads here. The page itself answers "Access not allowed" to everyone but the admin. */}
-            <Route path="admin" element={<AdminPage />} />
-            <Route path="join/:code" element={<RequireAuth><JoinPage /></RequireAuth>} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
-        </Routes>
+        {/* Nothing below is shown until the server says the site is open (or that this is the admin). */}
+        <MaintenanceGate>
+          <RouteEffects />
+          <WalletConnector />
+          <PresenceConnector />
+          <ProgressConnector />
+          <TournamentConnector />
+          <AccountConnector />
+          <LiveConnector />
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route index element={<LandingPage />} />
+              <Route path="signup" element={<GuestOnly><SignUpPage /></GuestOnly>} />
+              <Route path="login" element={<GuestOnly><LogInPage /></GuestOnly>} />
+              <Route path="verify" element={<GuestOnly><VerifyEmailPage /></GuestOnly>} />
+              {/* Not GuestOnly: verifying the reset code signs you in mid-flow. */}
+              <Route path="forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="how-chips-work" element={<HowChipsWorkPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="lounge" element={<RequireAuth><LoungePage /></RequireAuth>} />
+              <Route path="lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
+              <Route path="table/:id" element={<RequireAuth><TablePage /></RequireAuth>} />
+              <Route path="play/:gameKey" element={<RequireAuth><PlayPage /></RequireAuth>} />
+              <Route path="profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+              <Route path="profile/:username" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+              <Route path="locker" element={<RequireAuth><LockerPage /></RequireAuth>} />
+              <Route path="friends" element={<RequireAuth><FriendsPage /></RequireAuth>} />
+              <Route path="leaderboards" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
+              <Route path="clubs" element={<RequireAuth><ClubsPage /></RequireAuth>} />
+              <Route path="clubs/:id" element={<RequireAuth><ClubsPage /></RequireAuth>} />
+              <Route path="missions" element={<RequireAuth><MissionsPage /></RequireAuth>} />
+              <Route path="inbox" element={<RequireAuth><InboxPage /></RequireAuth>} />
+              <Route path="tournaments" element={<RequireAuth><TournamentsPage /></RequireAuth>} />
+              <Route path="tournaments/:id" element={<RequireAuth><ShowdownPage /></RequireAuth>} />
+              {/* No link leads here. The page itself answers "Access not allowed" to everyone but the admin. */}
+              <Route path="admin" element={<AdminPage />} />
+              <Route path="join/:code" element={<RequireAuth><JoinPage /></RequireAuth>} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
+          </Routes>
+        </MaintenanceGate>
         <Toaster />
       </BrowserRouter>
     </MotionConfig>

@@ -31,6 +31,7 @@ const RPC_MESSAGES: Record<string, string> = {
   account_timeout: 'This account is in a timeout. Try again later.',
   rename_required: 'Choose a new username to keep playing.',
   not_admin: 'Access not allowed.',
+  site_maintenance: 'The site is closed for maintenance. Please come back soon.',
   club_not_found: "That club doesn't exist. Check the code, or it may have closed.",
   unknown_tournament: "That tournament doesn't exist any more.",
   not_authenticated: 'Your session has ended. Please log in again.',

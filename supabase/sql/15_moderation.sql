@@ -80,6 +80,16 @@ create table if not exists public.site_notice (
 );
 insert into public.site_notice (id, message) values (true, null) on conflict (id) do nothing;
 
+-- Maintenance mode: one row. While it is on, only the admin can use the site
+-- (see private.sanction_check, and site_status() which every browser asks first).
+create table if not exists public.site_status (
+  id           boolean primary key default true check (id),
+  maintenance  boolean not null default false,
+  message      text check (char_length(message) <= 300),
+  updated_at   timestamptz not null default now()
+);
+insert into public.site_status (id) values (true) on conflict (id) do nothing;
+
 -- The admin: the account whose username is Carter (matched once, stored by id).
 insert into public.admins (user_id)
 select id from public.profiles where lower(username) = 'carter'
@@ -109,6 +119,10 @@ as $$
 declare
   s public.player_sanctions;
 begin
+  -- Maintenance: every game call from anyone but the admin stops here, whatever their browser shows.
+  if (select maintenance from public.site_status where id) and not private.is_admin(p_user) then
+    raise exception 'site_maintenance' using hint = 'The site is closed for maintenance. Please come back soon.';
+  end if;
   select * into s from public.player_sanctions where user_id = p_user;
   if not found then
     return;
@@ -232,6 +246,18 @@ begin
     'notice', (select message from public.site_notice where id)
   );
 end $$;
+
+-- Asked by every browser before it shows anything, signed in or not.
+create or replace function public.site_status()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select jsonb_build_object('maintenance', s.maintenance, 'message', s.message, 'admin', coalesce(private.is_admin(auth.uid()), false))
+    from public.site_status s where s.id
+$$;
 
 -- Change your own username. Only open to players who were told to (must_rename).
 create or replace function public.change_username(p_username text)
@@ -374,6 +400,8 @@ begin
     'banned', (select count(*) from public.player_sanctions where banned_at is not null),
     'timed_out', (select count(*) from public.player_sanctions where timeout_until > now()),
     'notice', (select message from public.site_notice where id),
+    'maintenance', (select maintenance from public.site_status where id),
+    'maintenance_message', (select message from public.site_status where id),
     'log', (select coalesce(jsonb_agg(x.j order by x.id desc), '[]'::jsonb)
               from (select l.id, jsonb_build_object('id', l.id, 'action', l.action, 'at', l.created_at, 'details', l.details,
                              'target', (select username from public.profiles where id = l.target)) as j
@@ -649,6 +677,22 @@ begin
   perform private.admin_note('kick', p_user);
 end $$;
 
+-- Closes the site to everyone but the admin, or opens it again. Players at tables keep their
+-- seats and chips; their browsers show the maintenance page within moments.
+create or replace function public.admin_set_maintenance(p_on boolean, p_message text default null)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.require_admin();
+  update public.site_status
+     set maintenance = coalesce(p_on, false), message = nullif(left(btrim(coalesce(p_message, '')), 300), ''), updated_at = now()
+   where id;
+  perform private.admin_note(case when p_on then 'maintenance_on' else 'maintenance_off' end, null, jsonb_build_object('message', p_message));
+end $$;
+
 -- The announcement strip everyone sees (null or empty takes it down).
 create or replace function public.admin_set_notice(p_message text)
 returns void
@@ -672,7 +716,7 @@ begin
     'public.admin_overview()', 'public.admin_reports(text)', 'public.admin_resolve_report(bigint, text, text)',
     'public.admin_find_players(text)', 'public.admin_player(uuid)', 'public.admin_ban(uuid, text)', 'public.admin_unban(uuid)',
     'public.admin_timeout(uuid, integer, text)', 'public.admin_rename(uuid, text)', 'public.admin_chips(uuid, text, bigint, text)',
-    'public.admin_kick(uuid)', 'public.admin_set_notice(text)'
+    'public.admin_kick(uuid)', 'public.admin_set_notice(text)', 'public.admin_set_maintenance(boolean, text)'
   ]
   loop
     execute format('revoke all on function %s from public, anon', f);
@@ -685,6 +729,7 @@ end $$;
 -- and the log are not readable by clients at all.
 -- -----------------------------------------------------------------------------
 alter table public.admins            enable row level security;
+alter table public.site_status       enable row level security;
 alter table public.player_activity   enable row level security;
 alter table public.player_sanctions  enable row level security;
 alter table public.player_blocks     enable row level security;
@@ -703,6 +748,15 @@ revoke all on public.admins, public.player_reports, public.admin_log, public.pla
 revoke all on public.player_sanctions, public.player_blocks, public.site_notice from anon;
 revoke insert, update, delete, truncate on public.player_sanctions, public.player_blocks, public.site_notice from authenticated;
 grant select on public.player_sanctions, public.player_blocks, public.site_notice to authenticated;
+
+-- Everyone, signed in or not, may know whether the site is open: it is the first thing a browser asks.
+drop policy if exists "site_status: anyone can read" on public.site_status;
+create policy "site_status: anyone can read" on public.site_status for select to anon, authenticated using (true);
+revoke all on public.site_status from anon, authenticated;
+grant select on public.site_status to anon, authenticated;
+revoke all on function public.site_status() from public;
+grant execute on function public.site_status() to anon, authenticated;
+select private.add_to_realtime('site_status');
 
 -- A sanction reaches the player's browser at once.
 select private.add_to_realtime('player_sanctions');

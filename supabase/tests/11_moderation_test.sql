@@ -146,6 +146,34 @@ select tests.ok(tests.bal(:B) = 7777, 'the wallet agrees');
 select tests.ok((public.admin_player(:B) #>> '{ledger,0,reason}') = 'admin_adjust', 'and it is in the ledger');
 select tests.ok(jsonb_array_length(public.admin_find_players('modbe')) = 1 and jsonb_array_length(public.admin_find_players('b@mod.test')) = 1, 'find by name or email');
 
+-- ----------------------------------------------------------------------------
+-- Maintenance mode
+-- ----------------------------------------------------------------------------
+select tests.ok(public.site_status() @> '{"maintenance":false,"admin":true}', 'open, and the admin is told they are the admin');
+select tests.as_user(:B);
+select tests.throws($$select public.admin_set_maintenance(true, 'mine now')$$, 'not_admin');
+select tests.throws($$update public.site_status set maintenance = true$$, 'permission denied');
+select tests.as_user(:A);
+select public.admin_set_maintenance(true, '  Back at noon  ');
+select tests.ok(public.site_status() @> '{"maintenance":true,"admin":true,"message":"Back at noon"}', 'maintenance on');
+select tests.ok((public.slot_spin('slots_classic', 10) ->> 'bet')::int = 10 and public.get_economy_status() is not null, 'the admin can still do everything');
+select tests.as_user(:B);
+select tests.ok(public.site_status() @> '{"maintenance":true,"admin":false}', 'another player is told the site is closed');
+select tests.throws($$select public.slot_spin('slots_classic', 10)$$, 'site_maintenance');
+select tests.throws($$select public.get_economy_status()$$, 'site_maintenance');
+select tests.throws($$select public.quick_join('blackjack', 'low')$$, 'site_maintenance');
+select tests.throws($$select public.claim_daily_bonus()$$, 'site_maintenance');
+reset role;
+set role anon;
+select tests.ok(public.site_status() @> '{"maintenance":true,"admin":false}', 'a signed-out visitor can ask too');
+reset role;
+-- The emergency file does this by hand if the admin is locked out.
+update public.site_status set maintenance = false, message = null where id;
+set role authenticated;
+select tests.as_user(:B);
+select tests.ok((public.slot_spin('slots_classic', 10) ->> 'bet')::int = 10 and public.site_status() @> '{"maintenance":false}', 'open again');
+select tests.as_user(:A);
+
 select public.admin_set_notice('  Maintenance at noon  ');
 select tests.as_user(:B);
 select tests.ok(public.my_account() ->> 'notice' = 'Maintenance at noon', 'everyone sees the notice');

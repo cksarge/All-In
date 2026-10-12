@@ -26,6 +26,8 @@ interface Overview {
   banned: number;
   timed_out: number;
   notice: string | null;
+  maintenance?: boolean;
+  maintenance_message?: string | null;
   log: { id: number; action: string; at: string; target: string | null; details: Record<string, unknown> }[];
 }
 interface Report {
@@ -563,8 +565,16 @@ function Clubs({ onOpen }: { onOpen: (userId: string) => void }) {
 function OverviewTab() {
   const { data, load } = useRpc<Overview>('admin_overview', {});
   const [notice, setNotice] = useState<string | null>(null);
+  const [why, setWhy] = useState<string | null>(null);
   if (!data) return <p className="text-sm text-muted">Loading…</p>;
   const text = notice ?? data.notice ?? '';
+  const maintenance = async (on: boolean) => {
+    if (on && !window.confirm('Close the site to everyone but you? Players will see a maintenance page until you open it again.')) return;
+    if (await run('admin_set_maintenance', { p_on: on, p_message: on ? (why ?? data.maintenance_message ?? '') : null }, on ? 'The site is closed for maintenance' : 'The site is open again')) {
+      setWhy(null);
+      void load();
+    }
+  };
   const save = async (message: string) => {
     if (await run('admin_set_notice', { p_message: message }, message ? 'Notice is up' : 'Notice taken down')) {
       setNotice(null);
@@ -594,6 +604,31 @@ function OverviewTab() {
       <p className="text-sm text-muted">
         Chips held by all players: <ChipAmount value={data.chips_total} className="text-cream" iconClassName="h-4 w-4" />
       </p>
+      <div className={cn('surface p-5', data.maintenance && 'border-ruby-400/60')}>
+        <h3 className="font-display text-lg font-bold text-ivory">Site maintenance</h3>
+        <p className="mt-1 text-sm text-muted">
+          While this is on, nobody but you can use the site: everyone else sees a maintenance page, signed in or not, and nobody can log in. Stay
+          signed in here, or you will need the emergency file (supabase/maintenance/maintenance_off.sql) to open the site again.
+        </p>
+        <p className={cn('mt-3 text-sm font-semibold', data.maintenance ? 'text-ruby-200' : 'text-felt-300')} role="status">
+          Maintenance is {data.maintenance ? 'ON: the site is closed' : 'off: the site is open'}.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <label className="sr-only" htmlFor="admin-maint">
+            Message for players (optional)
+          </label>
+          <input id="admin-maint" value={why ?? data.maintenance_message ?? ''} onChange={(e) => setWhy(e.target.value)} maxLength={300} placeholder="Message for players (optional), e.g. Back at 9 pm" className={cn(input, 'min-w-0 flex-1')} />
+          {data.maintenance ? (
+            <Button size="sm" variant="felt" onClick={() => void maintenance(false)}>
+              Open the site
+            </Button>
+          ) : (
+            <Button size="sm" variant="ruby" onClick={() => void maintenance(true)}>
+              Close the site for maintenance
+            </Button>
+          )}
+        </div>
+      </div>
       <div className="surface p-5">
         <h3 className="font-display text-lg font-bold text-ivory">Site notice</h3>
         <p className="mt-1 text-sm text-muted">A strip under the top bar that every signed-in player sees. Leave it empty to show nothing.</p>
