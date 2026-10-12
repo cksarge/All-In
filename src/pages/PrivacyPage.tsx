@@ -39,7 +39,12 @@ const sections: LegalSection[] = [
             <strong>Username</strong>, and a club name and tag if you start a club.
           </li>
           <li>
-            <strong>Reports.</strong> If you report a player: who you reported, the reason you picked, and the short note if you wrote one.
+            <strong>Chat messages.</strong> What you type in chat at a table, in a live room or in a club, with the time and place. If the
+            filter changed or stopped a message, what you originally typed is kept too, for the moderator.
+          </li>
+          <li>
+            <strong>Reports.</strong> If you report a player: who you reported, the reason you picked, and the short note if you wrote one. If
+            you report a chat message, a copy of that message is kept with the report.
           </li>
           <li>
             <strong>The record that you accepted</strong> the Terms of Service and this policy, with the version and the time.
@@ -55,7 +60,11 @@ const sections: LegalSection[] = [
           <li>Your level, achievements, cosmetics, missions, season progress and trophies.</li>
           <li>Your friends, friend requests, players you blocked, your club, and invitations and notifications sent to you.</li>
           <li>Which table you are sitting at, whether you are online, and when you were last active.</li>
-          <li>Any limit placed on your account by a moderator (a timeout, a ban or a forced change of name) and the reason.</li>
+          <li>Any limit placed on your account by a moderator (a warning, a timeout, a ban, a chat ban or a forced change of name) and the reason.</li>
+          <li>
+            Your <strong>reputation</strong>: a number from 0 to 100 worked out from how you use chat and from moderators&apos; decisions, with a
+            short history of what changed it.
+          </li>
         </ul>
         <p>
           <strong>What is collected automatically</strong>
@@ -73,8 +82,8 @@ const sections: LegalSection[] = [
         </ul>
         <p>
           <strong>What we do not collect:</strong> your real name, postal address, phone number, date of birth, payment details (there is nothing
-          to pay for, and no purchases exist in the game), contacts, precise location, photos, or free-text chat. Chat in the game is a fixed list
-          of preset phrases and emotes, and it is not stored.
+          to pay for, and no purchases exist in the game), contacts, precise location or photos. Quick chat (the preset phrases and emotes) is
+          not stored. Please do not put personal or contact details in typed chat.
         </p>
       </>
     ),
@@ -116,7 +125,8 @@ const sections: LegalSection[] = [
           </li>
           <li>
             <strong>To keep the game fair and safe:</strong> to stop bots and abuse, look into reports and suspected cheating, and enforce the
-            Terms of Service.
+            Terms of Service. Every typed chat message is checked automatically by a filter that stars out swear words and stops spam and
+            advertising, and the result moves your reputation up or down.
           </li>
           <li>
             <strong>To fix and improve the game:</strong> to find faults and understand in general how the game is used.
@@ -126,8 +136,9 @@ const sections: LegalSection[] = [
           </li>
         </ul>
         <p>
-          We do not sell your personal information, we do not share it for advertising, and we do not use it to make decisions about you with
-          legal or similarly significant effects.
+          We do not sell your personal information and we do not share it for advertising. The only automatic decisions made about you are
+          the chat filter and the reputation it feeds, which can switch off your chat inside the game. They have no effect outside the game,
+          and you can ask us to have a person look at one by writing to us.
         </p>
         <p>
           Where the law asks for a legal basis (for example in the European Economic Area and the United Kingdom), we rely on: carrying out our
@@ -148,11 +159,16 @@ const sections: LegalSection[] = [
           <li>your profile: achievements, trophies, playing statistics and records, and your club;</li>
           <li>where you are on the leaderboards, and big wins shown in the lounge;</li>
           <li>what you do at a shared table or in a shared room: your seat, your bets, your chips on the table, and cards that are shown;</li>
+          <li>
+            what you say in chat: the players at that table, in that room or in that club see your typed messages (with swear words starred
+            out) under your username, and your quick chat. Whether your chat has been switched off may be apparent to them;
+          </li>
           <li>to your friends: whether you are online and which public table you are at.</li>
         </ul>
         <p>
           <strong>Your email address is never shown to other players.</strong> Neither are your password, the cards you hold that are meant to be
-          hidden, reports you make, or who you have blocked. Choose a username that does not identify you in real life if you would rather not be
+          hidden, your reputation number, reports you make, or who you have blocked. The moderator can read chat messages, including what
+          the filter stopped, in order to review reports and enforce the rules. Choose a username that does not identify you in real life if you would rather not be
           recognised.
         </p>
       </>
@@ -218,6 +234,13 @@ const sections: LegalSection[] = [
         <li>
           <strong>Detailed play history</strong> (old rounds, hands, bets and chip activity) is trimmed from time to time, keeping only recent
           entries. Totals and statistics remain.
+        </li>
+        <li>
+          <strong>Chat messages</strong> are deleted after 3 days. A message that was reported is kept with the report until the matter is
+          settled and for up to 90 days afterwards.
+        </li>
+        <li>
+          <strong>Reputation</strong> is kept with your account, with the history of its last 50 changes.
         </li>
         <li>
           <strong>Reports and moderation records</strong> are kept while they are needed to deal with a matter and to stop repeat abuse. If an
@@ -327,7 +350,8 @@ export default function PrivacyPage() {
       summary={
         <>
           <p>To play, we need an email address, a username and a password. The game then records how you play: your chips, results, progress, friends and club.</p>
-          <p>Other players see your username, profile and what you do at shared tables. They never see your email address.</p>
+          <p>Other players see your username, profile, what you do at shared tables and what you say in chat. They never see your email address.</p>
+          <p>Typed chat is filtered automatically, kept for 3 days, and can be read by the moderator. How you chat moves a reputation number that only you and the moderator see.</p>
           <p>There are no ads, no analytics and no tracking cookies, and we do not sell your information. A few companies host the game and handle data for us.</p>
           <p>You can ask to see, correct or delete your data at any time by writing to {LEGAL.email}.</p>
         </>

@@ -9,6 +9,8 @@ on conflict (key) do update set name = excluded.name, sort_order = excluded.sort
 update public.cosmetics set name = 'Champion' where key = 'avatar_crown';
 
 -- Give Carter every cosmetic, including the two above (safe to run more than once).
+-- Run it again after a file adds cosmetics: the reputation ones from 22_reputation_chat.sql are
+-- otherwise held only while the reputation is high enough, and this row keeps them for good.
 insert into public.player_cosmetics (user_id, cosmetic_key)
 select p.id, c.key
   from public.profiles p

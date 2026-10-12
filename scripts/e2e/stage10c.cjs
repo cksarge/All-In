@@ -115,7 +115,7 @@ async function press(page, other, name) {
   await pool.query(`select private.season_grant($1, private.season_current())`, [annId]).catch(() => undefined);
   await ann.goto(`${BASE}/profile`);
   await ann.getByRole('heading', { name: 'Achievements' }).waitFor();
-  await ann.getByText(/of 81 unlocked/).waitFor();
+  await ann.getByText(/of 83 unlocked/).waitFor();
   ok((await ann.getByText('Grandmaster').count()) >= 1 && (await ann.getByText(/\+ Grandmaster and 1 more/).count()) === 1, 'Grandmaster is listed with its two prizes');
   await ann.goto(`${BASE}/locker`);
   await ann.getByRole('heading', { name: 'Locker' }).waitFor();

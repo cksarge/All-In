@@ -80,10 +80,13 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
 | 10 | **More games (the user's list, below), in four parts** | ✅ all four parts built on `main` |
+| 11 | **Reputation and typed chat** (`22_reputation_chat.sql`), Terms of Service and Privacy Policy | ✅ built on `main` |
 
-**User action pending for stage 10 part 4:** re-run `03_games_and_stakes.sql`, `13_progression.sql` and
-`17_clubs_records.sql`, then run the new `21_racing_teen_patti.sql`. No dashboard settings (the file adds its four
-tables to Realtime: 32 in all). Afterwards `supabase/maintenance/check_database.sql` should say OK.
+**User action pending for phase 11:** re-run `13_progression.sql` and `15_moderation.sql`, then run the new
+`22_reputation_chat.sql`, then run `supabase/maintenance/special_cosmetics.sql` again (it gives Carter the five
+reputation cosmetics for good). No dashboard settings (the file adds `player_reputation` to Realtime: 33 in all).
+Afterwards `supabase/maintenance/check_database.sql` should say OK. Stage 10 part 4's SQL (`03`, `17`, `21`) too, if
+not run yet.
 
 ### Stage 10 plan (agreed 2026-10-11; the user's answers: blackjack variants solo, horse racing a shared live
 race, Teen Patti both against the dealer and at player-against-player tables)
@@ -103,7 +106,7 @@ race, Teen Patti both against the dealer and at player-against-player tables)
    to October 2027 but a season's rewards must be invisible and unearnable until its month starts, checked on the
    server; **a season's rewards are gone for good when it ends**), a **notification inbox**, **invite a friend to
    your table**.
-3. ✅ (`17_clubs_records.sql`) **Clubs** (a typed name and tag only, preset chat, members, club leaderboard: the user chose no free text),
+3. ✅ (`17_clubs_records.sql`) **Clubs** (a typed name and tag, members, club leaderboard; preset chat only at first, typed chat since phase 11),
    **head-to-head records**, a **big-win ticker**, a **personal records** section on the profile page.
 4. ✅ (`18_tournaments_plus.sql`) **Tournament leaderboard and trophies**, **multi-table tournaments**, **more tournament formats**, and quality of
    play: poker pre-action buttons, showing cards after everyone folds, slot auto-spin, a video poker strategy hint,
@@ -113,9 +116,9 @@ race, Teen Patti both against the dealer and at player-against-player tables)
 Every part must come with its achievements, cosmetics and menu entries (standing request).
 
 ### Where things stand (2026-10-12)
-Everything planned has been built: stages 1 to 10. Nothing is designed or agreed beyond this. The site has
-**56 games** (15 table, 20 poker, 7 slots, 14 specialty; all released), **81 achievements**, 21 numbered SQL files
-making 66 tables (32 in Realtime), 18 SQL test files and 15 browser suites.
+Everything planned has been built: stages 1 to 11. Nothing is designed or agreed beyond this. The site has
+**56 games** (15 table, 20 poker, 7 slots, 14 specialty; all released), **83 achievements**, 22 numbered SQL files
+making 69 tables (33 in Realtime), 19 SQL test files and 16 browser suites.
 
 Stage 10's 23 games, for reference: Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four Card Poker,
 Teen Patti against the dealer (19); Bonus, Double Bonus and Joker video poker (11); Spanish 21, Blackjack Switch,
@@ -141,14 +144,14 @@ vite.config.ts                       VITE_BASE base path, spaFallback plugin (40
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
-scripts/e2e/                         local end-to-end harness: 15 suites (see §9)
-supabase/sql/01…21_*.sql             the database, applied in order (see §7)
+scripts/e2e/                         local end-to-end harness: 16 suites (see §9)
+supabase/sql/01…22_*.sql             the database, applied in order (see §7)
 supabase/maintenance/                run by hand, not numbered, not applied by test:sql:
                                      check_database.sql (is the live database up to date? generated),
                                      cleanup.sql (frees space), maintenance_off.sql (opens a site closed for maintenance),
                                      season_bonus_2026_10.sql, special_cosmetics.sql (the Developer items), email_logs.sql
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
-supabase/tests/NN_*_test.sql         18 test files: tests.ok / tests.throws helpers, run as role authenticated
+supabase/tests/NN_*_test.sql         19 test files: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
 src/App.tsx                          routes: / signup login verify forgot-password how-chips-work terms privacy settings
                                      lounge lobby table/:id play/:gameKey join/:code
@@ -165,9 +168,12 @@ src/lib/                             supabase client, errors (friendlyError), fo
                                      quickstart (first-visit guides), vpHint (video poker hint)
 src/stores/                          zustand: auth, wallet (balance, ledger, displayBalance), presence, settings, toast, ui,
                                      progress (own XP / achievements / loadout, the catalogues, other players' looks),
-                                     account (sanctions, admin flag, blocks), live (missions, season, inbox)
+                                     account (sanctions, admin flag, blocks), live (missions, season, inbox),
+                                     reputation (your own standing: may you chat?)
 src/hooks/useLiveTable.ts            shared live-table plumbing (see §8); useBlackjackTable / usePokerTable wrap it
 src/hooks/useLobby.ts                lobby table list + online presence
+src/hooks/useChat.ts                 typed chat for one channel (chat_fetch / chat_send, a content-free realtime ping, a slow poll)
+src/components/chat/ChatBox.tsx      the message list and input every typed chat uses
 src/hooks/useLiveRoom.ts             a shared room with no tables or seats (Crash, Bingo, horse racing): polls its
                                      state RPC, listens to Realtime
 src/components/table/                TableHeader, PlayerStrip, PhaseBar, TimerRing(+useSecondsLeft), ReactionBar,
@@ -187,7 +193,7 @@ src/components/tournaments/          SngBar (the strip on a tournament table), T
 src/components/account/              AccountGate (suspended / timeout / rename screens), ReportModal, MaintenanceGate
 src/components/onboarding/           the welcome tour and QuickStart (first-visit guide per game)
 src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
-src/components/progress/             ProgressCard (lounge), ProfileExtras, and bits: LevelBadge, XpBar, PlayerLine
+src/components/progress/             ProgressCard (lounge), ProfileExtras, ReputationCard (own profile), and bits: LevelBadge, XpBar, PlayerLine
 src/components/layout/               SiteHeader (top bar, inbox bell), SectionNav, footer, balance pill
 src/components/ui/Avatar.tsx         a player's picture and frame; src/components/table/SeatAvatar.tsx looks it up by user id
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay; 52 = joker)
@@ -442,8 +448,7 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      player**, 50 per club, roles owner / officer / member). RPCs `clubs_list`, `club_state`, `club_create`,
      `club_join(club or code)`, `club_leave`, `club_kick`, `club_set_role`, `club_update`. An owner who leaves hands
      over to the longest-serving officer, then member; the last member leaving deletes the club. Clubs are ranked
-     by rounds their members played this week. **No typed text beyond name and tag** (the user's choice): club
-     chat is a broadcast channel of the same preset phrases as the tables, not stored. Admin: `admin_clubs`,
+     by rounds their members played this week. Club chat is typed chat (channel `club:<id>`, file 22) plus a broadcast channel of the preset phrases, which are not stored. Admin: `admin_clubs`,
      `admin_club_rename`, `admin_club_delete` (a Clubs tab on `/admin`).
    - **Head to head** (`head_to_head`, hidden): a third trigger on `game_history` (`private.on_round_records`)
      pairs up the rows of one poker hand (same `round_id`; ahead beats behind) and of one Sit & Go (lower place
@@ -544,6 +549,48 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      Hands rank with `private.tpt_score` from file 19. The seats are drawn by `PokerSeat` (the state is shaped to
      fit it); the screen is `src/components/teenpatti/TeenPattiTable.tsx`. Head-to-head records (17) count these hands.
 
+22. `22_reputation_chat.sql` (phase 11): reputation and typed chat. **All numbers are in `private.rep_cfg()`** and are
+    the user's (some adjusted with them on 2026-10-12).
+   - **Reputation** (`player_reputation`, own row readable, in realtime; `reputation_log`, own rows, newest 50): 0 to
+     100, start 50. **`private.rep_change(user, delta, reason, note, set)` is the only way it changes**: it logs,
+     strips cosmetics, bumps the `reputation_best` counter (the two achievements) and notifies (not for small gains).
+     - Up: +1 per 25 clean typed messages (3 chars or more, not a repeat), at most 3 a day. Below 50 only: +2 on each
+       day a round is played, up to 50 (a fifth trigger on `game_history`), so a chat-banned player can recover.
+     - Down: the chat filter (first catch of a UTC day is a warning with no loss, then 25 each), `admin_warn` 25,
+       a report judged false 10 from the reporter (`admin_report_false`), and, **through a trigger on `admin_log`** so
+       file 15 is untouched: rename 50, timeout under a day 50, under a week 75, a week or more or a ban: to 0.
+     - **30 or less: no typed chat. 20 or less: no quick chat either** (the user first said 40 and agreed to 30, since
+       one penalty from 50 lands on 25). `admin_chat_ban(user, 'chat'|'quick', minutes | null = until lifted | 0)`
+       switches either off whatever the reputation; `admin_reputation(user, 'add'|'set', amount, note)`.
+     - Only the player (`my_reputation()`, the card on their own profile) and the admin (`admin_reputation_view`) see it.
+   - **Reputation cosmetics** (catalogue in 13): `cosmetics.min_reputation` (75: Well-Mannered, Good Standing; 100:
+     Pillar of the Lounge, Dove, Exemplary). `private.owns_cosmetic` counts them as owned only **while**
+     `private.reputation_of(user) >= min_reputation`; `private.rep_strip` takes them out of the loadout the moment the
+     reputation drops. A row in `player_cosmetics` (what `special_cosmetics.sql` gives Carter) keeps one for good.
+     The achievements (`rep_75`, `rep_100`) are permanent and carry no cosmetic. 13 defines placeholder
+     `reputation_of` / `quick_muted` functions that 22 replaces, so 13 still runs on its own.
+   - **Typed chat**: `chat_send(channel, text)` and `chat_fetch(channel, after)`. Channels: `table:<id>` (anyone who can
+     see the table reads, only seated players write), `club:<id>` (members), `room:crash|bingo|horse_racing`.
+     **`chat_messages` is a hidden table: clients have no access at all.** Who may read is decided inside `chat_fetch`
+     (which also leaves out players you blocked), so no RLS policy needs a private function. Realtime carries only a
+     content-free broadcast ping (`chat:<channel>`, event `new`) telling browsers to call `chat_fetch`; a poll (4 s
+     with the chat open, 12 s shut) covers a missed ping and the local e2e harness.
+     - **3 seconds between messages for everyone, enforced in `chat_send`** (`slow_down`); 200 characters; kept 3 days
+       (`chat_send` deletes older ones; `cleanup.sql` too). Tables and rooms show the last 2 hours, clubs all 3 days.
+     - **The filter** (`private.chat_filter`): swear words from `private.chat_words()` matched as whole words after
+       undoing number-for-letter swaps, starred out and delivered (`raw` keeps what was typed, for the admin);
+       advertising (links, addresses, "follow me", "my channel") and spam (the same message a third time in two
+       minutes, seven messages in half a minute, a character repeated 12 times) are stored `hidden` and not delivered.
+     - `chat_report(message)` files an ordinary report with the message (as typed) in its `context`.
+   - **Quick chat** stays a client broadcast, so its limits are in the browsers: the sender's (`canQuickChat()`,
+     `CHAT_GAP_MS` = 3 s) and every receiver's (`loadouts_for` returns `quick_muted`, and `useLiveTable` drops reactions
+     from muted players). Club quick phrases are only checked on the sender's side.
+   - Frontend: `useReputation` (`src/stores/reputationStore.ts`, connector in `App.tsx`), `useChat`, `ChatBox`,
+     `ReactionBar` (a "Type" tab when given a `channel`, an unread badge and a short preview of new messages),
+     `SoloShell`'s `chat` prop (the room chat in Crash, Bingo and horse racing), `ClubChat`, `ReputationCard`,
+     the locker's "Reputation N+" tag, and "Reputation and chat" in the admin's player panel plus "Warn" and
+     "False report" on each report.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -557,7 +604,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
   countdown hits zero and the server decides. No cron or edge functions.
 - **Hidden tables:** RLS on, no policies, `revoke all … from anon, authenticated`, never published to realtime.
   Today: `bj_shoes`, `bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`,
-  `bingo_secrets`, `tpt_cards`, `admins`, `player_reports`, `admin_log`, `player_activity`, `head_to_head`.
+  `bingo_secrets`, `tpt_cards`, `chat_messages`, `admins`, `player_reports`, `admin_log`, `player_activity`,
+  `head_to_head`.
 - **Each file ends with** `revoke execute on all functions in schema private from public, anon, authenticated;
   grant execute on function private.can_view_table(uuid) to authenticated;`. `private` must NOT be added to
   the Data API's exposed schemas.
@@ -568,8 +616,9 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
   `mission`, `season_reward`, `tournament_entry`, `tournament_prize`, `admin_adjust`. Solo games use `bet` and `payout` only (a returned
   stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
-**Realtime publication** now has 32 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
-notifications, player_missions, big_wins, club_members, site_status, race_rounds, race_bets, tpt_hands, tpt_players): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
+**Realtime publication** now has 33 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
+notifications, player_missions, big_wins, club_members, site_status, race_rounds, race_bets, tpt_hands, tpt_players,
+player_reputation): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
 bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots, crash_rounds,
 crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Postgres Changes enforce RLS.
 
@@ -581,7 +630,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   table game. It:
   - fetches the `<game>_state` snapshot and refetches on Postgres Changes for the game's tables plus
     `table_seats` and `game_tables` (60 ms debounce, plus a 12 s safety refetch);
-  - handles broadcast quick-chat (IDs only, no free text) and presence (watchers);
+  - handles broadcast quick chat (phrase and emote IDs only; typed chat is `useChat`, see below) and presence (watchers);
   - sends a heartbeat every 15 s, and leaves the seat 300 ms after unmount (in-app navigation);
   - runs the deadline watcher (calls `advanceFn` with jitter once a timer passes);
   - computes the server clock offset.
@@ -665,7 +714,8 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   choices. Both are linked from the footer and from the maintenance page, and stay readable during maintenance.
   Sign-up has a second required checkbox (age, agree to the Terms, have read the Privacy Policy); the accepted
   `legal_version` and `legal_accepted_at` are saved in the account's auth metadata, so no SQL was needed.
-  **When either document changes, change `LEGAL.version` and `LEGAL.effective`.** If the game starts collecting
+  **Standing request (2026-10-12): update both documents with any change that affects players or their data,
+  and say so.** When either document changes, change `LEGAL.version` and `LEGAL.effective` (now October 12, 2026). If the game starts collecting
   something new or uses a new outside service, the Privacy Policy must say so. The copy guard applies to these
   pages too: the banned words only pass on a line that also contains a disclaimer such as "no purchases".
 - Styling: Tailwind with custom colours (`ink`, `felt`, `ruby`, `gold`, `cream`, `ivory`), the `.felt` and
@@ -706,6 +756,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage10b.cjs /tmp/shots     # stage 10 part 2: four blackjack variants, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, phone widths (23 checks)
    node scripts/e2e/stage10c.cjs /tmp/shots     # stage 10 part 3: a full Badugi hand with three draws, lobby entries, Grandmaster, seasonal tag (12 checks)
    node scripts/e2e/stage10d.cjs /tmp/shots     # stage 10 part 4: a horse race with two players, a Teen Patti hand with a show, phone widths (23 checks)
+   node scripts/e2e/stage11.cjs /tmp/shots      # phase 11: room and table chat, the filter, reputation, a reported message, admin controls, cosmetics (22 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

@@ -1,5 +1,5 @@
 /**
- * Quick chat. There is no typed chat anywhere on the site: players pick from these.
+ * Quick chat: the preset phrases players pick from. (Typed chat is separate: hooks/useChat.ts and components/chat.)
  *
  * A phrase travels as its POSITION in `PHRASES`, so this list is append-only:
  * add new phrases at the end, never reorder or delete. The menus below are just

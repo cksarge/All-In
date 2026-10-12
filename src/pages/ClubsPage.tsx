@@ -6,7 +6,9 @@ import { Button, ButtonLink } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { ErrorState, FullPageLoader } from '@/components/ui/States';
 import { TextField } from '@/components/ui/TextField';
+import { ChatBox } from '@/components/chat/ChatBox';
 import { cn } from '@/components/ui/cn';
+import { useChat } from '@/hooks/useChat';
 import { QUICK_PHRASES } from '@/lib/blackjack';
 import { phraseGroups } from '@/lib/chat';
 import { EMBLEMS, type ClubMember, type ClubState, type ClubSummary } from '@/lib/clubs';
@@ -16,6 +18,7 @@ import { playSound } from '@/lib/sound';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/stores/authStore';
 import { useProgress } from '@/stores/progressStore';
+import { CHAT_GAP_MS, useReputation } from '@/stores/reputationStore';
 import { toast } from '@/stores/toastStore';
 
 /** /clubs (your club, or the list to join one) and /clubs/:id (any club). */
@@ -404,12 +407,14 @@ function ClubView({ club, reload }: { club: ClubState; reload: () => Promise<voi
   );
 }
 
-/** Preset phrases only, like the tables: nothing typed. Messages are live and are not stored. */
+/** Typed chat for the members (kept 3 days), and the quick phrases, which are live and not stored. */
 function ClubChat({ clubId, members }: { clubId: string; members: ClubMember[] }) {
   const userId = useAuth((s) => s.user?.id);
   const [lines, setLines] = useState<{ id: number; user_id: string; index: number }[]>([]);
   const channel = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastSent = useRef(0);
+  const chat = useChat(`club:${clubId}`, true);
+  const canQuick = useReputation((s) => s.rep?.can_quick !== false);
   const groups = phraseGroups('club');
   const [tab, setTab] = useState(groups[0].key);
   const names = useRef(new Map<string, string>());
@@ -433,7 +438,7 @@ function ClubChat({ clubId, members }: { clubId: string; members: ClubMember[] }
   }, [clubId]);
 
   const say = (index: number) => {
-    if (!userId || !channel.current || Date.now() - lastSent.current < 2000) return;
+    if (!userId || !channel.current || !canQuick || Date.now() - lastSent.current < CHAT_GAP_MS) return;
     lastSent.current = Date.now();
     playSound('click');
     void channel.current.send({ type: 'broadcast', event: 'say', payload: { user_id: userId, index } });
@@ -444,8 +449,11 @@ function ClubChat({ clubId, members }: { clubId: string; members: ClubMember[] }
       <h2 id="club-chat-h" className="font-display text-lg font-bold text-ivory">
         Club chat
       </h2>
-      <p className="mt-1 text-xs text-muted">Quick phrases only. Members who have this page open see them.</p>
-      <ul className="mt-2 h-32 space-y-1 overflow-y-auto rounded-xl bg-ink-950/50 p-2 text-sm" aria-live="polite">
+      <p className="mt-1 text-xs text-muted">For members only. Typed messages are kept for 3 days.</p>
+      <ChatBox chat={chat} className="mt-2" listClassName="h-44" />
+      <h3 className="mt-4 text-xs font-semibold uppercase tracking-wider text-muted">Quick phrases</h3>
+      <p className="mt-1 text-xs text-muted">{canQuick ? 'Members who have this page open see them. They are not kept.' : 'Quick chat is switched off for you at the moment. Your profile says why.'}</p>
+      <ul className="mt-2 h-24 space-y-1 overflow-y-auto rounded-xl bg-ink-950/50 p-2 text-sm" aria-live="polite">
         {lines.length === 0 ? (
           <li className="text-muted">Nothing said yet.</li>
         ) : (

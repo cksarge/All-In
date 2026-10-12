@@ -51,10 +51,11 @@ export default function LockerPage() {
   const owned = new Set(me.owned);
   // One-of-a-kind items (granted by hand, with no level or achievement behind them) are only shown to their owner.
   const prizeOf = (c: Cosmetic) => achievements.find((x) => x.cosmetic_key === c.key || x.extra_cosmetics?.includes(c.key));
-  const listed = cosmetics.filter((c) => owned.has(c.key) || c.unlock_level !== null || Boolean(prizeOf(c)));
+  const listed = cosmetics.filter((c) => owned.has(c.key) || c.unlock_level !== null || Boolean(c.min_reputation) || Boolean(prizeOf(c)));
   const items = listed.filter((c) => c.kind === kind);
   const how = (c: Cosmetic) => {
     if (c.unlock_level) return `Reach level ${c.unlock_level}`;
+    if (c.min_reputation) return `Reputation ${c.min_reputation} or more, for as long as it lasts`;
     const a = prizeOf(c);
     return a ? `Achievement: ${a.name}` : 'Not available yet';
   };
@@ -134,6 +135,11 @@ export default function LockerPage() {
                 {c.season && (
                   <span className="rounded-full border border-gold-500/40 bg-gold-500/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-gold-200">
                     Seasonal · {seasonLabel(c.season)}
+                  </span>
+                )}
+                {c.min_reputation && (
+                  <span className="rounded-full border border-felt-300/40 bg-felt-600/20 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-felt-300">
+                    Reputation {c.min_reputation}+
                   </span>
                 )}
                 <span className={cn('text-xs', on ? 'font-semibold text-gold-200' : have ? 'text-felt-300' : 'text-subtle')}>

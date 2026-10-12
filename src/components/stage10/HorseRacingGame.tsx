@@ -161,6 +161,7 @@ function Room({ info }: { info: SoloInfo<Config> }) {
   return (
     <SoloShell
       info={info}
+      chat="room:horse_racing"
       tier={tier?.tier}
       status={status}
       wide

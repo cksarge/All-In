@@ -25,3 +25,6 @@ delete from public.clubs;
 delete from public.big_wins;
 -- A run that died with maintenance on would lock every later run out.
 update public.site_status set maintenance = false, message = null;
+delete from public.chat_messages;
+delete from public.player_reputation;
+delete from public.reputation_log;

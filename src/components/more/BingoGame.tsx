@@ -178,6 +178,7 @@ function Hall({ info }: { info: SoloInfo<Config> }) {
   return (
     <SoloShell
       info={info}
+      chat="room:bingo"
       wide
       tier={tier?.tier}
       status={status}

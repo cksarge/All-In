@@ -354,7 +354,7 @@ export function PokerTable({ tableId }: { tableId: string }) {
         className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-ink-900/95 px-3 py-3 backdrop-blur sm:static sm:mt-5 sm:rounded-2xl sm:border sm:bg-ink-800/80 sm:px-5 sm:py-4"
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
-          {mySeat && <ReactionBar onSend={t.sendReaction} game="poker" />}
+          {mySeat && <ReactionBar onSend={t.sendReaction} game="poker" channel={`table:${tableId}`} />}
           {me?.hole && viewHand && myPlayer && myPlayer.status !== 'folded' && (me.hand_name || me.low_name) && (
             <p className="text-xs text-cream/75">
               You: <strong className="text-gold-200">{me.hand_name}</strong>

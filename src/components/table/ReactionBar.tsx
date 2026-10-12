@@ -1,15 +1,39 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { EMOTES, QUICK_PHRASES } from '@/lib/blackjack';
 import { phraseGroups, type ChatContext } from '@/lib/chat';
 import { playSound } from '@/lib/sound';
+import { ChatBox } from '@/components/chat/ChatBox';
 import { cn } from '@/components/ui/cn';
+import { useChat } from '@/hooks/useChat';
+import { useAuth } from '@/stores/authStore';
+import { useReputation } from '@/stores/reputationStore';
 
-/** Quick chat: preset phrases and emotes only (no free text, by design). `game` picks which phrases lead. */
-export function ReactionBar({ onSend, game = 'blackjack' }: { onSend: (kind: 'phrase' | 'emote', index: number) => boolean; game?: ChatContext }) {
+/**
+ * The Chat button at a table. Typed chat (when the table has a `channel`) and quick chat:
+ * preset phrases and emotes. `game` picks which phrases lead.
+ */
+export function ReactionBar({ onSend, game = 'blackjack', channel }: { onSend: (kind: 'phrase' | 'emote', index: number) => boolean; game?: ChatContext; channel?: string }) {
   const [open, setOpen] = useState(false);
   const groups = phraseGroups(game);
-  const [tab, setTab] = useState<string>(groups[0].key);
+  const [tab, setTab] = useState<string>(channel ? 'type' : groups[0].key);
+  const userId = useAuth((s) => s.user?.id);
+  const canQuick = useReputation((s) => s.rep?.can_quick !== false);
+  const chat = useChat(channel ?? null, open && tab === 'type');
+  // While the panel is shut, the newest message from someone else shows beside the button for a few seconds.
+  const [peek, setPeek] = useState<{ id: number; text: string } | null>(null);
+  const newest = chat.messages[chat.messages.length - 1];
+  const seen = useRef(0);
+  useEffect(() => {
+    if (!newest || newest.id <= seen.current) return;
+    seen.current = newest.id;
+    // (What was already there when you sat down is not counted as unread, so it does not pop up.)
+    if (chat.unread === 0 || open || newest.user_id === userId) return;
+    setPeek({ id: newest.id, text: `${newest.username}: ${newest.body}` });
+    const t = window.setTimeout(() => setPeek((p) => (p?.id === newest.id ? null : p)), 5000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newest?.id]);
   const send = (kind: 'phrase' | 'emote', i: number) => {
     if (onSend(kind, i)) {
       playSound('pop');
@@ -23,12 +47,30 @@ export function ReactionBar({ onSend, game = 'blackjack' }: { onSend: (kind: 'ph
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label="Quick chat and emotes"
-        className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-ink-950/60 px-3 text-sm text-cream/85 transition hover:border-white/25"
+        aria-label={chat.unread > 0 ? `Chat, ${chat.unread} new` : 'Chat'}
+        className="relative flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-ink-950/60 px-3 text-sm text-cream/85 transition hover:border-white/25"
       >
         <span aria-hidden="true">💬</span>
         <span className="hidden sm:inline">Chat</span>
+        {chat.unread > 0 && !open && (
+          <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-ruby-500 px-1 text-[0.65rem] font-bold text-ivory" aria-hidden="true">
+            {chat.unread > 9 ? '9+' : chat.unread}
+          </span>
+        )}
       </button>
+      <AnimatePresence>
+        {peek && !open && (
+          <motion.p
+            key={peek.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-none absolute bottom-12 left-0 z-30 w-max max-w-[min(18rem,calc(100vw-1.5rem))] truncate rounded-xl border border-white/10 bg-ink-800 px-3 py-1.5 text-xs text-cream shadow-lg"
+          >
+            {peek.text}
+          </motion.p>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {open && (
           <motion.div
@@ -37,10 +79,10 @@ export function ReactionBar({ onSend, game = 'blackjack' }: { onSend: (kind: 'ph
             exit={{ opacity: 0, y: 8, scale: 0.97 }}
             className="surface absolute bottom-12 left-0 z-30 w-[min(20rem,calc(100vw-1.5rem))] border-white/10 bg-ink-800 p-3"
             role="dialog"
-            aria-label="Quick chat"
+            aria-label="Chat"
           >
             <div role="tablist" aria-label="Kind of message" className="flex flex-wrap gap-1">
-              {[...groups, { key: 'emotes', label: 'Emotes' }].map((g) => (
+              {[...(channel ? [{ key: 'type', label: 'Type' }] : []), ...groups, { key: 'emotes', label: 'Emotes' }].map((g) => (
                 <button
                   key={g.key}
                   type="button"
@@ -56,7 +98,11 @@ export function ReactionBar({ onSend, game = 'blackjack' }: { onSend: (kind: 'ph
                 </button>
               ))}
             </div>
-            {current ? (
+            {tab === 'type' ? (
+              <ChatBox chat={chat} className="mt-2" listClassName="h-44" writeHint="Take a seat to chat here." />
+            ) : !canQuick ? (
+              <p className="mt-2 rounded-lg border border-ruby-500/30 bg-ruby-900/20 p-2 text-xs text-cream/85">Quick chat is switched off for you at the moment. Your profile says why.</p>
+            ) : current ? (
               <div className="mt-2 grid max-h-56 grid-cols-2 gap-1.5 overflow-y-auto overscroll-contain pr-0.5">
                 {current.items.map((i) => (
                   <button

@@ -35,6 +35,7 @@ import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import { GuestOnly, RequireAuth } from '@/routes/guards';
 import { useOnlinePresence } from '@/hooks/useLobby';
 import { useAccount } from '@/stores/accountStore';
+import { useReputation } from '@/stores/reputationStore';
 import { useAuth } from '@/stores/authStore';
 import { useLive } from '@/stores/liveStore';
 import { useProgress } from '@/stores/progressStore';
@@ -121,6 +122,21 @@ function AccountConnector() {
   const userId = useAuth((s) => s.user?.id);
   const connect = useAccount((s) => s.connect);
   const reset = useAccount((s) => s.reset);
+  useEffect(() => {
+    if (!userId) {
+      reset();
+      return;
+    }
+    return connect(userId);
+  }, [userId, connect, reset]);
+  return null;
+}
+
+/** Keeps your reputation (and so whether you may chat) loaded while signed in. */
+function ReputationConnector() {
+  const userId = useAuth((s) => s.user?.id);
+  const connect = useReputation((s) => s.connect);
+  const reset = useReputation((s) => s.reset);
   useEffect(() => {
     if (!userId) {
       reset();
@@ -222,6 +238,7 @@ export default function App() {
           <ProgressConnector />
           <TournamentConnector />
           <AccountConnector />
+          <ReputationConnector />
           <LiveConnector />
           <Routes>
             <Route element={<AppLayout />}>

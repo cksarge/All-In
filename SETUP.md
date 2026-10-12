@@ -33,6 +33,7 @@ look for the same setting name under **Authentication**.
 19. `19_table_poker.sql`
 20. `20_blackjack_variants.sql`
 21. `21_racing_teen_patti.sql`
+22. `22_reputation_chat.sql`
 
 Every file is safe to re-run. See `supabase/sql/README.md` for what each one does.
 
@@ -138,9 +139,9 @@ organization**. Anyone else sees *"We can't send email to that address yet"*.
 
 The SQL files add `wallets`, `chip_ledger`, `game_tables`, `table_seats`, `bj_rounds`, `bj_hands`, `rl_rounds`,
 `rl_bets`, `cr_state`, `cr_rolls`, `cr_bets`, `pk_hands`, `pk_players`, `jackpots`, `crash_rounds`, `crash_bets`, `bingo_rounds`,
-`player_progress`, `player_achievements`, `friendships`, `tournaments`, `tournament_entries`, `player_sanctions`, `notifications`, `player_missions`, `big_wins`, `club_members`, `site_status`, `race_rounds`, `race_bets`, `tpt_hands` and `tpt_players` to the `supabase_realtime` publication. Check
-**Database → Publications → supabase_realtime**: all thirty-two should be listed. The hidden tables (`bj_shoes`,
-`bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`, `bingo_secrets`, `tpt_cards`, `admins`,
+`player_progress`, `player_achievements`, `friendships`, `tournaments`, `tournament_entries`, `player_sanctions`, `notifications`, `player_missions`, `big_wins`, `club_members`, `site_status`, `race_rounds`, `race_bets`, `tpt_hands`, `tpt_players` and `player_reputation` to the `supabase_realtime` publication. Check
+**Database → Publications → supabase_realtime**: all thirty-three should be listed. The hidden tables (`bj_shoes`,
+`bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`, `bingo_secrets`, `tpt_cards`, `chat_messages`, `admins`,
 `player_reports`, `admin_log`, `player_activity`, `head_to_head`), poker hole cards (`pk_hole`) and bingo cards (`bingo_cards`)
 must **not** be in the publication.
 
@@ -204,5 +205,5 @@ Scripts in `supabase/maintenance/` are run in the SQL Editor when needed, never 
 | `cleanup.sql` | Deletes old finished rounds, history and activity nobody will look at again, to save space. Safe to re-run. |
 | `maintenance_off.sql` | Switches site maintenance off. |
 | `season_bonus_2026_10.sql` | One-off: 333 season points for accounts made before November 2026. |
-| `special_cosmetics.sql` | One-off: the Developer title and avatar. |
+| `special_cosmetics.sql` | The Developer title and avatar, and every other cosmetic for the admin for good. Run it again after `22_reputation_chat.sql` so the reputation cosmetics are included. |
 | `email_logs.sql` | A query for checking recent sign-ups when an email goes missing. |

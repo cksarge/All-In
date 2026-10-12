@@ -41,6 +41,8 @@ interface Report {
   reported_id: string;
   reported: string | null;
   reporter: string | null;
+  /** A reported chat message carries what was said. */
+  context?: { chat?: boolean; body?: string; raw?: string; channel?: string } | null;
   reports_against: number;
   reporters: number;
 }
@@ -176,6 +178,14 @@ function Reports({ onOpen }: { onOpen: (userId: string) => void }) {
   const resolve = async (r: Report, to: string) => {
     if (await run('admin_resolve_report', { p_report: r.id, p_status: to, p_resolution: null }, to === 'open' ? 'Report reopened' : `Report marked ${to}`)) void load();
   };
+  const warn = async (r: Report) => {
+    if (!window.confirm(`Warn ${r.reported ?? 'this player'}? They lose 25 reputation and the report is marked actioned.`)) return;
+    if (await run('admin_warn', { p_user: r.reported_id, p_reason: null, p_report: r.id }, 'Warning given')) void load();
+  };
+  const falseReport = async (r: Report) => {
+    if (!window.confirm(`Dismiss this as a false report? ${r.reporter ?? 'The reporter'} loses 10 reputation.`)) return;
+    if (await run('admin_report_false', { p_report: r.id }, 'Dismissed as a false report')) void load();
+  };
   return (
     <section aria-label="Reports">
       <div className="flex flex-wrap gap-1.5">
@@ -202,6 +212,12 @@ function Reports({ onOpen }: { onOpen: (userId: string) => void }) {
                     {r.name_then && r.name_then !== r.reported && <span className="text-muted"> (was {r.name_then})</span>} · {REASON[r.reason] ?? r.reason}
                   </p>
                   {r.note && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-cream/80">“{r.note}”</p>}
+                  {r.context?.chat && (
+                    <p className="mt-1 rounded-lg bg-ink-950/60 p-2 text-sm text-cream/90 [overflow-wrap:anywhere]">
+                      <span className="text-xs text-muted">Chat message ({r.context.channel}): </span>
+                      {r.context.raw ?? r.context.body}
+                    </p>
+                  )}
                   <p className="mt-1 text-xs text-muted">
                     From {r.reporter ?? 'a deleted account'} · {formatRelativeTime(r.at)} · {r.reports_against} report{r.reports_against === 1 ? '' : 's'} against this
                     player from {r.reporters} {r.reporters === 1 ? 'person' : 'people'}
@@ -216,6 +232,12 @@ function Reports({ onOpen }: { onOpen: (userId: string) => void }) {
                     <>
                       <Button size="sm" variant="felt" onClick={() => void resolve(r, 'actioned')}>
                         Mark actioned
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => void warn(r)} title="A warning and nothing else: the reported player loses 25 reputation">
+                        Warn (−25 rep)
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => void falseReport(r)} title="Dismiss, and take 10 reputation from the reporter">
+                        False report (−10 rep)
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => void resolve(r, 'dismissed')}>
                         Dismiss
@@ -421,6 +443,8 @@ function PlayerPanel({ userId }: { userId: string }) {
         </div>
       )}
 
+      <ReputationPanel userId={userId} username={p.username} reason={reason} />
+
       <div className="surface p-5">
         <h3 className="font-display text-lg font-bold text-ivory">Chips</h3>
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -486,6 +510,132 @@ function PlayerPanel({ userId }: { userId: string }) {
         </List>
       </div>
     </section>
+  );
+}
+
+interface RepView {
+  score: number;
+  best: number;
+  can_chat: boolean;
+  can_quick: boolean;
+  chat_banned_until: string | null;
+  quick_banned_until: string | null;
+  log: { delta: number; score: number; reason: string; note: string | null; at: string }[];
+  messages: { id: number; channel: string; text: string; flagged: string | null; hidden: boolean; at: string }[];
+}
+const BAN_TIMES: { label: string; minutes: number | null }[] = [
+  { label: '1 hour', minutes: 60 },
+  { label: '1 day', minutes: 1440 },
+  { label: '1 week', minutes: 10080 },
+  { label: 'Until lifted', minutes: null },
+];
+const banLabel = (iso: string | null) => (!iso ? null : new Date(iso).getFullYear() > 9000 ? 'until lifted' : `until ${when(iso)}`);
+
+/** A player's reputation, their chat bans and what they typed lately. `reason` is the note box above. */
+function ReputationPanel({ userId, username, reason }: { userId: string; username: string; reason: string }) {
+  const { data: r, load } = useRpc<RepView>('admin_reputation_view', { p_user: userId });
+  const [amount, setAmount] = useState('');
+  if (!r) return null;
+  const n = Number(amount.replace(/[^0-9]/g, ''));
+  const ok = amount.trim() !== '' && Number.isFinite(n) && n <= 100;
+  const act = async (fn: string, args: Record<string, unknown>, done: string, confirmText?: string) => {
+    if (confirmText && !window.confirm(confirmText)) return;
+    if (await run(fn, { p_user: userId, ...args }, done)) {
+      setAmount('');
+      void load();
+    }
+  };
+  return (
+    <div className="surface space-y-4 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-display text-lg font-bold text-ivory">Reputation and chat</h3>
+        <p className="text-sm text-cream/85">
+          <strong className="font-display text-2xl text-ivory">{r.score}</strong> / 100 <span className="text-muted">(best {r.best})</span>
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="sr-only" htmlFor="admin-rep">
+          Reputation points
+        </label>
+        <input id="admin-rep" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="numeric" placeholder="Points" className={cn(input, 'w-28')} />
+        <Button size="sm" variant="felt" disabled={!ok || n <= 0} onClick={() => void act('admin_reputation', { p_mode: 'add', p_amount: n, p_note: reason || null }, `Added ${n} reputation`)}>
+          Add points
+        </Button>
+        <Button size="sm" variant="outline" disabled={!ok || n <= 0} onClick={() => void act('admin_reputation', { p_mode: 'add', p_amount: -n, p_note: reason || null }, `Removed ${n} reputation`)}>
+          Remove points
+        </Button>
+        <Button size="sm" variant="ghost" disabled={!ok} onClick={() => void act('admin_reputation', { p_mode: 'set', p_amount: n, p_note: reason || null }, `Reputation set to ${n}`, `Set ${username}'s reputation to exactly ${n}?`)}>
+          Set to this
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => void act('admin_warn', { p_reason: reason || null, p_report: null }, 'Warning given', `Warn ${username}? They lose 25 reputation and see the reason above.`)}>
+          Warn (−25)
+        </Button>
+      </div>
+      {(
+        [
+          ['chat', 'Typed chat', r.can_chat, r.chat_banned_until],
+          ['quick', 'Quick chat', r.can_quick, r.quick_banned_until],
+        ] as const
+      ).map(([kind, label, can, banned]) => (
+        <div key={kind} className="flex flex-wrap items-center gap-2">
+          <p className="w-full text-sm text-cream/85 sm:w-56">
+            {label}: <strong className={can ? 'text-felt-300' : 'text-ruby-300'}>{can ? 'on' : 'off'}</strong>
+            {banned ? ` (banned ${banLabel(banned)})` : !can ? ' (reputation too low)' : ''}
+          </p>
+          {banned ? (
+            <Button size="sm" variant="felt" onClick={() => void act('admin_chat_ban', { p_kind: kind, p_minutes: 0 }, `${label} ban lifted`)}>
+              Lift ban
+            </Button>
+          ) : (
+            BAN_TIMES.map((t) => (
+              <Button key={t.label} size="sm" variant="outline" onClick={() => void act('admin_chat_ban', { p_kind: kind, p_minutes: t.minutes }, `${label} banned: ${t.label.toLowerCase()}`)}>
+                {t.label}
+              </Button>
+            ))
+          )}
+        </div>
+      ))}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">Reputation history</h4>
+          {r.log.length === 0 ? (
+            <p className="mt-1 text-sm text-muted">No changes yet.</p>
+          ) : (
+            <ul className="mt-1 max-h-56 divide-y divide-white/[0.06] overflow-y-auto text-sm">
+              {r.log.map((l, i) => (
+                <li key={i} className="flex justify-between gap-3 py-1.5">
+                  <span className="min-w-0 truncate text-cream/85">
+                    {l.reason.replace(/_/g, ' ')}
+                    {l.note ? `: ${l.note}` : ''} <span className="text-xs text-muted">{formatRelativeTime(l.at)}</span>
+                  </span>
+                  <span className={cn('shrink-0 tabular-nums', l.delta > 0 ? 'text-felt-300' : l.delta < 0 ? 'text-ruby-300' : 'text-muted')}>
+                    {l.delta > 0 ? `+${l.delta}` : l.delta} → {l.score}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">Typed in the last 3 days (as typed)</h4>
+          {r.messages.length === 0 ? (
+            <p className="mt-1 text-sm text-muted">Nothing.</p>
+          ) : (
+            <ul className="mt-1 max-h-56 divide-y divide-white/[0.06] overflow-y-auto text-sm">
+              {r.messages.map((m) => (
+                <li key={m.id} className="py-1.5">
+                  <p className="text-cream/90 [overflow-wrap:anywhere]">{m.text}</p>
+                  <p className="text-xs text-muted">
+                    {m.channel} · {formatRelativeTime(m.at)}
+                    {m.flagged && <span className="ml-1 text-ruby-300">· caught: {m.flagged}{m.hidden ? ' (not delivered)' : ' (starred out)'}</span>}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

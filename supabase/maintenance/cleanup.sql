@@ -5,7 +5,7 @@
 --
 -- NEVER touched: accounts, profiles, wallets (balances), player stats, XP and levels,
 -- achievements, cosmetics and loadouts, friends, clubs, trophies, head-to-head records,
--- season points, bans and blocks, the jackpot, the game catalogue, seats, and anything still
+-- season points, reputation, bans and blocks, the jackpot, the game catalogue, seats, and anything still
 -- being played (open rounds, hands in progress, chips on a table).
 --
 -- Every game is covered, by what it stores:
@@ -37,6 +37,8 @@
 --   * weekly leaderboard rows older than 8 weeks
 --   * missions older than 60 days, and old notifications
 --   * player reports settled more than 90 days ago, and admin log entries older than a year
+--   * typed chat messages older than 3 days (the game deletes these itself whenever someone
+--     chats; this catches them when nobody has)
 --
 -- One thing to know: after this, a player's chip activity no longer adds up to their
 -- balance from zero, because the oldest entries are gone. The balance itself is in
@@ -222,6 +224,19 @@ begin
              where x.id = h.id and x.phase = 'settled' and x.n > (select teen_patti_hands from cleanup_keep) returning 1)
       select count(*) from d $q$ into n;
     insert into cleanup_report (what, rows_deleted) values ('teen patti hands', n);
+  end if;
+end $$;
+
+-- ---- Chat (22_reputation_chat.sql): typed messages past their 3 days ----------------
+-- (A reported message lives on inside its report. Reputation and its short history are kept.)
+do $$
+declare n bigint;
+begin
+  if to_regclass('public.chat_messages') is not null then
+    execute $q$
+      with d as (delete from public.chat_messages where created_at < now() - interval '3 days' returning 1)
+      select count(*) from d $q$ into n;
+    insert into cleanup_report (what, rows_deleted) values ('old chat messages', n);
   end if;
 end $$;
 

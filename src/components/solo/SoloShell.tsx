@@ -8,7 +8,9 @@ import { ChipAmount } from '@/components/ui/ChipAmount';
 import { ChipIcon } from '@/components/ui/ChipIcon';
 import { ErrorState, FullPageLoader } from '@/components/ui/States';
 import { TierBadge } from '@/components/ui/TierBadge';
+import { ChatBox } from '@/components/chat/ChatBox';
 import { cn } from '@/components/ui/cn';
+import { useChat } from '@/hooks/useChat';
 import { chipDenominations } from '@/lib/blackjack';
 import { formatChips, formatChipsCompact } from '@/lib/format';
 import { historyLine, type SoloInfo, type SoloTier, type Spots } from '@/lib/solo';
@@ -47,6 +49,7 @@ export function SoloShell({
   controls,
   children,
   wide,
+  chat,
 }: {
   info: SoloInfo<unknown, unknown>;
   tier?: TierKey;
@@ -56,6 +59,8 @@ export function SoloShell({
   controls: ReactNode;
   children: ReactNode;
   wide?: boolean;
+  /** A live room's chat channel ("room:crash"): shows the room chat under the game. */
+  chat?: string;
 }) {
   const navigate = useNavigate();
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -84,6 +89,8 @@ export function SoloShell({
         </p>
         {children}
       </section>
+
+      {chat && <RoomChat channel={chat} />}
 
       <section
         aria-label="Your controls"
@@ -340,5 +347,23 @@ export function BetStepper({ bets, index, onChange, disabled, tiers, label = 'Be
         +
       </Button>
     </div>
+  );
+}
+
+/** The chat everyone in a live room shares. Shut until you open it, with a count of what you missed. */
+function RoomChat({ channel }: { channel: string }) {
+  const [open, setOpen] = useState(false);
+  const chat = useChat(channel, open);
+  return (
+    <section className="surface mt-4 p-4" aria-label="Room chat">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 text-left">
+        <span className="font-display text-base font-bold text-ivory">
+          <span aria-hidden="true">💬</span> Room chat
+          {chat.unread > 0 && !open && <span className="ml-2 rounded-full bg-ruby-500 px-1.5 py-0.5 align-middle text-[0.65rem] font-bold text-ivory">{chat.unread > 9 ? '9+' : chat.unread} new</span>}
+        </span>
+        <span className="text-xs text-muted">{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && <ChatBox chat={chat} className="mt-3" listClassName="h-40" />}
+    </section>
   );
 }

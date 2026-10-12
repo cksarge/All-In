@@ -36,7 +36,7 @@ select tests.ok(private.round_xp(0, 0) = 2 and private.round_xp(100, 0) = 12 and
 select tests.ok(private.round_xp(10, 0, 'plinko') = 0 and private.round_xp(10, 20, 'plinko') = 1 and private.round_xp(100, 0, 'plinko') = 2
             and private.round_xp(100, 500, 'plinko') = 3 and private.round_xp(10000, 0, 'plinko') = 25 and private.round_xp(100, 0, 'keno') = 12,
                 'Plinko earns a quarter of the square root of the bet and no flat bonus; other games are unchanged');
-select tests.ok(not exists (select 1 from public.cosmetics c where c.unlock_level is null and c.season is null
+select tests.ok(not exists (select 1 from public.cosmetics c where c.unlock_level is null and c.season is null and c.min_reputation is null
                               and not exists (select 1 from public.achievements a where a.cosmetic_key = c.key or c.key = any (a.extra_cosmetics))), 'every cosmetic can be earned');
 select tests.ok((select extra_cosmetics = '{frame_grandmaster}' and cosmetic_key = 'title_grandmaster' and goal = 100 and metric = 'level' from public.achievements where key = 'level_100')
             and (select cardinality(extra_cosmetics) = 2 from public.achievements where key = 'completionist')
@@ -49,7 +49,7 @@ select tests.ok(not exists (select 1 from public.achievements a where not (priva
                                                    'bingo_fast', 'keno_perfect', 'best_streak', 'max_multiple',
                                                    'tourney_played', 'tourney_wins', 'sng_wins', 'showdown_wins', 'freeroll_podiums',
                                                    'missions_done', 'weeklies_done', 'daily_sweeps', 'season_tiers', 'seasons_done', 'invites_sent', 'big_wins', 'h2h_best', 'clubs_joined', 'clubs_founded', 'mtt_wins', 'trophies', 'cards_shown', 'joker_big', 'four_aces', 'trails', 'full_rides', 'five_card_tricks', 'spanish_bonuses', 'hilo_runs', 'red_dog_triples',
-                                                   'razz_wheels', 'number_ones', 'badugis', 'race_winners', 'race_longshots', 'tpt_wins', 'tpt_blind_wins', 'tpt_trails', 'all_achievements')), 'every achievement measures something that exists');
+                                                   'razz_wheels', 'number_ones', 'badugis', 'race_winners', 'race_longshots', 'tpt_wins', 'tpt_blind_wins', 'tpt_trails', 'reputation_best', 'all_achievements')), 'every achievement measures something that exists');
 
 -- ----------------------------------------------------------------------------
 -- A new player

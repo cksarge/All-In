@@ -108,7 +108,7 @@ const sections: LegalSection[] = [
           <li>team up with other players against others at a table (collusion), deliberately lose chips to another player, or use several accounts at the same table;</li>
           <li>exploit a bug or mistake in the game instead of reporting it to us;</li>
           <li>try to read information you are not meant to see, such as other players&apos; cards or the cards still to come;</li>
-          <li>harass, threaten, bully or abuse other players, including through usernames, club names, quick chat or false reports;</li>
+          <li>harass, threaten, bully or abuse other players, including through usernames, club names, chat or false reports;</li>
           <li>get around a ban, timeout or other limit placed on you;</li>
           <li>attack, overload, probe or disrupt the game or the services it runs on, or try to reach another player&apos;s account or data;</li>
           <li>use the game for anything unlawful, or to advertise or promote anything, including real-money gambling.</li>
@@ -116,6 +116,40 @@ const sections: LegalSection[] = [
         <p>
           If you find a security problem, please tell us privately at <ContactEmail /> and give us reasonable time to fix it before telling
           anyone else.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'chat',
+    title: 'Chat and reputation',
+    body: (
+      <>
+        <p>
+          You can talk to other players with typed chat and with quick chat (preset phrases and emotes) at tables, in live rooms and in clubs.
+          What you type is seen by the other players there and is stored for a short time so that it can be shown, reported and reviewed. Do not
+          share personal or contact details in chat, yours or anyone else&apos;s.
+        </p>
+        <p>In chat you agree not to:</p>
+        <ul>
+          <li>swear or use slurs, or use sexual, hateful, threatening or harassing language;</li>
+          <li>spam, flood or repeat messages;</li>
+          <li>advertise or promote anything, post links, or ask players to follow, join or contact you elsewhere;</li>
+          <li>get round the chat filter, for example by spelling a word differently;</li>
+          <li>encourage anyone to break these terms or the law.</li>
+        </ul>
+        <p>
+          An automatic filter checks every typed message. It stars out swear words and stops messages that look like spam or advertising. It
+          can make mistakes in both directions, and it does not make chat safe: other players, not us, are responsible for what they write.
+          Everyone must wait a few seconds between messages.
+        </p>
+        <p>
+          Every account has a <strong>reputation</strong> from 0 to 100, which only you and the moderator can see. It rises slowly when you
+          chat well and falls when the filter catches a message or a moderator acts on your account, and a report you make that is judged
+          false costs you some too. A low reputation switches off typed chat, and a lower one switches off quick chat as well. A high
+          reputation earns cosmetics that are yours only while your reputation stays that high: they are removed if it drops. A moderator can
+          also change a reputation, or switch chat off for an account, at any time. The exact numbers are shown on your profile and may
+          change.
         </p>
       </>
     ),
@@ -130,7 +164,8 @@ const sections: LegalSection[] = [
           believe these terms have been broken or when it is needed to protect players or the game. We may, with or without warning:
         </p>
         <ul>
-          <li>change or remove a username, club name or club;</li>
+          <li>change or remove a username, club name or club, or remove chat messages;</li>
+          <li>give a warning, lower a reputation, or switch off typed chat or quick chat for an account;</li>
           <li>remove a player from a table or a tournament;</li>
           <li>correct, reduce or reset chips, progress or rewards that were gained unfairly or by mistake;</li>
           <li>limit an account for a time, or ban it for good.</li>
@@ -154,6 +189,7 @@ const sections: LegalSection[] = [
         <ul>
           <li>we may change how they are earned, what they do or how many there are, and we may add, change, reset or remove them;</li>
           <li>seasonal rewards are available only during their season and are gone when it ends;</li>
+          <li>reputation cosmetics are held only while your reputation is high enough, and are taken away when it is not;</li>
           <li>balances, progress and items may be lost through a fault, a correction or the closing of the game, and we owe nothing for them;</li>
           <li>nothing is owed to you for chips, progress or items when an account is closed, by you or by us.</li>
         </ul>
@@ -192,8 +228,8 @@ const sections: LegalSection[] = [
             of the game as this one, or as run or approved by us.
           </li>
           <li>
-            You keep whatever rights you have in a username or club name you choose, and you allow us to store and show it as part of the game
-            for as long as it is in use.
+            You keep whatever rights you have in a username or club name you choose and in what you write in chat, and you allow us to store,
+            show and review them as part of running and moderating the game.
           </li>
           <li>If you send us ideas or feedback, we may use them without owing you anything.</li>
         </ul>
@@ -322,7 +358,8 @@ export default function TermsPage() {
         <>
           <p>All In is a free game. There is no real money, no gambling and no purchases. Play chips and everything you earn have no cash value and can&apos;t be traded or redeemed.</p>
           <p>You must be {LEGAL.minAge} or older, and under 18 you need a parent&apos;s or guardian&apos;s permission.</p>
-          <p>Play fair and be decent to other players. We can change or close the game, and we can limit or ban accounts that break the rules.</p>
+          <p>Play fair and be decent to other players, in chat too: no swearing, spam or advertising. Chat is filtered, and how you behave moves your reputation.</p>
+          <p>We can change or close the game, and we can limit or ban accounts that break the rules.</p>
         </>
       }
     />

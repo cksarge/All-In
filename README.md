@@ -30,8 +30,9 @@ It builds to a static site.
   Bingo and horse racing; six slot machines with a shared jackpot; and about thirty solo games against the house
   (baccarat, video poker, dealer poker games, blackjack variants, keno, Plinko, Mines and more).
 - **Tournaments:** Sit & Go poker, a multi-table Main Event, Slot Showdowns and a Daily Freeroll.
-- **Progress:** XP and 100 levels, 81 achievements, earned cosmetics, daily and weekly missions, monthly seasons.
-- **Social:** friends, clubs, leaderboards, profiles with records, preset quick chat (no free text anywhere).
+- **Progress:** XP and 100 levels, 83 achievements, earned cosmetics, daily and weekly missions, monthly seasons.
+- **Social:** friends, clubs, leaderboards, profiles with records, and chat: typed (filtered, with a reputation that
+  good and bad behaviour moves) and quick preset phrases.
 - **Moderation:** reports, blocks, an admin page, and a site maintenance switch.
 - **Terms of Service and Privacy Policy** at `/terms` and `/privacy`, agreed to at sign-up (their shared facts,
   such as the contact address and effective date, are in `src/lib/legal.ts`).
@@ -63,10 +64,10 @@ It builds to a static site.
 │   ├── routes/              auth guards
 │   └── stores/              auth, wallet, progress, account, live data, settings, toasts
 └── supabase/
-    ├── sql/                 21 numbered, re-runnable SQL files and their README
+    ├── sql/                 22 numbered, re-runnable SQL files and their README
     ├── maintenance/         scripts run by hand: database check, cleanup, maintenance off
     ├── email-templates/     confirm-signup.html, reset-password.html (+ subjects)
-    └── tests/               local-only Supabase stub and 18 SQL test files
+    └── tests/               local-only Supabase stub and 19 SQL test files
 ```
 
 ## Local setup
@@ -145,5 +146,6 @@ After deploying, set **Authentication → URL Configuration → Site URL** in Su
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll), game guides, sounds, animations, accessibility, mobile | ✅ Done |
 | 9 | Admin and moderation, missions, monthly seasons, inbox, clubs, records, multi-table tournaments, quality of play | ✅ Done |
 | 10 | 23 more games: six dealer poker games, four blackjack variants, four more poker games, three video pokers, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, horse racing and Teen Patti tables | ✅ Done |
+| 11 | Reputation and typed chat, Terms of Service and Privacy Policy | ✅ Done |
 
 Free to play. No real money. No purchases. Chips have no cash value.

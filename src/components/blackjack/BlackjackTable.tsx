@@ -335,7 +335,7 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
         className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-ink-900/95 px-3 py-3 backdrop-blur sm:static sm:mt-5 sm:rounded-2xl sm:border sm:bg-ink-800/80 sm:px-5 sm:py-4"
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
-          {mySeat && <ReactionBar onSend={t.sendReaction} game="blackjack" />}
+          {mySeat && <ReactionBar onSend={t.sendReaction} game="blackjack" channel={`table:${tableId}`} />}
 
           {!mySeat ? (
             <p className="flex-1 text-sm text-cream/80">

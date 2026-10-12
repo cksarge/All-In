@@ -423,6 +423,8 @@ begin
                            'id', r.id, 'reason', r.reason, 'note', r.note, 'status', r.status, 'resolution', r.resolution,
                            'at', r.created_at, 'resolved_at', r.resolved_at,
                            'name_then', r.context ->> 'username',
+                           -- A reported chat message (22_reputation_chat.sql) travels in the context.
+                           'context', r.context,
                            'reported_id', r.reported, 'reported', (select username from public.profiles where id = r.reported),
                            'reporter_id', r.reporter, 'reporter', (select username from public.profiles where id = r.reporter),
                            'reports_against', (select count(*) from public.player_reports r2 where r2.reported = r.reported),

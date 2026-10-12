@@ -46,6 +46,9 @@ create table if not exists public.cosmetics (
   sort_order    integer not null default 100
 );
 
+-- Reputation cosmetics (22_reputation_chat.sql): owned only WHILE the player's reputation is at least this.
+alter table public.cosmetics add column if not exists min_reputation integer check (min_reputation between 1 and 100);
+
 create table if not exists public.achievements (
   key           text primary key check (key ~ '^[a-z][a-z0-9_]{1,40}$'),
   name          text not null,
@@ -189,6 +192,11 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('avatar_horse',       'avatar', 'Racehorse',     null, 174),
   ('back_teen_patti',    'card_back', 'Marigold',   null, 175),
   ('frame_trail',        'frame', 'Trail',          null, 176),
+  ('title_well_mannered', 'title', 'Well-Mannered', null, 180),
+  ('frame_good_standing', 'frame', 'Good Standing', null, 181),
+  ('title_pillar',       'title', 'Pillar of the Lounge', null, 182),
+  ('avatar_dove',        'avatar', 'Dove',          null, 183),
+  ('frame_exemplary',    'frame', 'Exemplary',      null, 184),
   ('title_grandmaster',  'title', 'Grandmaster',    null, 998),
   ('title_completionist', 'title', 'Completionist', null, 999),
   ('title_field_marshal', 'title', 'Field Marshal', null, 167),
@@ -215,6 +223,11 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('felt_trophy_room', 'felt', 'Trophy Room',   null, 65)
 on conflict (key) do update set
   kind = excluded.kind, name = excluded.name, unlock_level = excluded.unlock_level, sort_order = excluded.sort_order;
+
+-- Held only while the reputation lasts: 75 for the first three, 100 for the others.
+update public.cosmetics set min_reputation = 75 where key in ('title_well_mannered', 'frame_good_standing');
+update public.cosmetics set min_reputation = 100 where key in ('title_pillar', 'avatar_dove', 'frame_exemplary');
+
 
 -- -----------------------------------------------------------------------------
 -- Catalogue: achievements
@@ -291,6 +304,8 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('razz_wheel',      'The Bicycle',       'Win a Razz pot with 5-4-3-2-A.',                        'feats', 'razz_wheels', 1, 2500, 300, 'avatar_bicycle',      589),
   ('number_one',      'Number One',        'Win a 2-7 Triple Draw pot with 7-5-4-3-2.',             'feats', 'number_ones', 1, 5000, 500, 'title_number_one',    5891),
   ('badugi_made',     'Badugi!',           'Win a Badugi pot with a four-card badugi.',             'feats', 'badugis',     1, 1000, 150, 'back_four_suits',     5892),
+  ('rep_75',          'In Good Standing',  'Reach a reputation of 75.',                             'social', 'reputation_best', 75,  2500,  300,  null,            5899),
+  ('rep_100',         'Model Citizen',     'Reach a reputation of 100, the highest there is.',      'social', 'reputation_best', 100, 10000, 1000, null,            5900),
   ('race_winner',     'First Past the Post', 'Back the winner of a horse race.',                    'feats', 'race_winners',   1,  500,  75,  null,                  5893),
   ('race_regular',    'Stable Regular',    'Back 25 winners at the races.',                         'feats', 'race_winners',   25, 5000, 500, 'title_jockey',        5894),
   ('race_longshot',   'Long Shot',         'Back a winner that pays 10 times your bet or more.',    'feats', 'race_longshots', 1,  2500, 300, 'avatar_horse',        5895),
@@ -589,6 +604,18 @@ insert into public.player_loadouts (user_id) select id from auth.users on confli
 -- -----------------------------------------------------------------------------
 -- Cosmetics
 -- -----------------------------------------------------------------------------
+-- Reputation lives in 22_reputation_chat.sql, which replaces these two with the real thing.
+-- Until that file has run, everyone is at the starting 50 and nobody is muted.
+do $$
+begin
+  if to_regclass('public.player_reputation') is null then
+    create or replace function private.reputation_of(p_user uuid) returns integer
+      language sql stable security definer set search_path = '' as 'select 50';
+    create or replace function private.quick_muted(p_user uuid) returns boolean
+      language sql stable security definer set search_path = '' as 'select false';
+  end if;
+end $$;
+
 create or replace function private.owns_cosmetic(p_user uuid, p_key text)
 returns boolean
 language sql
@@ -600,7 +627,8 @@ as $$
     select 1 from public.cosmetics c
      where c.key = p_key
        and (c.unlock_level <= (select coalesce(max(level), 1) from public.player_progress where user_id = p_user)
-            or exists (select 1 from public.player_cosmetics pc where pc.user_id = p_user and pc.cosmetic_key = c.key)))
+            or exists (select 1 from public.player_cosmetics pc where pc.user_id = p_user and pc.cosmetic_key = c.key)
+            or private.reputation_of(p_user) >= c.min_reputation))
 $$;
 
 create or replace function private.loadout_json(p_user uuid)
@@ -667,7 +695,9 @@ set search_path = ''
 as $$
   select case when auth.uid() is null then '{}'::jsonb else coalesce(
     (select jsonb_object_agg(u::text, private.loadout_json(u) || jsonb_build_object(
-               'level', coalesce((select level from public.player_progress where user_id = u), 1)))
+               'level', coalesce((select level from public.player_progress where user_id = u), 1),
+               -- Quick chat is switched off for this player: other browsers drop what they send.
+               'quick_muted', private.quick_muted(u)))
        from (select distinct x as u from unnest(p_users[1:40]) x) s), '{}'::jsonb) end
 $$;
 

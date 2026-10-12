@@ -30,6 +30,8 @@ export interface Cosmetic {
   name: string;
   unlock_level: number | null;
   sort_order: number;
+  /** Reputation cosmetics: owned only while your reputation is at least this. */
+  min_reputation?: number | null;
   /** Season rewards: the month they belong to, and how they look (the app has no built-in look for them). */
   season?: string | null;
   look?: Record<string, string> | null;
@@ -114,6 +116,7 @@ export const AVATAR_GLYPH: Record<string, string | null> = {
   avatar_bicycle: '🚲',
   avatar_infinity: '♾️',
   avatar_horse: '🐎',
+  avatar_dove: '🕊️',
 };
 
 /** Ring around the avatar: a border colour, or a gradient for the fancy ones. */
@@ -127,6 +130,8 @@ export const FRAMES: Record<string, { color: string; gradient?: string; glow?: s
   frame_diamond: { color: '#e8f4ff', gradient: 'conic-gradient(#e8f4ff, #8fb0f0, #c9a4f5, #e8f4ff, #5cc392, #e8f4ff)', glow: 'rgba(232,244,255,0.5)' },
   frame_grandmaster: { color: '#ffffff', gradient: 'conic-gradient(#ff5a6a, #ffb347, #f7e08a, #5cc392, #6fa8ff, #b48cf2, #ff5a6a)', glow: 'rgba(255,255,255,0.75)' },
   frame_completionist: { color: '#0b0b0f', gradient: 'conic-gradient(#0b0b0f, #f0d688, #0b0b0f, #ffffff, #0b0b0f, #f0d688, #0b0b0f)', glow: 'rgba(240,214,136,0.8)' },
+  frame_good_standing: { color: '#7fd6b0', gradient: 'conic-gradient(#7fd6b0, #e8f4ff, #5cc392, #e8f4ff, #7fd6b0)', glow: 'rgba(127,214,176,0.5)' },
+  frame_exemplary: { color: '#ffffff', gradient: 'conic-gradient(#ffffff, #bfe3ff, #f7e08a, #ffffff, #bfe3ff, #f7e08a, #ffffff)', glow: 'rgba(255,255,255,0.7)' },
   frame_trail: { color: '#f0d688', gradient: 'conic-gradient(#f0d688, #e07b2c, #c9303f, #f0d688, #e07b2c, #c9303f, #f0d688)', glow: 'rgba(224,123,44,0.55)' },
   frame_spotlight: { color: '#fff7d6', gradient: 'conic-gradient(#fff7d6, #f0d688, #ffffff, #b8902a, #fff7d6)', glow: 'rgba(255,247,214,0.65)' },
   frame_clockwork: { color: '#c9a36a', gradient: 'conic-gradient(#c9a36a, #5a4630, #f0d688, #5a4630, #c9a36a)', glow: 'rgba(201,163,106,0.5)' },

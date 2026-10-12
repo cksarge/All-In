@@ -136,6 +136,32 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
       return { title: `You were removed from ${String(d.club ?? 'a club')}`, to: '/clubs', action: 'Find a club' };
     case 'tournament_off':
       return { title: 'The Main Event was called off', body: 'Not enough players entered. Your entry is back in your wallet.', to: '/tournaments', action: 'Tournaments' };
+    case 'reputation': {
+      const delta = Number(d.delta ?? 0);
+      const why: Record<string, string> = {
+        chat_warning: 'The chat filter caught one of your messages. This is your warning for today.',
+        chat_swear: 'Swearing in chat.',
+        chat_spam: 'Spamming the chat.',
+        chat_promo: 'Advertising in chat.',
+        warning: 'A warning from a moderator.',
+        rename: 'A moderator removed your username.',
+        false_report: 'A report you made was judged false.',
+        admin_adjust: 'Changed by a moderator.',
+      };
+      return {
+        title: delta === 0 ? 'A warning about your chat' : `Your reputation ${delta > 0 ? 'went up' : 'went down'} by ${Math.abs(delta)}`,
+        body: `${why[String(d.reason)] ?? 'After a moderator’s decision.'} It is now ${String(d.score)} out of 100.`,
+        to: '/profile',
+        action: 'See your reputation',
+      };
+    }
+    case 'chat_ban':
+      return {
+        title: `A moderator switched off ${d.kind === 'quick' ? 'quick chat' : 'typed chat'} for you`,
+        body: typeof d.until === 'string' ? `Until ${new Date(d.until).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}.` : 'Until a moderator lifts it.',
+        to: '/profile',
+        action: 'See your reputation',
+      };
     case 'chips_adjusted':
       return { title: 'A moderator changed your chip balance', body: `${Number(d.delta) > 0 ? '+' : ''}${formatChips(Number(d.delta ?? 0))} chips.` };
     default:

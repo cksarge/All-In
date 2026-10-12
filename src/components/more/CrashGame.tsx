@@ -187,6 +187,7 @@ function Room({ info }: { info: SoloInfo<Config> }) {
   return (
     <SoloShell
       info={info}
+      chat="room:crash"
       tier={tier?.tier}
       status={status}
       controls={

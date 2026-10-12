@@ -5,6 +5,8 @@ import { friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import { isBlocked } from '@/stores/accountStore';
 import { useAuth } from '@/stores/authStore';
+import { useProgress } from '@/stores/progressStore';
+import { canQuickChat, CHAT_GAP_MS } from '@/stores/reputationStore';
 
 export interface Reaction {
   id: number;
@@ -34,7 +36,6 @@ export interface Deadline {
 
 const HEARTBEAT_MS = 15_000;
 const SAFETY_REFETCH_MS = 12_000;
-const REACTION_COOLDOWN_MS = 2_000;
 const REACTION_SHOW_MS = 3_500;
 // Leaving the page inside the app (lobby, lounge, …) gives up the seat. The short
 // delay lets React's dev-mode remount cancel it; a refresh or closed tab never
@@ -44,7 +45,7 @@ const pendingLeave = new Map<string, number>();
 /**
  * Shared plumbing for every live table game:
  *  - Postgres Changes on the game's tables trigger a fresh server snapshot.
- *  - Broadcast carries quick-chat phrases and emotes (IDs only, never free text).
+ *  - Broadcast carries quick-chat phrases and emotes (IDs only; typed chat goes through the server instead).
  *  - Presence tracks who's watching.
  *  - Heartbeats hold the seat; navigating away inside the app leaves it.
  *  - When a timer runs out, the client asks the server to advance; the server
@@ -120,11 +121,13 @@ export function useLiveTable<S extends LiveTableState>(opts: {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_tables', filter: `id=eq.${tableId}` }, scheduleRefetch)
       .on('broadcast', { event: 'react' }, ({ payload }) => {
         const p = payload as Partial<Reaction>;
-        // Only render known phrase/emote IDs: there is no free-text chat.
+        // Only render known phrase/emote IDs (typed chat goes through the server, not through here).
         const max = p.kind === 'phrase' ? QUICK_PHRASES.length : p.kind === 'emote' ? EMOTES.length : 0;
         if (typeof p.user_id !== 'string' || typeof p.index !== 'number' || p.index < 0 || p.index >= max) return;
         // Broadcasts are open to anyone on the channel: only show ones from players with a seat here.
         if (!seatedIds.current.has(p.user_id) || isBlocked(p.user_id)) return;
+        // Quick chat is switched off for this player (low reputation or a moderator's ban).
+        if ((useProgress.getState().looks[p.user_id]?.loadout as { quick_muted?: boolean } | undefined)?.quick_muted) return;
         const r: Reaction = { id: Date.now() + Math.random(), user_id: p.user_id, kind: p.kind!, index: p.index };
         setReactions((list) => [...list.filter((x) => x.user_id !== r.user_id), r]);
         window.setTimeout(() => setReactions((list) => list.filter((x) => x.id !== r.id)), REACTION_SHOW_MS);
@@ -219,7 +222,7 @@ export function useLiveTable<S extends LiveTableState>(opts: {
   const sendReaction = useCallback(
     (kind: 'phrase' | 'emote', index: number) => {
       if (!user || !channelRef.current || !seatedIds.current.has(user.id)) return false;
-      if (Date.now() - lastReactionAt.current < REACTION_COOLDOWN_MS) return false;
+      if (!canQuickChat() || Date.now() - lastReactionAt.current < CHAT_GAP_MS) return false;
       lastReactionAt.current = Date.now();
       void channelRef.current.send({ type: 'broadcast', event: 'react', payload: { user_id: user.id, kind, index } });
       return true;

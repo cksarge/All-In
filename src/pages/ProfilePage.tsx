@@ -4,6 +4,7 @@ import { useAccount } from '@/stores/accountStore';
 import { SectionNav } from '@/components/layout/SectionNav';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ReputationCard } from '@/components/progress/ReputationCard';
 import { LevelBadge, useTitleName, XpBar } from '@/components/progress/bits';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -213,6 +214,7 @@ export default function ProfilePage() {
           <Stat label="Games tried">{p.totals.games}</Stat>
         </div>
       </section>
+      {self && <ReputationCard />}
       <ProfileExtras username={p.username} self={self} />
 
       <section className="mt-8" aria-labelledby="ach-title">
