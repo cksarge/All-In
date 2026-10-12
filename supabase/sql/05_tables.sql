@@ -429,11 +429,18 @@ language plpgsql
 stable
 set search_path = ''
 as $$
+declare
+  v_uid uuid := auth.uid();
 begin
-  if auth.uid() is null then
+  if v_uid is null then
     raise exception 'not_authenticated' using errcode = '28000';
   end if;
-  return auth.uid();
+  -- Banned, timed-out and must-rename accounts are stopped here, for every game at once
+  -- (15_moderation.sql defines the check; before that file is run there is nothing to check).
+  if to_regprocedure('private.sanction_check(uuid)') is not null then
+    execute 'select private.sanction_check($1)' using v_uid;
+  end if;
+  return v_uid;
 end $$;
 
 -- -----------------------------------------------------------------------------

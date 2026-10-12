@@ -312,6 +312,10 @@ begin
   if v_uid is null then
     raise exception 'not_authenticated' using errcode = '28000';
   end if;
+  -- Banned, timed-out and must-rename accounts stop here (15_moderation.sql).
+  if to_regprocedure('private.sanction_check(uuid)') is not null then
+    execute 'select private.sanction_check($1)' using v_uid;
+  end if;
 
   select * into w from public.wallets where user_id = v_uid;
   if not found then
@@ -387,6 +391,10 @@ begin
   if v_uid is null then
     raise exception 'not_authenticated' using errcode = '28000';
   end if;
+  -- Banned, timed-out and must-rename accounts stop here (15_moderation.sql).
+  if to_regprocedure('private.sanction_check(uuid)') is not null then
+    execute 'select private.sanction_check($1)' using v_uid;
+  end if;
 
   select * into w from public.wallets where user_id = v_uid for update;
   if not found then
@@ -440,6 +448,10 @@ declare
 begin
   if v_uid is null then
     raise exception 'not_authenticated' using errcode = '28000';
+  end if;
+  -- Banned, timed-out and must-rename accounts stop here (15_moderation.sql).
+  if to_regprocedure('private.sanction_check(uuid)') is not null then
+    execute 'select private.sanction_check($1)' using v_uid;
   end if;
 
   select * into w from public.wallets where user_id = v_uid for update;

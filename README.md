@@ -129,6 +129,7 @@ After deploying, set **Authentication → URL Configuration → Site URL** in Su
 | 6.5 | Ultimate Texas Hold'em, Dragon Tiger, Casino War, Crash, Plinko, Mines, Scratch Cards, Power Draw, Bingo | ✅ Done |
 | 7 | XP, achievements, cosmetics, locker, leaderboards, profile, friends | ✅ Done |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll), game guides, sounds, animations, accessibility, mobile | ✅ Done |
-| 9 | More games: table poker, blackjack and poker variants, more video poker, and others (list in CLAUDE.md) | Next |
+| 9 | Admin and moderation (done), missions, seasons, inbox, clubs, records, bigger tournaments, quality of play | In progress |
+| 10 | More games: table poker, blackjack and poker variants, more video poker, and others (list in CLAUDE.md) | |
 
 Free to play. No real money. No purchases. Chips have no cash value.

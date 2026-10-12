@@ -78,12 +78,30 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 6.5 | Ultimate Texas Hold'em, Dragon Tiger, Casino War, Crash, Plinko, Mines, Scratch Cards, Power Draw, Bingo; lounge sections; every game in the lobby picker | ✅ on `main` |
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
-| 9 | **More games (the user's list, below)** | **Next** |
+| 9 | **Live-service features, in four parts (below)** | **Part 1 built on `main`; parts 2 to 4 next** |
+| 10 | More games (the user's list, below) | |
 
-**User action pending for stage 8:** re-run `03_games_and_stakes.sql`, `05_tables.sql`, `09_poker.sql`, `10_slots.sql`
-and `13_progression.sql`, then run the new `14_tournaments.sql`. No dashboard settings.
+**User action pending for stage 9 part 1:** re-run `02_economy.sql` and `05_tables.sql`, then run the new
+`15_moderation.sql`. No dashboard settings. (Realtime gains `player_sanctions`: 23 tables.)
 
-### Stage 9: more games (the user's list, saved on 2026-10-11; not designed yet)
+### Stage 9: what the user asked for (2026-10-11), delivered in parts, each committed and tested
+1. ✅ **Admin and moderation** (`15_moderation.sql`): hidden `/admin` page for the account called Carter, reports,
+   blocks, bans, timeouts, forced renames, chip changes, site notice. Profile page: the Leaderboards / Friends /
+   Open locker buttons and the Tournaments pill were removed (the user's request).
+2. **Missions** (daily and weekly), **monthly season tracks** (first one Halloween, October 2026; rewards defined up
+   to October 2027 but a season's rewards must be invisible and unearnable until its month starts, checked on the
+   server; **a season's rewards are gone for good when it ends**), a **notification inbox**, **invite a friend to
+   your table**.
+3. **Clubs** (a typed name and tag only, preset chat, members, club leaderboard: the user chose no free text),
+   **head-to-head records**, a **big-win ticker**, a **personal records** section on the profile page.
+4. **Tournament leaderboard and trophies**, **multi-table tournaments**, **more tournament formats**, and quality of
+   play: poker pre-action buttons, showing cards after everyone folds, slot auto-spin, a video poker strategy hint,
+   favourite games and "continue where you left off", more emotes. **Not wanted:** music or sound options, installing
+   as an app. Not asked for (skip unless they ask): lucky wheel, private tournaments, shareable wins, profile showcase,
+   fairness page, play reminders.
+Every part must come with its achievements, cosmetics and menu entries (standing request).
+
+### Stage 10: more games (the user's list, saved on 2026-10-11; not designed yet)
 - **Table poker against the dealer:** Caribbean Stud, Let It Ride, Mississippi Stud, Four Card Poker, Casino Hold'em.
 - **Blackjack variants:** Spanish 21, Blackjack Switch, Free Bet Blackjack, Pontoon.
 - **Player-against-player poker:** Short Deck (6+) Hold'em, Razz, 2-7 Triple Draw, Badugi.
@@ -317,6 +335,28 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
    - **Standing request:** every new feature adds its achievements and cosmetic prizes (catalogues in 13, looks in
      `src/lib/progress.ts`) and its menu entries.
 
+15. `15_moderation.sql` (stage 9 part 1): the admin and moderation.
+   - **The admin is a row in the hidden `admins` table**, seeded once with the account whose username is Carter and
+     tied to its id (so a rename can't hand it over). Every `admin_*` RPC starts with `private.require_admin()`
+     and answers `not_admin` to anyone else. The `/admin` page has **no link anywhere** (the user's wish) and
+     shows "Access not allowed" unless `my_account().admin`; the page is a convenience, the server is the gate.
+   - **Enforcement is one hook:** `private.require_uid()` (05) and the three economy RPCs (02) call
+     `private.sanction_check(uid)` if it exists, which raises `account_banned`, `account_timeout` or
+     `rename_required`. So a sanction stops every game at once and new games need nothing extra, as long as their
+     RPCs start with `require_uid()`. `my_account()` and `change_username()` deliberately skip it.
+   - `player_sanctions` (own row readable, in realtime), `player_blocks` (own rows), `player_reports`, `admin_log`
+     (both hidden), `site_notice` (one row, shown under the top bar). A block removes the friendship and a trigger
+     on `friendships` refuses new requests either way; the client also hides a blocked player's emotes.
+   - Admin RPCs: `admin_overview`, `admin_reports`, `admin_resolve_report`, `admin_find_players`, `admin_player`,
+     `admin_ban` / `admin_unban`, `admin_timeout(user, minutes)` (0 ends it), `admin_rename(user, name or null)`
+     (null = replace the name with `Player_xxxxxx` and set `must_rename`), `admin_chips(user, 'add'|'set', amount)`
+     (through `apply_chips`, ledger reason `admin_adjust`), `admin_kick`, `admin_set_notice`. A ban or timeout also
+     takes the player off their table. All actions go to `admin_log`.
+   - Frontend: `useAccount` (`src/stores/accountStore.ts`), `AccountGate` inside `RequireAuth` (the suspended /
+     timeout / choose-a-new-name screens), `ReportModal`, Block and Report on other players' profiles, the blocked
+     list on the Friends page, `src/pages/AdminPage.tsx`.
+   - Not done yet: banned players still appear on leaderboards.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -408,7 +448,8 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   (`.page-in`, opacity only: a transform would trap the fixed control bars) and a rolling header balance.
   The site links to its public repo from the landing page and the footer (`GitHubLink`).
 - **UX decisions the user asked for (keep them):**
-  - Top bar: Lounge, Lobby, Tournaments, Profile.
+  - Top bar: Lounge, Lobby, Tournaments, Profile. The profile pages' row of links is Profile, Locker, Friends,
+    Leaderboards (no Tournaments, and no duplicate buttons on the profile itself).
   - Equipped titles are visible to everyone at the tables.
   - The landing page says the project is open source and links to the repo; so does the footer.
   - Settings is a popup opened by the gear next to the sound icon.
@@ -449,6 +490,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (44 checks)
    node scripts/e2e/social.cjs /tmp/shots       # stage 7: rewards, profile, locker, friends, join their table, leaderboards (24 checks)
    node scripts/e2e/tournaments.cjs /tmp/shots  # stage 8: freeroll, showdown, heads-up Sit & Go, first-visit guide (30 checks)
+   node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban (18 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

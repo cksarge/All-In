@@ -7,7 +7,6 @@ const LINKS = [
   { to: '/locker', label: 'Locker' },
   { to: '/friends', label: 'Friends' },
   { to: '/leaderboards', label: 'Leaderboards' },
-  { to: '/tournaments', label: 'Tournaments' },
 ];
 
 /** The row of links shared by the profile pages, so each one leads to the others. */

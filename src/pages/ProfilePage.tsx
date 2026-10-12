@@ -1,9 +1,11 @@
+import { ReportModal } from '@/components/account/ReportModal';
+import { useAccount } from '@/stores/accountStore';
 import { SectionNav } from '@/components/layout/SectionNav';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { LevelBadge, useTitleName, XpBar } from '@/components/progress/bits';
 import { Avatar } from '@/components/ui/Avatar';
-import { Button, ButtonLink } from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { ErrorState, FullPageLoader } from '@/components/ui/States';
 import { cn } from '@/components/ui/cn';
@@ -101,6 +103,9 @@ export default function ProfilePage() {
     void load();
   }, [load, fetchCatalogue]);
 
+  const [reportOpen, setReportOpen] = useState(false);
+  const blocked = useAccount((s) => Boolean(p && s.account?.blocked.some((b) => b.user_id === p.user_id)));
+
   if (error) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16">
@@ -126,9 +131,20 @@ export default function ProfilePage() {
     void useProgress.getState().fetch();
   };
 
+  const block = async (on: boolean) => {
+    setBusy(true);
+    const { error: err } = await supabase.rpc(on ? 'block_player' : 'unblock_player', { p_user: p.user_id });
+    setBusy(false);
+    if (err) return toast.error(friendlyError(err));
+    toast.success(on ? `${p.username} is blocked` : `${p.username} is unblocked`, on ? 'They can no longer add you, and you won\'t see their emotes.' : undefined);
+    void useAccount.getState().fetch();
+    void load();
+  };
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
       {self && <SectionNav />}
+      {!self && <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} userId={p.user_id} username={p.username} />}
       <section className="surface p-6" aria-label={`${p.username}'s profile`}>
         <div className="flex flex-wrap items-center gap-4">
           <Avatar username={p.username} loadout={p.loadout} size={84} me={self} />
@@ -142,21 +158,10 @@ export default function ProfilePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {self ? (
-              <>
-                <ButtonLink to="/leaderboards" variant="ghost" size="sm">
-                  Leaderboards
-                </ButtonLink>
-                <ButtonLink to="/friends" variant="ghost" size="sm">
-                  Friends
-                  {mine && mine.friend_requests > 0 && (
-                    <span className="ml-1.5 rounded-full bg-gold-500 px-1.5 text-xs font-bold text-ink-950">{mine.friend_requests}</span>
-                  )}
-                </ButtonLink>
-                <ButtonLink to="/locker" variant="outline" size="sm">
-                  Open locker
-                </ButtonLink>
-              </>
+            {self ? null : blocked ? (
+              <Button variant="outline" size="sm" disabled={busy} onClick={() => void block(false)}>
+                Blocked · Unblock
+              </Button>
             ) : p.friendship === 'friends' ? (
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => void friend('friend_remove', { p_user: p.user_id }, 'Removed from your friends')}>
                 Friends ✓ · Remove
@@ -173,6 +178,18 @@ export default function ProfilePage() {
               <Button size="sm" disabled={busy} onClick={() => void friend('friend_request', { p_username: p.username }, 'Friend request sent')}>
                 Add friend
               </Button>
+            )}
+            {!self && (
+              <>
+                {!blocked && (
+                  <Button variant="ghost" size="sm" disabled={busy} onClick={() => void block(true)}>
+                    Block
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => setReportOpen(true)}>
+                  Report
+                </Button>
+              </>
             )}
           </div>
         </div>

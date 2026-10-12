@@ -21,6 +21,7 @@ const REASONS: Record<string, string> = {
   jackpot: 'Jackpot win',
   achievement: 'Achievement reward',
   level_up: 'Level-up reward',
+  admin_adjust: 'Adjusted by a moderator',
   tournament_entry: 'Tournament entry',
   tournament_prize: 'Tournament prize',
 };

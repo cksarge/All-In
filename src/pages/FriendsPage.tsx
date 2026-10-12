@@ -1,3 +1,4 @@
+import { useAccount } from '@/stores/accountStore';
 import { SectionNav } from '@/components/layout/SectionNav';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { PlayerLine } from '@/components/progress/bits';
@@ -49,6 +50,8 @@ export default function FriendsPage() {
     const id = window.setInterval(() => void load(), 15_000);
     return () => window.clearInterval(id);
   }, [load, requests]);
+
+  const blockedList = useAccount((st) => st.account?.blocked) ?? [];
 
   const act = async (key: string, fn: string, args: Record<string, unknown>, done: string) => {
     setBusy(key);
@@ -209,6 +212,29 @@ export default function FriendsPage() {
             </section>
           )}
         </>
+      )}
+      {blockedList.length > 0 && (
+        <section className="surface mt-5 p-5" aria-labelledby="blocked-title">
+          <h2 id="blocked-title" className="font-display text-xl font-bold text-ivory">
+            Blocked players
+          </h2>
+          <p className="mt-1 text-sm text-muted">They can&apos;t send you friend requests, and you don&apos;t see their emotes.</p>
+          <ul className="mt-2 divide-y divide-white/[0.06]">
+            {blockedList.map((b) => (
+              <li key={b.user_id} className="flex items-center justify-between gap-3 py-2.5">
+                <span className="truncate text-sm font-medium text-cream">{b.username}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy !== null}
+                  onClick={() => void act(b.user_id, 'unblock_player', { p_user: b.user_id }, `${b.username} is unblocked`).then(() => useAccount.getState().fetch())}
+                >
+                  Unblock
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

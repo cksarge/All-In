@@ -3,6 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { EMOTES, QUICK_PHRASES } from '@/lib/blackjack';
 import { friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
+import { isBlocked } from '@/stores/accountStore';
 import { useAuth } from '@/stores/authStore';
 
 export interface Reaction {
@@ -123,7 +124,7 @@ export function useLiveTable<S extends LiveTableState>(opts: {
         const max = p.kind === 'phrase' ? QUICK_PHRASES.length : p.kind === 'emote' ? EMOTES.length : 0;
         if (typeof p.user_id !== 'string' || typeof p.index !== 'number' || p.index < 0 || p.index >= max) return;
         // Broadcasts are open to anyone on the channel: only show ones from players with a seat here.
-        if (!seatedIds.current.has(p.user_id)) return;
+        if (!seatedIds.current.has(p.user_id) || isBlocked(p.user_id)) return;
         const r: Reaction = { id: Date.now() + Math.random(), user_id: p.user_id, kind: p.kind!, index: p.index };
         setReactions((list) => [...list.filter((x) => x.user_id !== r.user_id), r]);
         window.setTimeout(() => setReactions((list) => list.filter((x) => x.id !== r.id)), REACTION_SHOW_MS);

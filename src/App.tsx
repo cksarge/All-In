@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Toaster } from '@/components/ui/Toaster';
 import { playSound } from '@/lib/sound';
 import { supabase, supabaseConfigured } from '@/lib/supabase';
+import AdminPage from '@/pages/AdminPage';
 import ConfigMissingPage from '@/pages/ConfigMissingPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import FriendsPage from '@/pages/FriendsPage';
@@ -27,6 +28,7 @@ import TournamentsPage from '@/pages/TournamentsPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import { GuestOnly, RequireAuth } from '@/routes/guards';
 import { useOnlinePresence } from '@/hooks/useLobby';
+import { useAccount } from '@/stores/accountStore';
 import { useAuth } from '@/stores/authStore';
 import { useProgress } from '@/stores/progressStore';
 import { prefersReducedMotion, useSettings } from '@/stores/settingsStore';
@@ -48,6 +50,7 @@ const TITLES: Record<string, string> = {
   '/friends': 'Friends · All In',
   '/leaderboards': 'Leaderboards · All In',
   '/tournaments': 'Tournaments · All In',
+  '/admin': 'All In',
 };
 
 function RouteEffects() {
@@ -103,6 +106,21 @@ function ProgressConnector() {
   return null;
 }
 
+/** Keeps your account's standing (ban, timeout, rename, blocks, the site notice) loaded while signed in. */
+function AccountConnector() {
+  const userId = useAuth((s) => s.user?.id);
+  const connect = useAccount((s) => s.connect);
+  const reset = useAccount((s) => s.reset);
+  useEffect(() => {
+    if (!userId) {
+      reset();
+      return;
+    }
+    return connect(userId);
+  }, [userId, connect, reset]);
+  return null;
+}
+
 /** Takes you to your Sit & Go table the moment it fills, wherever you are on the site. */
 function TournamentConnector() {
   const userId = useAuth((s) => s.user?.id);
@@ -153,6 +171,7 @@ export default function App() {
         <PresenceConnector />
         <ProgressConnector />
         <TournamentConnector />
+        <AccountConnector />
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<LandingPage />} />
@@ -174,6 +193,8 @@ export default function App() {
             <Route path="leaderboards" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
             <Route path="tournaments" element={<RequireAuth><TournamentsPage /></RequireAuth>} />
             <Route path="tournaments/:id" element={<RequireAuth><ShowdownPage /></RequireAuth>} />
+            {/* No link leads here. The page itself answers "Access not allowed" to everyone but the admin. */}
+            <Route path="admin" element={<AdminPage />} />
             <Route path="join/:code" element={<RequireAuth><JoinPage /></RequireAuth>} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
