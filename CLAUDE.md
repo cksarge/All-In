@@ -396,7 +396,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
 
 17. `17_clubs_records.sql` (stage 9 part 3): clubs, head-to-head, the big-win ticker, personal records.
    - **Clubs:** `clubs` (name 3 to 24 letters/numbers/spaces, tag 2 to 5, one of twelve preset emblems, open or
-     invite only, a 6-character code whose column clients cannot select) and `club_members` (**one club per
+     invite only, a 6-character code whose column clients cannot select; `code_visible` lets the owner keep it from
+     other members, and the club page hides it behind a Show button like a password) and `club_members` (**one club per
      player**, 50 per club, roles owner / officer / member). RPCs `clubs_list`, `club_state`, `club_create`,
      `club_join(club or code)`, `club_leave`, `club_kick`, `club_set_role`, `club_update`. An owner who leaves hands
      over to the longest-serving officer, then member; the last member leaving deletes the club. Clubs are ranked

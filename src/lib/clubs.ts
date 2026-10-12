@@ -22,6 +22,8 @@ export interface ClubSummary {
   tag: string;
   emblem: string;
   is_open: boolean;
+  /** Whether members other than the owner may see the invite code. */
+  code_visible?: boolean;
   members: number;
   /** Rounds its members have played this week. */
   week_rounds: number;

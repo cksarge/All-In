@@ -45,7 +45,12 @@ async function login(browser, email, vp) {
   await ann.getByRole('button', { name: 'Create club' }).click();
   await ann.getByRole('heading', { name: /Night Owls/ }).waitFor();
   ok(await ann.getByText('1 of 50 members').isVisible(), 'a club is created and its page opens');
-  ok((await ann.getByRole('button', { name: /Copy invite code/ }).count()) === 1, 'the owner sees the invite code');
+  ok((await ann.getByLabel('Invite code, hidden').count()) === 1, 'the invite code is hidden until asked for');
+  await ann.getByRole('button', { name: 'Show', exact: true }).click();
+  ok(/^[A-Z0-9]{6}$/.test(await ann.getByLabel(/^Invite code [A-Z0-9]{6}$/).innerText()), 'Show reveals it, like a password field');
+  await ann.getByRole('button', { name: 'Hide', exact: true }).click();
+  await ann.getByLabel('Members can see the invite code').click();
+  await ann.getByText('Only you can see the invite code').waitFor();
 
   await ben.goto(BASE + '/clubs');
   await ben.getByRole('link', { name: /Night Owls/ }).waitFor();
@@ -54,6 +59,7 @@ async function login(browser, email, vp) {
   await ben.getByRole('heading', { name: /Night Owls/ }).waitFor();
   await ben.getByText('2 of 50 members').waitFor();
   ok(true, 'another player joins from the list');
+  ok(await ben.getByText(/Only the owner can see this club/).isVisible(), 'the owner can keep the code from members');
   ok(await fits(ben), 'phone: the club page fits 390px');
   await ben.screenshot({ path: `${SHOTS}/c-club-phone.png`, fullPage: true });
 

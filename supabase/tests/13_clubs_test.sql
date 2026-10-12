@@ -73,6 +73,17 @@ select tests.throws($$select public.club_join(null, 'WRONG1')$$, 'club_not_found
 select tests.ok(public.club_join(null, (tests.club('Night Owls')).invite_code) ->> 'id' is not null, 'a closed club is joined with its code');
 
 select tests.as_user(:A);
+-- The owner may keep the invite code to themselves.
+select public.club_update(null, null, false);
+select tests.ok(public.club_state() ->> 'invite_code' is not null and public.club_state() @> '{"code_visible":false}', 'the owner still sees the code after hiding it');
+select tests.as_user(:C);
+select tests.ok(public.club_state() -> 'invite_code' = 'null' and public.club_state() ->> 'my_role' = 'member', 'a member no longer does');
+select tests.throws($$select public.club_update(null, null, true)$$, 'action_not_allowed');
+select tests.as_user(:A);
+select public.club_update(null, null, true);
+select tests.as_user(:C);
+select tests.ok(public.club_state() ->> 'invite_code' is not null, 'and does again when the owner allows it');
+select tests.as_user(:A);
 select public.club_set_role(:B, 'officer');
 select tests.as_user(:B);
 select tests.throws($$select public.club_kick('00000000-0000-0000-0000-00000000c0a1')$$, 'action_not_allowed');

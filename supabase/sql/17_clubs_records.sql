@@ -23,6 +23,8 @@ create table if not exists public.clubs (
   owner        uuid references auth.users (id) on delete set null,
   created_at   timestamptz not null default now()
 );
+-- Whether ordinary members and officers may see the invite code, or only the owner.
+alter table public.clubs add column if not exists code_visible boolean not null default true;
 create unique index if not exists clubs_name_key on public.clubs (lower(name));
 create unique index if not exists clubs_tag_key on public.clubs (tag);
 
@@ -175,7 +177,7 @@ security definer
 set search_path = ''
 as $$
   select jsonb_build_object(
-    'id', c.id, 'name', c.name, 'tag', c.tag, 'emblem', c.emblem, 'is_open', c.is_open, 'created_at', c.created_at,
+    'id', c.id, 'name', c.name, 'tag', c.tag, 'emblem', c.emblem, 'is_open', c.is_open, 'code_visible', c.code_visible, 'created_at', c.created_at,
     'members', (select count(*) from public.club_members m where m.club_id = c.id),
     -- Rounds its members have played this week: how clubs are ranked.
     'week_rounds', (select coalesce(sum(w.rounds), 0) from public.club_members m
@@ -240,8 +242,9 @@ begin
   return private.club_json(c) || jsonb_build_object(
     'my_role', v_role,
     'my_club', (select club_id from public.club_members where user_id = v_uid),
-    -- Only members see the code that lets someone into a closed club.
-    'invite_code', case when v_role is not null then c.invite_code end,
+    -- The code that lets someone into a closed club: the owner always sees it, other members
+    -- only if the owner allows it, and outsiders never.
+    'invite_code', case when v_role = 'owner' or (v_role is not null and c.code_visible) then c.invite_code end,
     'roster', (select coalesce(jsonb_agg(private.player_card(m.user_id) || jsonb_build_object(
                   'role', m.role, 'joined_at', m.joined_at,
                   'week_rounds', coalesce(w.rounds, 0), 'week_net', coalesce(w.returned - w.wagered, 0),
@@ -420,8 +423,9 @@ begin
   perform private.notify(p_user, 'club_role', jsonb_build_object('role', p_role, 'club', (select name from public.clubs where id = me.club_id)));
 end $$;
 
--- The owner's settings: open to all or invite only, and the emblem.
-create or replace function public.club_update(p_open boolean default null, p_emblem text default null)
+-- The owner's settings: open to all or invite only, the emblem, and whether members may see the invite code.
+drop function if exists public.club_update(boolean, text);
+create or replace function public.club_update(p_open boolean default null, p_emblem text default null, p_code_visible boolean default null)
 returns void
 language plpgsql
 security definer
@@ -430,7 +434,8 @@ as $$
 declare
   v_uid uuid := private.require_uid();
 begin
-  update public.clubs set is_open = coalesce(p_open, is_open), emblem = coalesce(p_emblem, emblem)
+  update public.clubs set is_open = coalesce(p_open, is_open), emblem = coalesce(p_emblem, emblem),
+         code_visible = coalesce(p_code_visible, code_visible)
    where id = (select club_id from public.club_members where user_id = v_uid and role = 'owner');
   if not found then
     raise exception 'action_not_allowed' using hint = 'Only the owner can change the club.';
@@ -561,7 +566,7 @@ begin
   foreach f in array array[
     'public.big_wins_recent()', 'public.clubs_list(text)', 'public.club_state(uuid)', 'public.club_create(text, text, text, boolean)',
     'public.club_join(uuid, text)', 'public.club_leave()', 'public.club_kick(uuid)', 'public.club_set_role(uuid, text)',
-    'public.club_update(boolean, text)', 'public.admin_clubs(text)', 'public.admin_club_rename(uuid, text, text)',
+    'public.club_update(boolean, text, boolean)', 'public.admin_clubs(text)', 'public.admin_club_rename(uuid, text, text)',
     'public.admin_club_delete(uuid)', 'public.profile_extras(text)'
   ]
   loop
@@ -587,7 +592,7 @@ drop policy if exists "big_wins: signed-in players can read" on public.big_wins;
 create policy "big_wins: signed-in players can read" on public.big_wins for select to authenticated using (true);
 
 revoke all on public.clubs, public.club_members, public.head_to_head, public.big_wins from anon, authenticated;
-grant select (id, name, tag, emblem, is_open, owner, created_at) on public.clubs to authenticated;
+grant select (id, name, tag, emblem, is_open, code_visible, owner, created_at) on public.clubs to authenticated;
 grant select on public.club_members, public.big_wins to authenticated;
 
 select private.add_to_realtime('big_wins');

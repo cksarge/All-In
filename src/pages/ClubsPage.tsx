@@ -232,6 +232,7 @@ function ClubView({ club, reload }: { club: ClubState; reload: () => Promise<voi
   const navigate = useNavigate();
   const userId = useAuth((s) => s.user?.id);
   const [busy, setBusy] = useState<string | null>(null);
+  const [showCode, setShowCode] = useState(false);
   const member = club.my_role !== null;
   const owner = club.my_role === 'owner';
   const canKick = (m: ClubMember) => m.user_id !== userId && (owner || (club.my_role === 'officer' && m.role === 'member'));
@@ -291,27 +292,48 @@ function ClubView({ club, reload }: { club: ClubState; reload: () => Promise<voi
             <h2 id="club-invite-h" className="font-display text-lg font-bold text-ivory">
               Bring someone in
             </h2>
-            <p className="mt-1 text-sm text-muted">{club.is_open ? 'Anyone can join from the clubs page. This code works too:' : 'Share this code. It is the only way in.'}</p>
-            <button
-              type="button"
-              className="mt-2 rounded-lg border border-gold-500/40 px-3 py-1.5 font-mono text-lg tracking-[0.3em] text-gold-200 hover:bg-gold-500/10"
-              aria-label={`Copy invite code ${club.invite_code}`}
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(club.invite_code ?? '');
-                  toast.success('Code copied', club.invite_code ?? '');
-                } catch {
-                  toast.info('Invite code', club.invite_code ?? '');
-                }
-              }}
-            >
-              {club.invite_code}
-            </button>
+            <p className="mt-1 text-sm text-muted">{club.is_open ? 'Anyone can join from the clubs page. The invite code works too.' : 'The invite code is the only way in.'}</p>
+            {club.invite_code ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {/* Hidden until asked for, like a password field. */}
+                <span className="rounded-lg border border-gold-500/40 px-3 py-1.5 font-mono text-lg tracking-[0.3em] text-gold-200" aria-label={showCode ? `Invite code ${club.invite_code}` : 'Invite code, hidden'}>
+                  {showCode ? club.invite_code : '••••••'}
+                </span>
+                <Button size="sm" variant="ghost" aria-pressed={showCode} onClick={() => setShowCode((v) => !v)}>
+                  {showCode ? 'Hide' : 'Show'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(club.invite_code ?? '');
+                      toast.success('Invite code copied');
+                    } catch {
+                      setShowCode(true);
+                    }
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-cream/85">Only the owner can see this club&apos;s invite code. Ask them to share it.</p>
+            )}
             {owner && (
               <div className="mt-4 border-t border-white/[0.06] pt-3">
                 <label className="flex items-center gap-2 text-sm text-cream/90">
                   <input type="checkbox" checked={club.is_open} onChange={(e) => void run('open', 'club_update', { p_open: e.target.checked, p_emblem: null }, e.target.checked ? 'The club is open to all' : 'The club is invite only')} className="accent-gold-500" />
                   Anyone can join
+                </label>
+                <label className="mt-2 flex items-center gap-2 text-sm text-cream/90">
+                  <input
+                    type="checkbox"
+                    checked={club.code_visible !== false}
+                    onChange={(e) => void run('codevis', 'club_update', { p_open: null, p_emblem: null, p_code_visible: e.target.checked }, e.target.checked ? 'Members can see the invite code' : 'Only you can see the invite code')}
+                    className="accent-gold-500"
+                  />
+                  Members can see the invite code
                 </label>
                 <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Emblem">
                   {Object.entries(EMBLEMS).map(([k, g]) => (
