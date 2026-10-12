@@ -68,6 +68,10 @@ select tests.ok((select count(*) from public.cosmetics where season is not null)
 -- ----------------------------------------------------------------------------
 select tests.ok((select count(*) filter (where m ->> 'period' = 'daily') = 3 and count(*) filter (where m ->> 'period' = 'weekly') = 3
                    from st, jsonb_array_elements(r -> 'missions') m), 'three daily and three weekly missions') from st limit 1;
+select tests.ok((select array_agg((m ->> 'points')::int order by m ->> 'slot') filter (where m ->> 'period' = 'daily') = '{7,10,13}'
+                    and array_agg(m ->> 'tier' order by m ->> 'slot') filter (where m ->> 'period' = 'daily') = '{easy,medium,hard}'
+                    and array_agg((m ->> 'points')::int order by m ->> 'slot') filter (where m ->> 'period' = 'weekly') = '{30,40,50}'
+                   from st, jsonb_array_elements(r -> 'missions') m), 'an easy, a medium and a hard one: 30 points a day, 120 a week') from st limit 1;
 select tests.ok(public.missions_state() -> 'missions' = (select r -> 'missions' from st), 'the same ones every time you look');
 select tests.ok((select count(*) from public.notifications where user_id = auth.uid() and kind = 'season_start') = 1, 'told about the new season once');
 select public.inbox_clear();

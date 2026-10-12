@@ -368,8 +368,10 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
 
 16. `16_missions_seasons.sql` (stage 9 part 2): missions, seasons, the inbox, table invites.
    - **Missions:** `private.mission_pool()` (kinds: rounds, wins, wager, category, games, multiple, net, tourney).
-     Each player is dealt three daily and three weekly ones, picked by a hash of player and date
-     (`private.missions_ensure`), into `player_missions`. A second trigger on `game_history`
+     Each player is dealt **one easy, one medium and one hard** mission a day and the same each week (slots 1 to 3;
+     the tier is in `meta`), picked within each tier by a hash of player and date (`private.missions_deal`), into
+     `player_missions`. Season points are fixed by tier so the totals never change: 7 + 10 + 13 = 30 a day and
+     30 + 40 + 50 = 120 a week (the user's numbers). A second trigger on `game_history`
      (`private.on_round_missions`) moves them along, so **every game counts with no changes**. Rewards (chips, XP,
      season points) wait for `missions_claim()`, like every other reward. Ledger reason `mission`.
    - **Seasons:** `private.season_cfg()` lists 13 monthly seasons, October 2026 to October 2027, each with a title,

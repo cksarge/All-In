@@ -14,6 +14,8 @@ export interface Mission {
   chips: number;
   xp: number;
   points: number;
+  /** easy, medium or hard: harder missions give more of everything. Absent on missions dealt before this existed. */
+  tier?: 'easy' | 'medium' | 'hard' | null;
   done: boolean;
   claimed: boolean;
 }

@@ -454,6 +454,8 @@ end $$;
 -- -----------------------------------------------------------------------------
 -- kind: rounds | wins | wager | category (param = games.category) | games (different games)
 --       | multiple (param = times the bet, in one round) | net (chips won, winning rounds only) | tourney
+-- Every player gets one easy, one medium and one hard mission a day, and the same each week.
+-- Season points always add up to 30 a day (7 + 10 + 13) and 120 a week (30 + 40 + 50).
 create or replace function private.mission_pool()
 returns jsonb
 language sql
@@ -461,29 +463,68 @@ immutable
 set search_path = ''
 as $$
   select jsonb_agg(to_jsonb(m)) from (values
-    ('d_rounds',    'daily',  'rounds',   null,        20,    300,  40,  10),
-    ('d_wins',      'daily',  'wins',     null,        8,     400,  40,  10),
-    ('d_wager',     'daily',  'wager',    null,        2000,  400,  40,  10),
-    ('d_slots',     'daily',  'category', 'slots',     15,    300,  40,  10),
-    ('d_table',     'daily',  'category', 'table',     10,    300,  40,  10),
-    ('d_poker',     'daily',  'category', 'poker',     5,     400,  40,  10),
-    ('d_specialty', 'daily',  'category', 'specialty', 10,    300,  40,  10),
-    ('d_games',     'daily',  'games',    null,        3,     400,  40,  10),
-    ('d_multiple',  'daily',  'multiple', '5',         1,     500,  40,  10),
-    ('d_net',       'daily',  'net',      null,        1000,  400,  40,  10),
-    ('w_rounds',    'weekly', 'rounds',   null,        200,   2500, 250, 40),
-    ('w_wins',      'weekly', 'wins',     null,        75,    2500, 250, 40),
-    ('w_wager',     'weekly', 'wager',    null,        25000, 2500, 250, 40),
-    ('w_games',     'weekly', 'games',    null,        8,     3000, 250, 40),
-    ('w_multiple',  'weekly', 'multiple', '20',        1,     3000, 250, 40),
-    ('w_net',       'weekly', 'net',      null,        10000, 3000, 250, 40),
-    ('w_tourney',   'weekly', 'tourney',  null,        3,     3000, 250, 40),
-    ('w_poker',     'weekly', 'category', 'poker',     40,    2500, 250, 40)
-  ) as m(key, period, kind, param, goal, chips, xp, points)
+    -- daily, easy: 7 points
+    ('d_e_rounds',    'daily',  'easy',   'rounds',   null,        10,    250,  30,  7),
+    ('d_e_slots',     'daily',  'easy',   'category', 'slots',     10,    250,  30,  7),
+    ('d_e_table',     'daily',  'easy',   'category', 'table',     5,     250,  30,  7),
+    ('d_e_wager',     'daily',  'easy',   'wager',    null,        500,   250,  30,  7),
+    ('d_e_games',     'daily',  'easy',   'games',    null,        2,     250,  30,  7),
+    ('d_e_wins',      'daily',  'easy',   'wins',     null,        3,     250,  30,  7),
+    -- daily, medium: 10 points
+    ('d_m_rounds',    'daily',  'medium', 'rounds',   null,        25,    400,  40,  10),
+    ('d_m_wins',      'daily',  'medium', 'wins',     null,        8,     400,  40,  10),
+    ('d_m_wager',     'daily',  'medium', 'wager',    null,        2000,  400,  40,  10),
+    ('d_m_poker',     'daily',  'medium', 'category', 'poker',     5,     400,  40,  10),
+    ('d_m_specialty', 'daily',  'medium', 'category', 'specialty', 10,    400,  40,  10),
+    ('d_m_games',     'daily',  'medium', 'games',    null,        3,     400,  40,  10),
+    ('d_m_net',       'daily',  'medium', 'net',      null,        1000,  400,  40,  10),
+    -- daily, hard: 13 points
+    ('d_h_wins',      'daily',  'hard',   'wins',     null,        20,    600,  50,  13),
+    ('d_h_multiple',  'daily',  'hard',   'multiple', '10',        1,     600,  50,  13),
+    ('d_h_net',       'daily',  'hard',   'net',      null,        5000,  600,  50,  13),
+    ('d_h_games',     'daily',  'hard',   'games',    null,        5,     600,  50,  13),
+    ('d_h_wager',     'daily',  'hard',   'wager',    null,        10000, 600,  50,  13),
+    ('d_h_rounds',    'daily',  'hard',   'rounds',   null,        60,    600,  50,  13),
+    -- weekly, easy: 30 points
+    ('w_e_rounds',    'weekly', 'easy',   'rounds',   null,        100,   2000, 200, 30),
+    ('w_e_wager',     'weekly', 'easy',   'wager',    null,        10000, 2000, 200, 30),
+    ('w_e_games',     'weekly', 'easy',   'games',    null,        5,     2000, 200, 30),
+    ('w_e_wins',      'weekly', 'easy',   'wins',     null,        40,    2000, 200, 30),
+    -- weekly, medium: 40 points
+    ('w_m_rounds',    'weekly', 'medium', 'rounds',   null,        250,   2500, 250, 40),
+    ('w_m_wins',      'weekly', 'medium', 'wins',     null,        90,    2500, 250, 40),
+    ('w_m_wager',     'weekly', 'medium', 'wager',    null,        30000, 2500, 250, 40),
+    ('w_m_net',       'weekly', 'medium', 'net',      null,        10000, 2500, 250, 40),
+    ('w_m_poker',     'weekly', 'medium', 'category', 'poker',     40,    2500, 250, 40),
+    -- weekly, hard: 50 points
+    ('w_h_multiple',  'weekly', 'hard',   'multiple', '25',        1,     3500, 300, 50),
+    ('w_h_tourney',   'weekly', 'hard',   'tourney',  null,        3,     3500, 300, 50),
+    ('w_h_games',     'weekly', 'hard',   'games',    null,        12,    3500, 300, 50),
+    ('w_h_net',       'weekly', 'hard',   'net',      null,        40000, 3500, 300, 50),
+    ('w_h_wins',      'weekly', 'hard',   'wins',     null,        200,   3500, 300, 50)
+  ) as m(key, period, tier, kind, param, goal, chips, xp, points)
+$$;
+
+-- Deals one period's three missions: the easy one in slot 1, medium in 2, hard in 3.
+-- Which of each is fixed by the player and the date, so it can't be re-rolled.
+create or replace function private.missions_deal(p_user uuid, p_period text, p_start date)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.player_missions (user_id, period, period_start, slot, key, kind, param, goal, reward_chips, reward_xp, reward_points, meta)
+  select p_user, p_period, p_start, case x.tier when 'easy' then 1 when 'medium' then 2 else 3 end,
+         x.m ->> 'key', x.m ->> 'kind', x.m ->> 'param', (x.m ->> 'goal')::bigint,
+         (x.m ->> 'chips')::bigint, (x.m ->> 'xp')::integer, (x.m ->> 'points')::integer, jsonb_build_object('tier', x.tier)
+    from (select distinct on (m ->> 'tier') m, m ->> 'tier' as tier
+            from jsonb_array_elements(private.mission_pool()) m
+           where m ->> 'period' = p_period
+           order by m ->> 'tier', md5(p_user::text || p_start::text || (m ->> 'key'))) x
+  on conflict do nothing;
 $$;
 
 -- Deals today's and this week's missions if the player doesn't have them yet.
--- Which three is fixed by the player and the date, so it can't be re-rolled.
 create or replace function private.missions_ensure(p_user uuid)
 returns void
 language plpgsql
@@ -495,20 +536,10 @@ declare
   v_week date := private.live_week();
 begin
   if not exists (select 1 from public.player_missions where user_id = p_user and period = 'daily' and period_start = v_day) then
-    insert into public.player_missions (user_id, period, period_start, slot, key, kind, param, goal, reward_chips, reward_xp, reward_points)
-    select p_user, 'daily', v_day, row_number() over (order by x.h), x.m ->> 'key', x.m ->> 'kind', x.m ->> 'param',
-           (x.m ->> 'goal')::bigint, (x.m ->> 'chips')::bigint, (x.m ->> 'xp')::integer, (x.m ->> 'points')::integer
-      from (select m, md5(p_user::text || v_day::text || (m ->> 'key')) as h
-              from jsonb_array_elements(private.mission_pool()) m where m ->> 'period' = 'daily' order by 2 limit 3) x
-    on conflict do nothing;
+    perform private.missions_deal(p_user, 'daily', v_day);
   end if;
   if not exists (select 1 from public.player_missions where user_id = p_user and period = 'weekly' and period_start = v_week) then
-    insert into public.player_missions (user_id, period, period_start, slot, key, kind, param, goal, reward_chips, reward_xp, reward_points)
-    select p_user, 'weekly', v_week, row_number() over (order by x.h), x.m ->> 'key', x.m ->> 'kind', x.m ->> 'param',
-           (x.m ->> 'goal')::bigint, (x.m ->> 'chips')::bigint, (x.m ->> 'xp')::integer, (x.m ->> 'points')::integer
-      from (select m, md5(p_user::text || v_week::text || (m ->> 'key')) as h
-              from jsonb_array_elements(private.mission_pool()) m where m ->> 'period' = 'weekly' order by 2 limit 3) x
-    on conflict do nothing;
+    perform private.missions_deal(p_user, 'weekly', v_week);
   end if;
 end $$;
 
@@ -621,7 +652,7 @@ begin
     'weekly_ends_at', (v_week + 7)::timestamp at time zone 'utc',
     'missions', (select coalesce(jsonb_agg(jsonb_build_object(
                    'period', m.period, 'slot', m.slot, 'key', m.key, 'kind', m.kind, 'param', m.param, 'goal', m.goal, 'progress', m.progress,
-                   'chips', m.reward_chips, 'xp', m.reward_xp, 'points', m.reward_points,
+                   'chips', m.reward_chips, 'xp', m.reward_xp, 'points', m.reward_points, 'tier', m.meta ->> 'tier',
                    'done', m.completed_at is not null, 'claimed', m.claimed_at is not null) order by m.period, m.slot), '[]'::jsonb)
                    from public.player_missions m
                   where m.user_id = v_uid and ((m.period = 'daily' and m.period_start = v_day) or (m.period = 'weekly' and m.period_start = v_week))),

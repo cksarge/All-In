@@ -74,7 +74,7 @@ export default function MissionsPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">Something new every day</p>
           <h1 className="font-display text-4xl font-bold text-ivory">Missions</h1>
           <p className="mt-2 max-w-xl text-sm text-muted">
-            Three missions a day and three a week. Each pays chips and XP{data.season ? ', and moves you along this month’s season track' : ''}.
+            Three missions a day and three a week: one easy, one medium and one hard. Harder ones pay more. Each pays chips and XP{data.season ? ', and moves you along this month’s season track' : ''}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -115,12 +115,19 @@ function MissionList({ title, resets, missions, season }: { title: string; reset
   );
 }
 
+const TIER_STYLE = { easy: 'border-felt-400/50 text-felt-300', medium: 'border-gold-500/50 text-gold-200', hard: 'border-ruby-400/60 text-ruby-200' } as const;
+
 export function MissionRow({ m, season, compact }: { m: Mission; season: boolean; compact?: boolean }) {
   const pct = Math.round((Math.min(m.progress, m.goal) / m.goal) * 100);
   return (
     <li className={cn('rounded-xl border p-3', m.done ? 'border-gold-500/40 bg-gold-500/[0.07]' : 'border-white/[0.07]')}>
       <div className="flex items-start justify-between gap-3">
-        <p className={cn('text-sm font-medium', m.done ? 'text-gold-100' : 'text-cream')}>{missionText(m)}</p>
+        <p className={cn('text-sm font-medium', m.done ? 'text-gold-100' : 'text-cream')}>
+          {m.tier && (
+            <span className={cn('mr-2 rounded-full border px-1.5 py-0.5 align-middle text-[0.6rem] font-bold uppercase tracking-wider', TIER_STYLE[m.tier])}>{m.tier}</span>
+          )}
+          {missionText(m)}
+        </p>
         <span className="shrink-0 text-xs font-semibold text-gold-200">{m.claimed ? 'Collected ✓' : m.done ? 'Done ✓' : `${formatChips(m.progress)} / ${formatChips(m.goal)}`}</span>
       </div>
       <div
