@@ -117,6 +117,8 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
       return { title: `Achievement unlocked: ${String(d.name ?? '')}`, to: '/profile', action: 'See it' };
     case 'season_start':
       return { title: `A new season has begun: ${String(d.season ?? '')}`, body: 'Finish missions to earn its rewards before the month ends.', to: '/missions', action: 'See the season' };
+    case 'season_gift':
+      return { title: `A head start: +${formatChips(Number(d.points ?? 0))} season points`, body: `Added to your ${String(d.season ?? 'season')} track so there is time to finish it.`, to: '/missions', action: 'See the season' };
     case 'season_rewards':
       return {
         title: `${String(d.season ?? 'Last season')} has ended`,

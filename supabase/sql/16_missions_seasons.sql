@@ -598,11 +598,14 @@ begin
   perform private.season_sync();
   perform private.season_settle(v_uid);
   if s is not null then
-    select * into ps from public.player_seasons where user_id = v_uid and season = s ->> 'key';
-    -- Told once, when a new season opens.
-    if not exists (select 1 from public.notifications where user_id = v_uid and kind = 'season_start' and data ->> 'key' = s ->> 'key') then
+    -- Told once, when a new season opens. The player's row for the season is the record that they
+    -- have been told: a notification can be cleared from the inbox, so it can't be the record itself.
+    insert into public.player_seasons (user_id, season, points) values (v_uid, s ->> 'key', 0)
+    on conflict (user_id, season) do nothing;
+    if found and not exists (select 1 from public.notifications where user_id = v_uid and kind = 'season_start' and data ->> 'key' = s ->> 'key') then
       perform private.notify(v_uid, 'season_start', jsonb_build_object('key', s ->> 'key', 'season', s ->> 'name'));
     end if;
+    select * into ps from public.player_seasons where user_id = v_uid and season = s ->> 'key';
     v_season := jsonb_build_object(
       'key', s ->> 'key', 'name', s ->> 'name', 'blurb', s ->> 'blurb', 'accent', s ->> 'accent',
       'ends_at', (date_trunc('month', private.live_now() at time zone 'utc') + interval '1 month') at time zone 'utc',

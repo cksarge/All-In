@@ -16,6 +16,7 @@ const ICON: Record<string, string> = {
   achievement: '⭐',
   season_start: '📅',
   season_rewards: '🎁',
+  season_gift: '🎁',
   chips_adjusted: '🛡️',
   club_joined: '♣️',
   club_role: '♣️',

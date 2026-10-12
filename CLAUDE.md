@@ -381,6 +381,11 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      over the steps a player had reached and the rest is gone (the user's choice). Ledger reason `season_reward`.
      (The repo is public, so the list can be read in this file; it cannot be seen or earned in the app.)
    - `private.live_now()` is the clock for all of it; the tests replace it to travel between months.
+   - A player's `player_seasons` row doubles as the record that they were told a season opened (created in
+     `missions_state`); the notification itself can be cleared, so it must not be the record.
+   - `supabase/maintenance/season_bonus_2026_10.sql` (run by hand, once): 333 points for every account that
+     exists or is created before November 2026 (UTC), tracked in the hidden `season_gifts` table, with a trigger on
+     `profiles` for new sign-ups. Not part of the numbered files, so `test:sql` does not apply it.
    - Because season cosmetics can't be built into the app, `cosmetics.look` carries their look and
      `registerLooks()` in `src/lib/progress.ts` adds them to `AVATAR_GLYPH` / `FRAMES` / `CARD_BACKS` / `FELTS` when
      the catalogue loads. The locker already hides cosmetics with no level and no achievement from non-owners.

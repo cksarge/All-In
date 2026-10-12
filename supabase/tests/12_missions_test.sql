@@ -69,6 +69,11 @@ select tests.ok((select count(*) from public.cosmetics where season is not null)
 select tests.ok((select count(*) filter (where m ->> 'period' = 'daily') = 3 and count(*) filter (where m ->> 'period' = 'weekly') = 3
                    from st, jsonb_array_elements(r -> 'missions') m), 'three daily and three weekly missions') from st limit 1;
 select tests.ok(public.missions_state() -> 'missions' = (select r -> 'missions' from st), 'the same ones every time you look');
+select tests.ok((select count(*) from public.notifications where user_id = auth.uid() and kind = 'season_start') = 1, 'told about the new season once');
+select public.inbox_clear();
+select public.missions_state();
+select public.missions_state();
+select tests.ok((select count(*) from public.notifications where user_id = auth.uid() and kind = 'season_start') = 0, 'and not again after the inbox is cleared');
 drop table st;
 select tests.throws($$select public.missions_claim()$$, 'action_not_allowed');
 reset role;
