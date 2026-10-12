@@ -18,6 +18,10 @@ export interface PkConfig {
   next_hand_seconds: number;
   showdown_seconds: number;
   max_draw: number;
+  /** How hands are compared: high (the usual), short, razz, 27 or badugi. */
+  rank?: 'high' | 'short' | 'razz' | '27' | 'badugi';
+  /** Draw games: how many draws there are. */
+  draws?: number;
 }
 
 export interface PkStakes {
@@ -169,6 +173,10 @@ export const POKER_GAMES: Record<string, { short: string; limit: string }> = {
   poker_omaha_hilo: { short: 'Omaha Hi-Lo', limit: 'Pot limit' },
   poker_stud: { short: 'Seven-Card Stud', limit: 'Fixed limit' },
   poker_draw: { short: 'Five-Card Draw', limit: 'No limit' },
+  poker_shortdeck: { short: 'Short Deck', limit: 'No limit' },
+  poker_razz: { short: 'Razz', limit: 'Fixed limit' },
+  poker_27: { short: '2-7 Triple Draw', limit: 'Fixed limit' },
+  poker_badugi: { short: 'Badugi', limit: 'Fixed limit' },
 };
 
 export function isPokerGame(key: string | null | undefined) {
@@ -179,7 +187,9 @@ export function isPokerGame(key: string | null | undefined) {
 export function stakesLabel(game: string, p: Partial<PkStakes> | null | undefined): string {
   if (!p) return '';
   const ante = p.ante ? ` · Ante ${formatChips(p.ante)}` : '';
-  if (game === 'poker_stud') return `Limit ${formatChips(p.small_bet ?? 0)}/${formatChips(p.big_bet ?? 0)}${ante}`;
+  if (game === 'poker_stud' || game === 'poker_razz') return `Limit ${formatChips(p.small_bet ?? 0)}/${formatChips(p.big_bet ?? 0)}${ante}`;
+  // Fixed limit played with blinds: bets are the big blind, then twice that.
+  if (game === 'poker_27' || game === 'poker_badugi') return `Limit ${formatChips(p.big_blind ?? 0)}/${formatChips((p.big_blind ?? 0) * 2)} · Blinds ${formatChips(p.small_blind ?? 0)}/${formatChips(p.big_blind ?? 0)}`;
   return `Blinds ${formatChips(p.small_blind ?? 0)}/${formatChips(p.big_blind ?? 0)}${ante}`;
 }
 

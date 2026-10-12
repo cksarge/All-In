@@ -117,7 +117,7 @@ create table if not exists public.pk_topups (
 -- -----------------------------------------------------------------------------
 -- Game rules
 -- -----------------------------------------------------------------------------
-create or replace function private.pk_config(p_game text)
+create or replace function private.pk_config_game(p_game text)
 returns jsonb
 language sql
 immutable
@@ -139,8 +139,34 @@ as $$
     when 'poker_draw' then
       '{"family":"draw","hole":5,"limit":"nl","omaha":false,"hilo":false,
         "streets":["Before the draw","After the draw"]}'
-  end)::jsonb
-  || '{"turn_seconds":20,"draw_seconds":20,"next_hand_seconds":4,"showdown_seconds":8,"max_draw":5}'::jsonb;
+    -- Stage 10. "rank" says how hands are compared (see private.pk_show):
+    --   short   36 cards (no 2s to 5s): a flush beats a full house, A-6-7-8-9 is a straight
+    --   razz    the lowest five of seven win; aces are low, straights and flushes don't count
+    --   27      the worst ordinary poker hand wins; aces are high, straights and flushes count against you
+    --   badugi  four cards: as many different suits and ranks as possible, then the lowest
+    when 'poker_shortdeck' then
+      '{"family":"board","hole":2,"limit":"nl","omaha":false,"hilo":false,"rank":"short","deck":"short",
+        "streets":["Preflop","Flop","Turn","River"]}'
+    when 'poker_razz' then
+      '{"family":"stud","hole":7,"limit":"fl","omaha":false,"hilo":false,"rank":"razz",
+        "streets":["Third street","Fourth street","Fifth street","Sixth street","Seventh street"]}'
+    when 'poker_27' then
+      '{"family":"draw","hole":5,"limit":"fl","omaha":false,"hilo":false,"rank":"27","draws":3,"max_draw":5,
+        "streets":["Before the draw","After the first draw","After the second draw","After the third draw"]}'
+    when 'poker_badugi' then
+      '{"family":"draw","hole":4,"limit":"fl","omaha":false,"hilo":false,"rank":"badugi","draws":3,"max_draw":4,
+        "streets":["Before the draw","After the first draw","After the second draw","After the third draw"]}'
+  end)::jsonb;
+$$;
+-- (Defaults go first so a game can override them.)
+create or replace function private.pk_config(p_game text)
+returns jsonb
+language sql
+immutable
+set search_path = ''
+as $$
+  select '{"turn_seconds":20,"draw_seconds":20,"next_hand_seconds":4,"showdown_seconds":8,"max_draw":5,"rank":"high","draws":1}'::jsonb
+      || private.pk_config_game(p_game);
 $$;
 
 -- Blinds, antes and stack limits for a table: from stake_tiers.params, unless the
@@ -166,7 +192,10 @@ set search_path = ''
 as $$
   select case
     when private.pk_config(p_game) ->> 'limit' = 'fl' then
-      case when p_street <= 1 then (p_stakes ->> 'small_bet')::bigint else (p_stakes ->> 'big_bet')::bigint end
+      -- Stud tables have their own small and big bet; fixed-limit games played with blinds
+      -- (Triple Draw, Badugi) bet the big blind early and twice that later.
+      case when p_street <= 1 then coalesce((p_stakes ->> 'small_bet')::bigint, (p_stakes ->> 'big_blind')::bigint)
+           else coalesce((p_stakes ->> 'big_bet')::bigint, (p_stakes ->> 'big_blind')::bigint * 2) end
     else (p_stakes ->> 'big_blind')::bigint
   end;
 $$;
@@ -397,6 +426,212 @@ begin
       end loop;
     end loop;
   end loop;
+end $$;
+
+-- ---- Stage 10 hand values ----------------------------------------------------
+-- Short Deck: five cards scored like pk_eval, except a flush (5) and a full house (6)
+-- change places and A-6-7-8-9 is the lowest straight. Returns the score to compare with,
+-- and the ordinary score for naming the hand.
+create or replace function private.pk_eval_short(c smallint[], out score integer, out plain integer)
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v integer := private.pk_eval(c);
+  cat integer;
+  r integer[];
+begin
+  if coalesce(cardinality(c), 0) = 5 then
+    select array_agg(private.pk_rank(x) order by private.pk_rank(x) desc) into r from unnest(c) x;
+    if r = array[14, 9, 8, 7, 6] then
+      v := (case when c[1] / 13 = c[2] / 13 and c[1] / 13 = c[3] / 13 and c[1] / 13 = c[4] / 13 and c[1] / 13 = c[5] / 13 then 8 else 4 end << 20) | (9 << 16);
+    end if;
+  end if;
+  plain := v;
+  cat := v >> 20;
+  score := (case cat when 5 then 6 when 6 then 5 else cat end << 20) | (v & 1048575);
+end $$;
+
+-- Ace-to-five low for 1 to 5 cards (Razz): LOWER is better. Aces are low; straights and
+-- flushes don't exist; a pair is worse than any hand without one.
+create or replace function private.pk_low_a5(c smallint[])
+returns integer
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v_r integer[];
+  v_n integer[];
+  cat integer;
+  v integer := 0;
+  k integer := 0;
+begin
+  if coalesce(cardinality(c), 0) = 0 then
+    return 0;
+  end if;
+  select array_agg(g.r order by g.n desc, g.r desc), array_agg(g.n order by g.n desc, g.r desc) into v_r, v_n
+    from (select x % 13 + 1 as r, count(*)::integer as n from unnest(c) x group by 1) g;
+  cat := case when v_n[1] = 4 then 7 when v_n[1] = 3 and coalesce(v_n[2], 0) >= 2 then 6 when v_n[1] = 3 then 3
+              when v_n[1] = 2 and coalesce(v_n[2], 0) = 2 then 2 when v_n[1] = 2 then 1 else 0 end;
+  for i in 1..cardinality(v_r) loop
+    for j in 1..v_n[i] loop
+      v := (v << 4) | v_r[i];
+      k := k + 1;
+    end loop;
+  end loop;
+  return (cat << 20) | (v << (4 * (5 - k)));
+end $$;
+
+-- Deuce-to-seven low for five cards: the ordinary high-hand score, where LOWER is better.
+-- Aces are always high, so A-2-3-4-5 is not a straight here (it is ace high).
+create or replace function private.pk_eval27(c smallint[])
+returns integer
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  r integer[];
+begin
+  select array_agg(private.pk_rank(x) order by private.pk_rank(x) desc) into r from unnest(c) x;
+  if r = array[14, 5, 4, 3, 2] then
+    return (case when c[1] / 13 = c[2] / 13 and c[1] / 13 = c[3] / 13 and c[1] / 13 = c[4] / 13 and c[1] / 13 = c[5] / 13 then 5 else 0 end << 20)
+           | (14 << 16) | (5 << 12) | (4 << 8) | (3 << 4) | 2;
+  end if;
+  return private.pk_eval(c);
+end $$;
+
+-- Badugi: the largest set of cards with no two of the same suit or rank (aces low),
+-- and among equal sizes the lowest. HIGHER score is better.
+create or replace function private.pk_badugi(c smallint[], out score integer, out cards smallint[], out size integer)
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  n integer := coalesce(cardinality(c), 0);
+  v smallint[];
+  v_low integer;
+  s integer;
+begin
+  score := 0; cards := '{}'; size := 0;
+  for m in 1..(1 << n) - 1 loop
+    select array_agg(c[i] order by i) into v from generate_series(1, n) i where (m >> (i - 1)) & 1 = 1;
+    if (select count(distinct x / 13) = count(*) and count(distinct x % 13) = count(*) from unnest(v) x) then
+      select coalesce(sum((x % 13 + 1) << (4 * (4 - o::integer))), 0)::integer into v_low
+        from (select x, row_number() over (order by x % 13 desc) as o from unnest(v) x) q;
+      -- For hands of the same size the packed ranks compare highest card first.
+      v_low := v_low >> (4 * (4 - cardinality(v)));
+      s := cardinality(v) * 100000 - v_low;
+      if s > score then
+        score := s; cards := v; size := cardinality(v);
+      end if;
+    end if;
+  end loop;
+end $$;
+
+-- "9-7-5-4-2" from cards, highest first; p_ace_low writes an ace as the lowest card.
+create or replace function private.pk_low_cards_name(c smallint[], p_ace_low boolean)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select string_agg((array['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'])[x % 13 + 1], '-'
+                    order by case when x % 13 = 0 and not p_ace_low then 13 else x % 13 end desc)
+    from unnest(c) x
+$$;
+
+-- A player's best hand under the game's own ranking. `score` is always "higher is better",
+-- so the pot logic is the same for every game.
+create or replace function private.pk_show(p_game text, p_hole smallint[], p_board smallint[],
+                                           out score integer, out cards smallint[], out name text)
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  cfg jsonb := private.pk_config(p_game);
+  v_rank text := cfg ->> 'rank';
+  v_all smallint[] := coalesce(p_hole, '{}') || coalesce(p_board, '{}');
+  n integer := coalesce(cardinality(v_all), 0);
+  v smallint[];
+  s integer;
+  b record;
+  v_best integer;
+  v_plain integer;
+  i1 integer; i2 integer; i3 integer; i4 integer; i5 integer;
+begin
+  score := null; cards := null; name := null;
+  if n = 0 then
+    return;
+  end if;
+  if v_rank = 'high' then
+    select * into b from private.pk_best(p_hole, p_board, (cfg ->> 'omaha')::boolean, false);
+    score := b.score; cards := b.cards; name := private.pk_hand_name(b.score);
+    return;
+  elsif v_rank = 'badugi' then
+    select * into b from private.pk_badugi(p_hole);
+    score := b.score; cards := b.cards;
+    name := case when b.size = 4 then 'Badugi, ' else b.size || '-card hand, ' end || private.pk_low_cards_name(b.cards, true);
+    return;
+  elsif v_rank = '27' then
+    if n <> 5 then
+      return;
+    end if;
+    s := private.pk_eval27(v_all);
+    score := -s; cards := v_all;
+    name := case when s >> 20 = 0 then private.pk_low_cards_name(v_all, false) || ' low' else private.pk_hand_name(s) end;
+    return;
+  end if;
+
+  -- Short Deck (best five of up to seven, highest wins) and Razz (lowest five of up to seven).
+  if n <= 5 then
+    if v_rank = 'short' then
+      select * into b from private.pk_eval_short(v_all);
+      v_best := b.score; v_plain := b.plain;
+    else
+      v_best := -private.pk_low_a5(v_all);
+    end if;
+    cards := v_all;
+  else
+    for i1 in 1..n - 4 loop
+      for i2 in i1 + 1..n - 3 loop
+        for i3 in i2 + 1..n - 2 loop
+          for i4 in i3 + 1..n - 1 loop
+            for i5 in i4 + 1..n loop
+              v := array[v_all[i1], v_all[i2], v_all[i3], v_all[i4], v_all[i5]];
+              if v_rank = 'short' then
+                select * into b from private.pk_eval_short(v);
+                s := b.score;
+              else
+                s := -private.pk_low_a5(v);
+              end if;
+              if v_best is null or s > v_best then
+                v_best := s; cards := v;
+                if v_rank = 'short' then v_plain := b.plain; end if;
+              end if;
+            end loop;
+          end loop;
+        end loop;
+      end loop;
+    end loop;
+  end if;
+  score := v_best;
+  if v_rank = 'short' then
+    name := private.pk_hand_name(v_plain);
+  else
+    s := -v_best;
+    name := case s >> 20
+      when 0 then private.pk_low_cards_name(cards, true) || case when cardinality(cards) = 5 then ' low' else '' end
+      when 1 then 'Pair of ' || private.pk_rank_name(case when (s >> 16) & 15 = 1 then 14 else (s >> 16) & 15 end, true)
+      when 2 then 'Two pair'
+      when 3 then 'Three of a kind'
+      when 6 then 'Full house'
+      else 'Four of a kind' end;
+  end if;
 end $$;
 
 create or replace function private.pk_rank_name(v integer, p_plural boolean)
@@ -818,9 +1053,9 @@ begin
         join public.pk_hole k on k.hand_id = p.hand_id and k.user_id = p.user_id
        where p.hand_id = p_hand and p.status <> 'folded'
     loop
-      select * into b from private.pk_best(r.cards, h.board, v_omaha, false);
+      select * into b from private.pk_show(h.game_key, r.cards, h.board);
       update public.pk_players
-         set shown_cards = r.cards, hi_score = b.score, hand_name = private.pk_hand_name(b.score), best_cards = b.cards
+         set shown_cards = r.cards, hi_score = b.score, hand_name = b.name, best_cards = b.cards
        where hand_id = p_hand and seat_no = r.seat_no;
       if v_hilo then
         select * into b from private.pk_best(r.cards, h.board, v_omaha, true);
@@ -898,9 +1133,10 @@ stable
 security definer
 set search_path = ''
 as $$
-  select seat_no from public.pk_players
-   where hand_id = p_hand and status <> 'folded'
-   order by private.pk_eval(up_cards) desc, seat_no
+  -- In Razz the lowest showing hand acts first.
+  select p.seat_no from public.pk_players p join public.pk_hands h on h.id = p.hand_id
+   where p.hand_id = p_hand and p.status <> 'folded'
+   order by case when private.pk_config(h.game_key) ->> 'rank' = 'razz' then -private.pk_low_a5(p.up_cards) else private.pk_eval(p.up_cards) end desc, p.seat_no
    limit 1;
 $$;
 
@@ -961,7 +1197,9 @@ begin
     return;
   end if;
 
-  if cfg ->> 'family' = 'draw' and h.street = 0 then
+  -- A draw follows every betting round but the last (Triple Draw and Badugi have three).
+  if cfg ->> 'family' = 'draw' and h.street < (cfg ->> 'draws')::integer then
+    update public.pk_players set drew = null where hand_id = p_hand and status <> 'folded';
     update public.pk_hands
        set phase = 'drawing', phase_ends_at = now() + make_interval(secs => (cfg ->> 'draw_seconds')::int)
      where id = p_hand;
@@ -1021,8 +1259,8 @@ begin
     return;
   end if;
   update public.pk_hands
-     set street = 1, phase = 'betting',
-         min_raise = private.pk_bet_unit(h.game_key, private.pk_stakes(h.table_id), 1)
+     set street = h.street + 1, phase = 'betting',
+         min_raise = private.pk_bet_unit(h.game_key, private.pk_stakes(h.table_id), h.street + 1)
    where id = p_hand;
   perform private.pk_open_betting(p_hand, coalesce(h.button_seat, 0), false);
 end $$;
@@ -1220,7 +1458,10 @@ begin
           case when cfg ->> 'family' <> 'stud' then v_button end,
           private.pk_bet_unit(t.game_key, st, 0))
   returning * into h;
-  insert into public.pk_decks (hand_id, cards) values (h.id, private.shuffled_shoe(1));
+  -- Short Deck is played without the 2s, 3s, 4s and 5s.
+  insert into public.pk_decks (hand_id, cards)
+  select h.id, case when cfg ->> 'deck' = 'short' then array(select x from unnest(d.c) with ordinality u(x, o) where x % 13 not between 1 and 4 order by o) else d.c end
+    from (select private.shuffled_shoe(1) as c) d;
   insert into public.pk_players (hand_id, table_id, user_id, seat_no, stack_start)
   select h.id, p_table, s.user_id, s.seat_no, s.stack
     from public.table_seats s where s.table_id = p_table and s.seat_no = any (v_seats);
@@ -1244,9 +1485,11 @@ begin
 
   if cfg ->> 'family' = 'stud' then
     -- Lowest up card brings it in (suits break ties: clubs, diamonds, hearts, spades).
+    -- In Razz it is the HIGHEST up card instead (a king; aces are low; spades break ties).
     select seat_no into v_bring from public.pk_players where hand_id = h.id
-     order by private.pk_rank(up_cards[1]),
-              case up_cards[1] / 13 when 3 then 0 when 2 then 1 when 1 then 2 else 3 end
+     order by case when cfg ->> 'rank' = 'razz' then -(up_cards[1] % 13) else private.pk_rank(up_cards[1]) end,
+              case when cfg ->> 'rank' = 'razz' then up_cards[1] / 13
+                   else case up_cards[1] / 13 when 3 then 0 when 2 then 1 when 1 then 2 else 3 end end
      limit 1;
     v_post := private.pk_commit(h.id, v_bring, (st ->> 'bring_in')::bigint, true);
     update public.pk_players set acted = true, raise_level = 0, last_action = 'Bring-in'
@@ -1384,8 +1627,8 @@ begin
       'hole', to_jsonb(v_hole)
     );
     if v_hole is not null then
-      select * into b from private.pk_best(v_hole, h.board, (cfg ->> 'omaha')::boolean, false);
-      v_me := v_me || jsonb_build_object('hand_name', private.pk_hand_name(b.score), 'best_cards', to_jsonb(b.cards));
+      select * into b from private.pk_show(h.game_key, v_hole, h.board);
+      v_me := v_me || jsonb_build_object('hand_name', b.name, 'best_cards', to_jsonb(b.cards));
       if (cfg ->> 'hilo')::boolean then
         select * into lo from private.pk_best(v_hole, h.board, true, true);
         v_me := v_me || jsonb_build_object('low_name', private.pk_low_name(lo.score));
@@ -1774,12 +2017,14 @@ grant select on public.pk_hands, public.pk_players, public.pk_hole to authentica
 -- Open the games and seed one always-open house table per stake level.
 -- -----------------------------------------------------------------------------
 update public.games set released = true
- where key in ('poker_holdem', 'poker_omaha', 'poker_omaha_hilo', 'poker_stud', 'poker_draw');
+ where key in ('poker_holdem', 'poker_omaha', 'poker_omaha_hilo', 'poker_stud', 'poker_draw',
+               'poker_shortdeck', 'poker_razz', 'poker_27', 'poker_badugi');
 
 insert into public.game_tables (game_key, tier, name, max_seats, persistent)
 select g.key, v.tier, v.prefix || ' ' || n.short, g.max_seats, true
   from (values ('poker_holdem', 'Hold''em'), ('poker_omaha', 'Omaha'), ('poker_omaha_hilo', 'Hi-Lo'),
-               ('poker_stud', 'Stud'), ('poker_draw', 'Draw')) n(key, short)
+               ('poker_stud', 'Stud'), ('poker_draw', 'Draw'), ('poker_shortdeck', 'Short Deck'), ('poker_razz', 'Razz'),
+               ('poker_27', 'Triple Draw'), ('poker_badugi', 'Badugi')) n(key, short)
   join public.games g on g.key = n.key
   cross join (values ('low', 'Emerald'), ('mid', 'Ruby'), ('high', 'Sapphire'), ('vip', 'Gold')) v(tier, prefix)
  where not exists (

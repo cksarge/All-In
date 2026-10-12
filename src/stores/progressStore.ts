@@ -78,10 +78,13 @@ export const useProgress = create<ProgressState>()((set, get) => ({
 
   fetchCatalogue: async (force = false) => {
     if (get().achievements.length > 0 && !force) return;
-    const [first, a] = await Promise.all([
+    const ACH = 'key, name, description, category, metric, goal, reward_chips, reward_xp, cosmetic_key, sort_order';
+    const [first, firstA] = await Promise.all([
       supabase.from('cosmetics').select('key, kind, name, unlock_level, sort_order, season, look').order('sort_order'),
-      supabase.from('achievements').select('key, name, description, category, metric, goal, reward_chips, reward_xp, cosmetic_key, sort_order').order('sort_order'),
+      supabase.from('achievements').select(`${ACH}, extra_cosmetics`).order('sort_order'),
     ]);
+    // (extra_cosmetics arrived later than the rest: fall back while the newer SQL isn't in.)
+    const a = firstA.error ? await supabase.from('achievements').select(ACH).order('sort_order') : firstA;
     // Before 16_missions_seasons.sql is run the two newer columns don't exist yet.
     const c = first.error ? await supabase.from('cosmetics').select('key, kind, name, unlock_level, sort_order').order('sort_order') : first;
     if (c.error || a.error) return;

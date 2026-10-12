@@ -44,6 +44,7 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 
 function AchievementTile({ a, unlockedAt, progress }: { a: Achievement; unlockedAt: string | undefined; progress: number | undefined }) {
   const cosmetic = useProgress((s) => s.cosmetics.find((c) => c.key === a.cosmetic_key));
+  const extras = (a.extra_cosmetics ?? []).length;
   const done = Boolean(unlockedAt);
   // "Play every game" is a yes/no goal, so a fraction would mean nothing.
   const showProgress = !done && progress !== undefined && a.goal > 1;
@@ -65,7 +66,12 @@ function AchievementTile({ a, unlockedAt, progress }: { a: Achievement; unlocked
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.7rem] text-subtle">
             {a.reward_chips > 0 && <ChipAmount value={a.reward_chips} iconClassName="h-3 w-3" />}
             {a.reward_xp > 0 && <span>{a.reward_xp} XP</span>}
-            {cosmetic && <span className="text-gold-300/90">+ {cosmetic.name}</span>}
+            {cosmetic && (
+              <span className="text-gold-300/90">
+                + {cosmetic.name}
+                {extras > 0 && ` and ${extras} more`}
+              </span>
+            )}
           </p>
           {showProgress && (
             <p className="mt-1 text-[0.7rem] tabular-nums text-cream/60">

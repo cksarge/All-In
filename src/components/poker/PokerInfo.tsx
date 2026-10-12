@@ -36,6 +36,32 @@ const HOW_TO: Record<string, string[]> = {
     'From fourth street on, the best hand showing acts first.',
     'Fixed limit: bets and raises are one small bet on third and fourth streets and one big bet after that, with up to four bets a round.',
   ],
+  poker_shortdeck: [
+    'Hold’em with a 36-card deck: the 2s, 3s, 4s and 5s are taken out. Two hole cards, five shared cards, the same betting rounds.',
+    'With fewer cards, flushes are harder to make than full houses, so here a flush BEATS a full house.',
+    'The ace still plays low to make the smallest straight, which is A-6-7-8-9.',
+    'Everything else ranks as usual. No limit betting.',
+  ],
+  poker_razz: [
+    'Seven-card stud turned upside down: the LOWEST five-card hand wins the whole pot.',
+    'Aces are low, and straights and flushes don’t count, so the best possible hand is 5-4-3-2-A. Any hand without a pair beats any hand with one.',
+    'Hands are compared from their highest card down: 7-6-5-3-2 beats 8-4-3-2-A.',
+    'The highest card showing brings it in. From fourth street on, the lowest hand showing acts first.',
+    'Fixed limit, with antes, like Seven-Card Stud.',
+  ],
+  poker_27: [
+    'Lowball draw: the WORST ordinary poker hand wins. Everyone gets five private cards.',
+    'Aces are always high, and straights and flushes count against you. So the best hand is 7-5-4-3-2 in mixed suits, and A-2-3-4-5 is just an ace-high hand.',
+    'There are four betting rounds with a draw between each: three chances to swap any number of your cards.',
+    'Fixed limit: bets are the size of the big blind in the first two rounds and twice that in the last two.',
+  ],
+  poker_badugi: [
+    'Everyone gets four private cards. You want four LOW cards of four DIFFERENT suits with no pair: that is a badugi.',
+    'Aces are low, so the best hand is A-2-3-4 with one card of each suit.',
+    'Cards that share a suit or a rank don’t all count: only one of them does. Any four-card badugi beats any three-card hand, which beats any two-card hand.',
+    'Among hands with the same number of cards, compare from the highest card down: 6-4-3-A beats 7-3-2-A.',
+    'Three draws, with a betting round before the first and after each. Fixed limit.',
+  ],
   poker_draw: [
     'Everyone gets five private cards. After a round of betting, each player still in can swap up to five cards for new ones, once.',
     'Then there is a second round of betting and the best five-card hand wins.',

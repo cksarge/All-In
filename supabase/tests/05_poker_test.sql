@@ -85,8 +85,8 @@ insert into public.game_tables (id, game_key, tier, name, max_seats) values
   (:T6, 'poker_holdem', 'low', 'Test Short All-in', 9);
 
 -- ===== Catalogue =====
-select tests.ok((select count(*) from public.games where key like 'poker\_%' and released) = 5, 'all five poker games released');
-select tests.ok((select count(*) from public.game_tables where game_key like 'poker\_%' and persistent) = 20, 'house tables seeded');
+select tests.ok((select count(*) from public.games where key like 'poker\_%' and released) = 9, 'all nine poker games released');
+select tests.ok((select count(*) from public.game_tables where game_key like 'poker\_%' and persistent) = 36, 'house tables seeded');
 
 -- ===== Hand evaluator =====
 select tests.ok(private.pk_hand_name(private.pk_eval(tests.cards('As Ks Qs Js Ts'))) = 'Royal flush', 'royal flush');

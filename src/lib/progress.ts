@@ -44,6 +44,8 @@ export interface Achievement {
   reward_chips: number;
   reward_xp: number;
   cosmetic_key: string | null;
+  /** More prizes on top of cosmetic_key (the two rarest achievements). */
+  extra_cosmetics?: string[] | null;
   sort_order: number;
 }
 export interface MyProgress {
@@ -109,6 +111,8 @@ export const AVATAR_GLYPH: Record<string, string | null> = {
   avatar_swords: '⚔️',
   avatar_jester: '🎭',
   avatar_crystal_ball: '🔮',
+  avatar_bicycle: '🚲',
+  avatar_infinity: '♾️',
 };
 
 /** Ring around the avatar: a border colour, or a gradient for the fancy ones. */
@@ -120,6 +124,8 @@ export const FRAMES: Record<string, { color: string; gradient?: string; glow?: s
   frame_gold: { color: '#f0d688', glow: 'rgba(240,214,136,0.45)' },
   frame_royal: { color: '#c9a4f5', glow: 'rgba(201,164,245,0.45)' },
   frame_diamond: { color: '#e8f4ff', gradient: 'conic-gradient(#e8f4ff, #8fb0f0, #c9a4f5, #e8f4ff, #5cc392, #e8f4ff)', glow: 'rgba(232,244,255,0.5)' },
+  frame_grandmaster: { color: '#ffffff', gradient: 'conic-gradient(#ff5a6a, #ffb347, #f7e08a, #5cc392, #6fa8ff, #b48cf2, #ff5a6a)', glow: 'rgba(255,255,255,0.75)' },
+  frame_completionist: { color: '#0b0b0f', gradient: 'conic-gradient(#0b0b0f, #f0d688, #0b0b0f, #ffffff, #0b0b0f, #f0d688, #0b0b0f)', glow: 'rgba(240,214,136,0.8)' },
   frame_spotlight: { color: '#fff7d6', gradient: 'conic-gradient(#fff7d6, #f0d688, #ffffff, #b8902a, #fff7d6)', glow: 'rgba(255,247,214,0.65)' },
   frame_clockwork: { color: '#c9a36a', gradient: 'conic-gradient(#c9a36a, #5a4630, #f0d688, #5a4630, #c9a36a)', glow: 'rgba(201,163,106,0.5)' },
   frame_laurel: { color: '#5cc392', gradient: 'conic-gradient(#5cc392, #f0d688, #1a774f, #f0d688, #5cc392)', glow: 'rgba(92,195,146,0.5)' },
@@ -137,6 +143,7 @@ export const CARD_BACKS: Record<string, { base: string; line: string }> = {
   back_tournament: { base: '#5f4812', line: '255,244,207' },
   back_planner: { base: '#1f4a4a', line: '214,244,236' },
   back_aces: { base: '#101014', line: '226,90,104' },
+  back_four_suits: { base: '#3a1a52', line: '143,211,255' },
 };
 
 /** Table felts: base colour and the soft light in the middle. */

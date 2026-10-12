@@ -50,13 +50,16 @@ export default function LockerPage() {
 
   const owned = new Set(me.owned);
   // One-of-a-kind items (granted by hand, with no level or achievement behind them) are only shown to their owner.
-  const listed = cosmetics.filter((c) => owned.has(c.key) || c.unlock_level !== null || achievements.some((a) => a.cosmetic_key === c.key));
+  const prizeOf = (c: Cosmetic) => achievements.find((x) => x.cosmetic_key === c.key || x.extra_cosmetics?.includes(c.key));
+  const listed = cosmetics.filter((c) => owned.has(c.key) || c.unlock_level !== null || Boolean(prizeOf(c)));
   const items = listed.filter((c) => c.kind === kind);
   const how = (c: Cosmetic) => {
     if (c.unlock_level) return `Reach level ${c.unlock_level}`;
-    const a = achievements.find((x) => x.cosmetic_key === c.key);
+    const a = prizeOf(c);
     return a ? `Achievement: ${a.name}` : 'Not available yet';
   };
+  // "2026-10" -> "October 2026"
+  const seasonLabel = (key: string) => new Date(`${key}-15T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
   const put = async (c: Cosmetic) => {
     setBusy(c.key);
@@ -128,6 +131,11 @@ export default function LockerPage() {
                   <Preview c={c} username={username} loadout={me.loadout} />
                 </span>
                 <span className={cn('text-sm font-semibold', have ? 'text-ivory' : 'text-cream/60')}>{c.name}</span>
+                {c.season && (
+                  <span className="rounded-full border border-gold-500/40 bg-gold-500/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-gold-200">
+                    Seasonal · {seasonLabel(c.season)}
+                  </span>
+                )}
                 <span className={cn('text-xs', on ? 'font-semibold text-gold-200' : have ? 'text-felt-300' : 'text-subtle')}>
                   {on ? 'Equipped' : have ? (busy === c.key ? 'Putting it on…' : 'Tap to equip') : `🔒 ${how(c)}`}
                 </span>

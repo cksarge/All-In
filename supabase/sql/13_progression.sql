@@ -117,6 +117,9 @@ create index if not exists friendships_requester_idx on public.friendships (requ
 
 create index if not exists player_progress_xp_idx on public.player_progress (xp desc);
 
+-- The two rarest achievements hand over more than one cosmetic.
+alter table public.achievements add column if not exists extra_cosmetics text[] not null default '{}';
+
 -- Stage 8 added a 'tournaments' group of achievements.
 alter table public.achievements drop constraint if exists achievements_category_check;
 alter table public.achievements add constraint achievements_category_check
@@ -145,6 +148,8 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('avatar_swords',   'avatar', 'Crossed Swords', null, 170),
   ('avatar_jester',   'avatar', 'The Jester',     null, 175),
   ('avatar_crystal_ball', 'avatar', 'Crystal Ball', null, 177),
+  ('avatar_bicycle',  'avatar', 'The Bicycle',    null, 178),
+  ('avatar_infinity', 'avatar', 'Infinity',       null, 999),
 
   ('frame_none',      'frame',  'No frame',       1,    10),
   ('frame_felt',      'frame',  'Felt Green',     3,    20),
@@ -157,6 +162,8 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('frame_laurel',    'frame',  'Laurel Wreath',  null, 90),
   ('frame_clockwork', 'frame',  'Clockwork',      null, 95),
   ('frame_spotlight', 'frame',  'Spotlight',      null, 97),
+  ('frame_grandmaster', 'frame', 'Grandmaster''s Halo', null, 998),
+  ('frame_completionist', 'frame', 'Black Diamond', null, 999),
 
   ('title_newcomer',     'title', 'Newcomer',       1,    10),
   ('title_sharp',        'title', 'Sharp',          10,   20),
@@ -176,6 +183,9 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_founder',      'title', 'Founder',        null, 165),
   ('title_trail_blazer', 'title', 'Trail Blazer',   null, 168),
   ('title_trickster',    'title', 'Trickster',      null, 169),
+  ('title_number_one',   'title', 'Number One',     null, 171),
+  ('title_grandmaster',  'title', 'Grandmaster',    null, 998),
+  ('title_completionist', 'title', 'Completionist', null, 999),
   ('title_field_marshal', 'title', 'Field Marshal', null, 167),
   ('title_season_veteran', 'title', 'Season Veteran', null, 170),
   ('title_tournament_champion', 'title', 'Tournament Champion', null, 150),
@@ -189,6 +199,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('back_tournament', 'card_back', 'Tournament Gold', null, 70),
   ('back_planner',    'card_back', 'Day Planner',   null, 75),
   ('back_aces',       'card_back', 'Four Aces',     null, 78),
+  ('back_four_suits', 'card_back', 'Four Suits',    null, 79),
 
   ('felt_classic',    'felt', 'Classic Green',  1,  10),
   ('felt_midnight',   'felt', 'Midnight Blue',  6,  20),
@@ -212,6 +223,7 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('level_10',        'Double Digits',     'Reach level 10.',                                    'play',  'level',            10,      2500,  0,    null,                 60),
   ('level_25',        'Quarter Century',   'Reach level 25.',                                    'play',  'level',            25,      10000, 0,    null,                 70),
   ('level_50',        'Halfway to Legend', 'Reach level 50.',                                    'play',  'level',            50,      50000, 0,    null,                 80),
+  ('level_100',       'Grandmaster',       'Reach level 100, the highest there is.',             'play',  'level',            100,     250000, 0,   'title_grandmaster',  85),
   ('daily_7',         'Seven Days',        'Collect the daily bonus seven days in a row.',       'play',  'daily_streak',     7,       2500,  200,  null,                 90),
 
   ('win_1k',          'Nice Hit',          'Win 1,000 chips or more in a single round.',         'wins',  'biggest_win',      1000,    500,   50,   null,                 110),
@@ -271,6 +283,10 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('spanish_bonus',   'Spanish Gold',      'Win a bonus 21 in Spanish 21.',                         'feats', 'spanish_bonuses',  1, 1000, 150, null,                  586),
   ('hilo_run',        'Fortune Teller',    'Collect at Hi-Lo after five right guesses in a row.',   'feats', 'hilo_runs',        1, 2500, 300, 'avatar_crystal_ball', 587),
   ('top_dog',         'Top Dog',           'Hit three of a kind at Red Dog.',                       'feats', 'red_dog_triples',  1, 2500, 300, null,                  588),
+  ('razz_wheel',      'The Bicycle',       'Win a Razz pot with 5-4-3-2-A.',                        'feats', 'razz_wheels', 1, 2500, 300, 'avatar_bicycle',      589),
+  ('number_one',      'Number One',        'Win a 2-7 Triple Draw pot with 7-5-4-3-2.',             'feats', 'number_ones', 1, 5000, 500, 'title_number_one',    5891),
+  ('badugi_made',     'Badugi!',           'Win a Badugi pot with a four-card badugi.',             'feats', 'badugis',     1, 1000, 150, 'back_four_suits',     5892),
+  ('completionist',   'Completionist',     'Unlock every other achievement.',                       'feats', 'all_achievements', 1, 500000, 0, 'title_completionist', 9999),
   ('headliner',       'Headliner',         'Land a win big enough for the lounge''s big-win ticker.', 'feats', 'big_wins', 1, 2500, 300, 'frame_spotlight', 590),
   ('nemesis',         'Nemesis',           'Beat the same player 10 times at poker.',     'feats',    'h2h_best',      10,  2500,  300,  'avatar_swords',     595),
   ('club_member',     'Clubbable',         'Join or start a club.',                       'social',   'clubs_joined',  1,   500,   100,  null,                806),
@@ -286,6 +302,11 @@ on conflict (key) do update set
   name = excluded.name, description = excluded.description, category = excluded.category, metric = excluded.metric,
   goal = excluded.goal, reward_chips = excluded.reward_chips, reward_xp = excluded.reward_xp,
   cosmetic_key = excluded.cosmetic_key, sort_order = excluded.sort_order;
+
+-- The extra prizes of the two rarest achievements (a frame with the title; an avatar and a frame with the title).
+update public.achievements set extra_cosmetics = array['frame_grandmaster'] where key = 'level_100';
+update public.achievements set extra_cosmetics = array['avatar_infinity', 'frame_completionist'] where key = 'completionist';
+
 
 -- -----------------------------------------------------------------------------
 -- Levels and XP
@@ -375,6 +396,9 @@ begin
   if r.game_key = 'spanish_21' and (s ->> 'bonus')::boolean then v_bump := array_append(v_bump, 'spanish_bonuses'); end if;
   if r.game_key = 'hi_lo' and s ->> 'outcome' = 'collect' and (s ->> 'steps')::integer >= 5 then v_bump := array_append(v_bump, 'hilo_runs'); end if;
   if r.game_key = 'red_dog' and s ->> 'outcome' = 'triple' then v_bump := array_append(v_bump, 'red_dog_triples'); end if;
+  if r.returned > r.wagered and r.game_key = 'poker_razz' and s ->> 'hand' = '5-4-3-2-A low' then v_bump := array_append(v_bump, 'razz_wheels'); end if;
+  if r.returned > r.wagered and r.game_key = 'poker_27' and s ->> 'hand' = '7-5-4-3-2 low' then v_bump := array_append(v_bump, 'number_ones'); end if;
+  if r.returned > r.wagered and r.game_key = 'poker_badugi' and s ->> 'hand' like 'Badugi,%' then v_bump := array_append(v_bump, 'badugis'); end if;
   -- Tournaments (14_tournaments.sql) record one round per player when they end.
   if r.game_key in ('sng_poker', 'slot_showdown') then
     v_bump := array_append(v_bump, 'tourney_played');
@@ -417,7 +441,10 @@ as $$
     'peak_balance', coalesce(w.peak_balance, 0),
     'daily_streak', coalesce(w.daily_streak, 0),
     'friends', (select count(*) from public.friendships f
-                 where f.status = 'accepted' and p_user in (f.requester, f.addressee)))
+                 where f.status = 'accepted' and p_user in (f.requester, f.addressee)),
+    -- 1 once every other achievement is unlocked (so the goal doesn't change as achievements are added)
+    'all_achievements', case when (select count(*) from public.player_achievements pa where pa.user_id = p_user and pa.achievement_key <> 'completionist')
+                                  >= (select count(*) from public.achievements a where a.key <> 'completionist') then 1 else 0 end)
     from (select p_user as id) u
     left join public.player_progress p on p.user_id = u.id
     left join public.wallets w on w.user_id = u.id
@@ -476,6 +503,9 @@ begin
       if a.cosmetic_key is not null then
         insert into public.player_cosmetics (user_id, cosmetic_key) values (p_user, a.cosmetic_key) on conflict do nothing;
       end if;
+      insert into public.player_cosmetics (user_id, cosmetic_key)
+      select p_user, x from unnest(a.extra_cosmetics) x where exists (select 1 from public.cosmetics c where c.key = x)
+      on conflict do nothing;
       if a.reward_xp > 0 then
         perform private.add_xp(p_user, a.reward_xp);
       end if;

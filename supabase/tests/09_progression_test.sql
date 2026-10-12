@@ -36,15 +36,20 @@ select tests.ok(private.round_xp(0, 0) = 2 and private.round_xp(100, 0) = 12 and
 select tests.ok(private.round_xp(10, 0, 'plinko') = 0 and private.round_xp(10, 20, 'plinko') = 1 and private.round_xp(100, 0, 'plinko') = 2
             and private.round_xp(100, 500, 'plinko') = 3 and private.round_xp(10000, 0, 'plinko') = 25 and private.round_xp(100, 0, 'keno') = 12,
                 'Plinko earns a quarter of the square root of the bet and no flat bonus; other games are unchanged');
-select tests.ok(not exists (select 1 from public.cosmetics c where c.unlock_level is null
-                              and not exists (select 1 from public.achievements a where a.cosmetic_key = c.key)), 'every cosmetic can be earned');
+select tests.ok(not exists (select 1 from public.cosmetics c where c.unlock_level is null and c.season is null
+                              and not exists (select 1 from public.achievements a where a.cosmetic_key = c.key or c.key = any (a.extra_cosmetics))), 'every cosmetic can be earned');
+select tests.ok((select extra_cosmetics = '{frame_grandmaster}' and cosmetic_key = 'title_grandmaster' and goal = 100 and metric = 'level' from public.achievements where key = 'level_100')
+            and (select cardinality(extra_cosmetics) = 2 from public.achievements where key = 'completionist')
+            and not exists (select 1 from public.achievements a, unnest(a.extra_cosmetics) x where not exists (select 1 from public.cosmetics c where c.key = x)),
+                'Grandmaster and Completionist carry extra cosmetics, and they all exist');
 select tests.ok((select count(*) from public.cosmetics where unlock_level = 1) = 5
             and (select count(distinct kind) from public.cosmetics where unlock_level = 1) = 5, 'one starting cosmetic of each kind');
 select tests.ok(not exists (select 1 from public.achievements a where not (private.player_metrics(:A) ? a.metric)
                               and a.metric not in ('jackpots', 'royals', 'straight_flushes', 'slot_features', 'crash_10x', 'mines_cleared',
                                                    'bingo_fast', 'keno_perfect', 'best_streak', 'max_multiple',
                                                    'tourney_played', 'tourney_wins', 'sng_wins', 'showdown_wins', 'freeroll_podiums',
-                                                   'missions_done', 'weeklies_done', 'daily_sweeps', 'season_tiers', 'seasons_done', 'invites_sent', 'big_wins', 'h2h_best', 'clubs_joined', 'clubs_founded', 'mtt_wins', 'trophies', 'cards_shown', 'joker_big', 'four_aces', 'trails', 'full_rides', 'five_card_tricks', 'spanish_bonuses', 'hilo_runs', 'red_dog_triples')), 'every achievement measures something that exists');
+                                                   'missions_done', 'weeklies_done', 'daily_sweeps', 'season_tiers', 'seasons_done', 'invites_sent', 'big_wins', 'h2h_best', 'clubs_joined', 'clubs_founded', 'mtt_wins', 'trophies', 'cards_shown', 'joker_big', 'four_aces', 'trails', 'full_rides', 'five_card_tricks', 'spanish_bonuses', 'hilo_runs', 'red_dog_triples',
+                                                   'razz_wheels', 'number_ones', 'badugis', 'all_achievements')), 'every achievement measures something that exists');
 
 -- ----------------------------------------------------------------------------
 -- A new player
@@ -248,6 +253,24 @@ select tests.ok(not exists (select 1 from pg_tables where schemaname = 'public' 
 select tests.ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('player_achievements', 'player_progress', 'friendships')) = 3, 'realtime');
 
 delete from public.game_tables where id in (:T, :U);
+-- Grandmaster (level 100) and Completionist (every other achievement).
+reset role;
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000008d4', 'd@prog.test', '{"username":"ProgDan"}');
+select tests.round('00000000-0000-0000-0000-0000000008d4', 'keno', 10, 0, '{"picks":3,"hits":0}');
+select private.add_xp('00000000-0000-0000-0000-0000000008d4', 980100);
+select private.check_achievements('00000000-0000-0000-0000-0000000008d4');
+select tests.ok((tests.prog('00000000-0000-0000-0000-0000000008d4')).level = 100 and tests.has('00000000-0000-0000-0000-0000000008d4', 'level_100')
+            and (select count(*) from public.player_cosmetics where user_id = '00000000-0000-0000-0000-0000000008d4' and cosmetic_key in ('title_grandmaster', 'frame_grandmaster')) = 2,
+                'level 100: Grandmaster, with its title and frame');
+select tests.ok(not tests.has('00000000-0000-0000-0000-0000000008d4', 'completionist')
+            and (private.player_metrics('00000000-0000-0000-0000-0000000008d4') ->> 'all_achievements')::int = 0, 'Completionist is not handed out early');
+insert into public.player_achievements (user_id, achievement_key, claimed_at)
+select '00000000-0000-0000-0000-0000000008d4', a.key, now() from public.achievements a where a.key <> 'completionist' on conflict do nothing;
+select private.check_achievements('00000000-0000-0000-0000-0000000008d4');
+select tests.ok(tests.has('00000000-0000-0000-0000-0000000008d4', 'completionist')
+            and (select count(*) from public.player_cosmetics where user_id = '00000000-0000-0000-0000-0000000008d4'
+                  and cosmetic_key in ('title_completionist', 'avatar_infinity', 'frame_completionist')) = 3, 'every other achievement unlocked: Completionist, with three cosmetics');
+
 delete from auth.users where email like '%@prog.test';
 select tests.ok((select count(*) from public.player_progress where user_id in (:A, :B, :C)) = 0
             and (select count(*) from public.friendships where requester in (:A, :B, :C) or addressee in (:A, :B, :C)) = 0, 'deleting a player removes everything of theirs');

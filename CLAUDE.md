@@ -79,18 +79,18 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
-| 10 | **More games (the user's list, below), in four parts** | **Parts 1 and 2 built on `main`; parts 3 and 4 next** |
+| 10 | **More games (the user's list, below), in four parts** | **Parts 1 to 3 built on `main`; part 4 next** |
 
-**User action pending for stage 10 part 2:** re-run `03_games_and_stakes.sql` and `13_progression.sql`, then run the
-new `20_blackjack_variants.sql` (and from part 1, if not yet done: re-run `11_solo_games.sql` and `17_clubs_records.sql`,
-run `19_table_poker.sql`). No dashboard settings, no new realtime tables.
+**User action pending for stage 10 part 3 (and the changes made with it):** re-run `03_games_and_stakes.sql`,
+`09_poker.sql`, `13_progression.sql`, `15_moderation.sql` and `16_missions_seasons.sql`. No new files, no dashboard
+settings. Realtime gains `site_status` (28 tables). Earlier parts still to run if not done: `11`, `17`, `19`, `20`.
 
 ### Stage 10 plan (agreed 2026-10-11; the user's answers: blackjack variants solo, horse racing a shared live
 race, Teen Patti both against the dealer and at player-against-player tables)
 1. ✅ Video poker (Bonus, Double Bonus, Joker) and six dealer card games (`19_table_poker.sql`).
 2. ✅ (`20_blackjack_variants.sql`) Blackjack variants, all solo: Spanish 21, Blackjack Switch, Free Bet Blackjack, Pontoon. Quick games: Red Dog,
    Hi-Lo, Andar Bahar, Chuck-a-Luck.
-3. Player-against-player poker in the 09 engine: Short Deck, Razz, 2-7 Triple Draw, Badugi.
+3. ✅ (in `09_poker.sql`) Player-against-player poker in the 09 engine: Short Deck, Razz, 2-7 Triple Draw, Badugi.
 4. Horse racing as a live room (like Crash), and Teen Patti tables (player against player; a new betting engine).
 
 ### Stage 9: what the user asked for (2026-10-11), delivered in parts, each committed and tested
@@ -228,6 +228,15 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      uncalled bets returned (never to folded players), side pots, split pots (odd chip left of the button),
      hi-lo 8-or-better.
    - Timer 20 s → check if free else fold, then sit out; players who left or disconnected are acted for at once.
+   - **Stage 10 added four games to the same engine** (`pk_config_game` holds each game, `pk_config` puts the shared
+     defaults first). A game's `rank` says how hands compare, and **`private.pk_show(game, hole, board)` returns a
+     score where higher always wins, the cards and the hand's name**, so pots and side pots need no changes:
+     `short` (Short Deck: 36 cards via `deck: short`, a flush beats a full house, A-6-7-8-9 is a straight),
+     `razz` (lowest five of seven; `pk_low_a5`; the highest up card brings in and the lowest showing hand acts
+     first), `27` (2-7 Triple Draw: `pk_eval27`, aces high, A-2-3-4-5 is not a straight) and `badugi` (`pk_badugi`).
+     Draw games take `draws` (3 for Triple Draw and Badugi): a draw follows every betting round but the last, and
+     `drew` is cleared before each. Fixed-limit games played with blinds bet the big blind, then twice it
+     (`pk_bet_unit`).
 10. `10_slots.sql`: six solo machines and the shared jackpot. No tables, seats or timers.
    - `private.slot_cfg(game)` holds each machine's maths as JSON: per-reel symbol `weights`, `pays`, features.
      Every visible cell is drawn independently from its reel's weighted bag, **reel by reel, top to bottom**.
@@ -307,6 +316,10 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
    - Level L starts at `100 * (L - 1)^2` XP, capped at 100. An achievement is unlocked when
      `private.player_metrics(user) ->> metric >= goal` (the metrics are stats aggregates, wallet fields, the
      counters and the friend count).
+   - `achievements.extra_cosmetics text[]` gives more prizes than the one `cosmetic_key` (used by the two rarest:
+     **Grandmaster**, level 100, and **Completionist**, every other achievement, whose metric `all_achievements`
+     is 1 once all the rest are unlocked). The locker lists these extras as locked teasers and tags season
+     cosmetics "Seasonal · month year".
    - **Chip rewards are never paid automatically** (200 × level per new level; a fixed amount per
      achievement). They wait until `claim_rewards()`, so no round's own chip maths or returned balance
      changes, and the earlier tests' exact balances still hold. Ledger reasons `level_up` and `achievement`.
@@ -362,6 +375,11 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      (null = replace the name with `Player_xxxxxx` and set `must_rename`), `admin_chips(user, 'add'|'set', amount)`
      (through `apply_chips`, ledger reason `admin_adjust`), `admin_kick`, `admin_set_notice`. A ban or timeout also
      takes the player off their table. All actions go to `admin_log`.
+   - **Site maintenance:** `site_status` (one row, readable by anyone, in realtime), `site_status()` (callable signed
+     out) and `admin_set_maintenance(on, message)`. While on, `private.sanction_check` refuses every game call from
+     anyone but the admin (`site_maintenance`), and `MaintenanceGate` (wrapping everything in `App.tsx`) shows only
+     the maintenance page to everyone else, **including the login page**: the admin must already be signed in.
+     `supabase/maintenance/maintenance_off.sql` switches it off by hand if the admin is locked out.
    - Frontend: `useAccount` (`src/stores/accountStore.ts`), `AccountGate` inside `RequireAuth` (the suspended /
      timeout / choose-a-new-name screens), `ReportModal`, Block and Report on other players' profiles, the blocked
      list on the Friends page, `src/pages/AdminPage.tsx`.
@@ -506,8 +524,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
   `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`, `level_up`, `achievement`. Solo games use `bet` and `payout` only (a returned
   stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
-**Realtime publication** now has 27 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
-notifications, player_missions, big_wins, club_members): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
+**Realtime publication** now has 28 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
+notifications, player_missions, big_wins, club_members, site_status): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
 bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots, crash_rounds,
 crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Postgres Changes enforce RLS.
 
@@ -628,6 +646,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/events.cjs /tmp/shots       # stage 9 part 4: favourites, VP hint, auto-spin, formats, a three-player Main Event, trophies (20 checks)
    node scripts/e2e/stage10.cjs /tmp/shots      # stage 10 part 1: the six dealer card games, a resumed hand, two video poker machines, phone widths (23 checks)
    node scripts/e2e/stage10b.cjs /tmp/shots     # stage 10 part 2: four blackjack variants, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, phone widths (23 checks)
+   node scripts/e2e/stage10c.cjs /tmp/shots     # stage 10 part 3: a full Badugi hand with three draws, lobby entries, Grandmaster, seasonal tag (12 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:
