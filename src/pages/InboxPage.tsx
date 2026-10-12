@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Button, ButtonLink } from '@/components/ui/Button';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/States';
 import { cn } from '@/components/ui/cn';
 import { formatRelativeTime } from '@/lib/format';
@@ -21,6 +21,9 @@ const ICON: Record<string, string> = {
 /** /inbox: friend requests, invites, results and rewards in one place. */
 export default function InboxPage() {
   const { inbox, unread, fetchInbox, markRead, clearInbox } = useLive();
+  const navigate = useNavigate();
+  // React Router gives the first page of a visit the key "default": then there is nothing to go back to.
+  const cameFromApp = useLocation().key !== 'default';
   useEffect(() => {
     void fetchInbox();
   }, [fetchInbox]);
@@ -43,9 +46,10 @@ export default function InboxPage() {
               Clear all
             </Button>
           )}
-          <ButtonLink to="/lounge" variant="ghost" size="sm">
-            ← Lounge
-          </ButtonLink>
+          {/* Back to wherever you opened the inbox from (the lounge if you came straight here). */}
+          <Button variant="ghost" size="sm" onClick={() => (cameFromApp ? navigate(-1) : navigate('/lounge'))}>
+            ← {cameFromApp ? 'Back' : 'Lounge'}
+          </Button>
         </div>
       </header>
 
