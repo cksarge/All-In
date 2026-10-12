@@ -122,4 +122,5 @@ export const QUICK_PHRASES = [
   'Be right back',
 ] as const;
 
-export const EMOTES = ['👏', '😂', '😮', '😎', '🎉', '🍀', '🔥', '😬'] as const;
+// New ones go at the end: emotes travel as their position in this list.
+export const EMOTES = ['👏', '😂', '😮', '😎', '🎉', '🍀', '🔥', '😬', '🤝', '🙏', '💀', '🤯', '🥳', '😴', '💪', '🤞'] as const;

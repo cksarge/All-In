@@ -12,6 +12,7 @@ const ICON: Record<string, string> = {
   friend_accepted: '🤝',
   table_invite: '🪑',
   tournament_result: '🏆',
+  tournament_off: '🏆',
   achievement: '⭐',
   season_start: '📅',
   season_rewards: '🎁',

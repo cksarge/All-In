@@ -10,10 +10,15 @@ import { supabase } from '@/lib/supabase';
 export function ProfileExtras({ username, self }: { username: string; self: boolean }) {
   const [x, setX] = useState<Extras | null>(null);
   const [trend, setTrend] = useState<number[]>([]);
+  const [trophies, setTrophies] = useState<{ kind: string; place: number; count: number }[]>([]);
   useEffect(() => {
     setX(null);
     void supabase.rpc('profile_extras', { p_username: username }).then(({ data, error }) => {
       if (!error) setX(data as Extras);
+    });
+    setTrophies([]);
+    void supabase.rpc('trophies_for', { p_username: username }).then(({ data, error }) => {
+      if (!error && Array.isArray(data)) setTrophies(data as { kind: string; place: number; count: number }[]);
     });
   }, [username]);
   // Your own balance over your last hundred chip changes (only you can read your ledger).
@@ -57,6 +62,29 @@ export function ProfileExtras({ username, self }: { username: string; self: bool
           ) : (
             <p className="mt-2 text-sm text-muted">You haven&apos;t met at a poker table or in a Sit &amp; Go yet.</p>
           )}
+        </section>
+      )}
+
+      {trophies.length > 0 && (
+        <section className="surface mt-5 p-5" aria-labelledby="trophies-h">
+          <h2 id="trophies-h" className="font-display text-xl font-bold text-ivory">
+            Trophies
+          </h2>
+          <ul className="mt-3 flex flex-wrap gap-2.5">
+            {trophies.map((t) => (
+              <li key={`${t.kind}-${t.place}`} className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-ink-950/40 px-3 py-2">
+                <span className="text-2xl" aria-hidden="true">
+                  {['🥇', '🥈', '🥉'][t.place - 1]}
+                </span>
+                <span className="text-sm leading-tight">
+                  <span className="block font-semibold text-ivory">
+                    {['1st', '2nd', '3rd'][t.place - 1]} × {t.count}
+                  </span>
+                  <span className="block text-xs text-muted">{{ sng: 'Sit & Go', mtt: 'Main Event', showdown: 'Slot Showdown', freeroll: 'Daily Freeroll' }[t.kind] ?? t.kind}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

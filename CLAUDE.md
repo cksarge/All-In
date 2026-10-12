@@ -78,12 +78,11 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 6.5 | Ultimate Texas Hold'em, Dragon Tiger, Casino War, Crash, Plinko, Mines, Scratch Cards, Power Draw, Bingo; lounge sections; every game in the lobby picker | ✅ on `main` |
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
-| 9 | **Live-service features, in four parts (below)** | **Parts 1 to 3 built on `main`; part 4 next** |
-| 10 | More games (the user's list, below) | |
+| 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
+| 10 | **More games (the user's list, below)** | **Next** |
 
-**User action pending for stage 9 part 3:** re-run `13_progression.sql`, then run the new `17_clubs_records.sql`
-(and anything from parts 1 and 2 not yet run: 02, 05, 15, 16). No dashboard settings. (Realtime gains `big_wins`
-and `club_members`: 27 tables.)
+**User action pending for stage 9 part 4:** re-run `13_progression.sql`, `14_tournaments.sql` and
+`17_clubs_records.sql`, then run the new `18_tournaments_plus.sql`. No dashboard settings, no new realtime tables.
 
 ### Stage 9: what the user asked for (2026-10-11), delivered in parts, each committed and tested
 1. ✅ **Admin and moderation** (`15_moderation.sql`): hidden `/admin` page for the account called Carter, reports,
@@ -95,7 +94,7 @@ and `club_members`: 27 tables.)
    your table**.
 3. ✅ (`17_clubs_records.sql`) **Clubs** (a typed name and tag only, preset chat, members, club leaderboard: the user chose no free text),
    **head-to-head records**, a **big-win ticker**, a **personal records** section on the profile page.
-4. **Tournament leaderboard and trophies**, **multi-table tournaments**, **more tournament formats**, and quality of
+4. ✅ (`18_tournaments_plus.sql`) **Tournament leaderboard and trophies**, **multi-table tournaments**, **more tournament formats**, and quality of
    play: poker pre-action buttons, showing cards after everyone folds, slot auto-spin, a video poker strategy hint,
    favourite games and "continue where you left off", more emotes. **Not wanted:** music or sound options, installing
    as an app. Not asked for (skip unless they ask): lucky wheel, private tournaments, shareable wins, profile showcase,
@@ -406,6 +405,31 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      leaderboards and the ticker.
    - Frontend: `/clubs` and `/clubs/:id` (`ClubsPage`), `ProfileExtras`, `BigWinTicker` on the lounge.
 
+18. `18_tournaments_plus.sql` (stage 9 part 4), with matching edits in 13 and 14.
+   - **Sit & Go formats** (in 14): `tournaments.variant` = `standard`, `turbo` (60 s levels) or `omaha` (a
+     `poker_omaha` table). `sng_register(size, entry_fee, variant)`; `private.sng_level(started, seconds)`.
+   - **Main Event** (multi-table, kind `mtt`): one every 30 minutes (`private.mtt_ensure`), entry 1,000, 3 to 18
+     players on tables of 6 listed in `tournament_tables`. `mtt_register` / `mtt_unregister` / `mtt_state`.
+     At the start time `private.mtt_start` seats everyone or voids and refunds. `private.mtt_sync(tournament,
+     table)` is called after every hand (14's `sng_after_hand` forwards to `private.mtt_after_hand`) and from
+     `mtt_poke(table)`, which browsers at an idle event table call every 3 s. **A table only ever changes itself**
+     (its blinds, moving its own players to other tables, closing itself) and only between hands; every caller
+     holds its own table's lock, then one advisory lock per event, never a second table's lock, so there are no
+     deadlocks. It merges when the players left fit the other tables, and sends one player to the smallest table
+     when it is two or more ahead. Payouts by field: up to 6 pay 65/35, up to 12 pay 50/30/20, up to 18 pay
+     45/27/18/10. History rows use game `sng_poker` with summary kind `mtt`.
+   - `tourney_status(table)` is the strip for any tournament table (it returns `sng_status` or the event's, with
+     `my_table` so a moved player's browser can follow its seat). One poker tournament at a time per player.
+   - **Trophies:** `player_trophies` (kind, place 1 to 3, count), from a fourth trigger on `game_history`; second
+     place needs a field of three, third a field of four. `trophies_for(username)`. The leaderboard (13) has a
+     `tournaments` board (tournaments won).
+   - **`pk_show(table)`:** a dealt-in player may reveal their cards for a few seconds after a hand ends.
+   - Client-only quality of play: poker "Check / fold" and "Check" decided in advance (`PokerTable`), slot
+     auto-spin for 10 / 25 / 50 spins that stops on a feature or a 20× win (`SlotMachine`), a video poker Hint
+     (`src/lib/vpHint.ts`: a priority list, close to but not perfect play), favourites and "Jump back in" on the
+     lounge (kept per device in the settings store; `QuickStart` notes each game opened), sixteen emotes
+     (appended, because emotes travel as list positions).
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -543,6 +567,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban (18 checks)
    node scripts/e2e/live.cjs /tmp/shots         # stage 9 part 2: missions, season track, inbox, table invite (17 checks; season checks need a running season)
    node scripts/e2e/clubs.cjs /tmp/shots        # stage 9 part 3: clubs, ticker, head-to-head, personal records (14 checks)
+   node scripts/e2e/events.cjs /tmp/shots       # stage 9 part 4: favourites, VP hint, auto-spin, formats, a three-player Main Event, trophies (20 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

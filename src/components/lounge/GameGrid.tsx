@@ -9,6 +9,7 @@ import { friendlyError } from '@/lib/errors';
 import { CATEGORIES, gameHref, gameMode, modeLabel, type CategoryKey } from '@/lib/games';
 import { supabase } from '@/lib/supabase';
 import type { GameRow } from '@/lib/types';
+import { useSettings } from '@/stores/settingsStore';
 
 type Filter = 'all' | CategoryKey;
 
@@ -21,6 +22,8 @@ const MODE_TAG = {
 
 function GameCard({ g, jackpot, index }: { g: GameRow; jackpot: number | undefined; index: number }) {
   const tag = MODE_TAG[gameMode(g)];
+  const starred = useSettings((s) => s.favourites.includes(g.key));
+  const toggleFavourite = useSettings((s) => s.toggleFavourite);
   return (
     <motion.li
       initial={{ opacity: 0, y: 10 }}
@@ -31,7 +34,18 @@ function GameCard({ g, jackpot, index }: { g: GameRow; jackpot: number | undefin
       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-gradient-to-br from-felt-800 to-ink-900">
         <GameIcon gameKey={g.key} className="h-9 w-9" />
       </div>
-      <div className="min-w-0">
+      {g.released && (
+        <button
+          type="button"
+          aria-pressed={starred}
+          aria-label={starred ? `Remove ${g.name} from your favourites` : `Add ${g.name} to your favourites`}
+          onClick={() => toggleFavourite(g.key)}
+          className={cn('absolute right-2 top-2 z-10 rounded-lg p-1.5 text-lg leading-none transition hover:bg-white/[0.08]', starred ? 'text-gold-300' : 'text-white/25 hover:text-white/60')}
+        >
+          {starred ? '★' : '☆'}
+        </button>
+      )}
+      <div className="min-w-0 pr-6">
         <div className="flex flex-wrap items-center gap-2">
           <h4 className="font-display text-lg font-bold leading-tight text-ivory">{g.name}</h4>
           {g.released ? (
@@ -95,6 +109,10 @@ export function GameGrid() {
       })),
     [games, filter],
   );
+  const favourites = useSettings((s) => s.favourites);
+  const recent = useSettings((s) => s.recentGames);
+  const byKey = new Map((games ?? []).map((g) => [g.key, g]));
+  const shelf = (keys: string[]) => keys.map((k) => byKey.get(k)).filter((g): g is GameRow => Boolean(g && g.released));
   const count = (key: CategoryKey) => (games ?? []).filter((g) => g.category === key).length;
 
   return (
@@ -129,6 +147,27 @@ export function GameGrid() {
           ))}
         </div>
       </div>
+
+      {games && (shelf(recent).length > 0 || shelf(favourites).length > 0) && (
+        <div className="mt-5 space-y-2">
+          {[
+            { label: 'Jump back in', list: shelf(recent).slice(0, 5) },
+            { label: 'Your favourites', list: shelf(favourites) },
+          ]
+            .filter((r) => r.list.length > 0)
+            .map((r) => (
+              <div key={r.label} className="flex flex-wrap items-center gap-2" role="group" aria-label={r.label}>
+                <span className="w-full text-xs font-semibold uppercase tracking-[0.18em] text-gold-400 sm:w-32">{r.label}</span>
+                {r.list.map((g) => (
+                  <Link key={g.key} to={gameHref(g)} className="flex items-center gap-1.5 rounded-full border border-white/10 bg-ink-950/40 py-1 pl-1.5 pr-3 text-sm font-medium text-cream hover:border-gold-500/50 hover:text-ivory">
+                    <GameIcon gameKey={g.key} className="h-6 w-6" />
+                    {g.name}
+                  </Link>
+                ))}
+              </div>
+            ))}
+        </div>
+      )}
 
       {error ? (
         <div className="surface mt-6">

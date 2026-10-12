@@ -159,21 +159,39 @@ function TournamentConnector() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournament_entries', filter: `user_id=eq.${userId}` }, ({ new: row }) => {
         const e = row as { status?: string; tournament_id?: string };
         if (e.status !== 'playing' || !e.tournament_id) return;
-        void supabase
-          .from('tournaments')
-          .select('table_id, status')
-          .eq('id', e.tournament_id)
-          .maybeSingle()
-          .then(({ data }) => {
-            const t = data as { table_id: string | null; status: string } | null;
-            if (!t?.table_id || t.status !== 'running' || window.location.pathname.endsWith(`/table/${t.table_id}`)) return;
-            playSound('turn');
-            toast.success('Your Sit & Go is starting', 'Taking you to the table.');
-            navigate(`/table/${t.table_id}`);
-          });
+        // The seat is made in the same step as the entry changes, so it is there to find.
+        void supabase.rpc('my_table').then(({ data }) => {
+          const seat = data as { table_id: string; play_money?: boolean } | null;
+          if (!seat?.play_money || window.location.pathname.endsWith(`/table/${seat.table_id}`)) return;
+          playSound('turn');
+          toast.success('Your tournament is starting', 'Taking you to the table.');
+          navigate(`/table/${seat.table_id}`);
+        });
       })
       .subscribe();
-    return () => void supabase.removeChannel(ch);
+    // A Main Event you registered for starts on the clock. Events only begin when somebody asks
+    // the server, so ask at its start time wherever you are, then go to your seat.
+    const clock = window.setInterval(() => {
+      let at: string | null = null;
+      try {
+        at = window.localStorage.getItem('allin-mtt-at');
+      } catch {
+        return;
+      }
+      if (!at || Date.now() < new Date(at).getTime() + 1500) return;
+      window.localStorage.removeItem('allin-mtt-at');
+      void supabase.rpc('mtt_state').then(({ data }) => {
+        const table = (data as { my_table?: string | null } | null)?.my_table;
+        if (!table || window.location.pathname.endsWith(`/table/${table}`)) return;
+        playSound('turn');
+        toast.success('The Main Event is starting', 'Taking you to your table.');
+        navigate(`/table/${table}`);
+      });
+    }, 5000);
+    return () => {
+      window.clearInterval(clock);
+      void supabase.removeChannel(ch);
+    };
   }, [userId, navigate]);
   return null;
 }

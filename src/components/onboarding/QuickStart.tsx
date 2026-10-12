@@ -12,6 +12,11 @@ export function QuickStart({ guide }: { guide: string }) {
   const setTipsOn = useSettings((s) => s.setTipsOn);
   const content = quickStartFor(guide);
   const [open, setOpen] = useState(false);
+  // This component is mounted once for every game opened, so it is also where "recently played" is noted.
+  const noteGame = useSettings((s) => s.noteGame);
+  useEffect(() => {
+    if (guide !== 'tournaments') noteGame(guide);
+  }, [guide, noteGame]);
 
   useEffect(() => {
     if (!content || !tipsOn || seen) return;

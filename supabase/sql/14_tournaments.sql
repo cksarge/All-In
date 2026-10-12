@@ -54,6 +54,8 @@ create table if not exists public.tournaments (
   finished_at  timestamptz,
   created_at   timestamptz not null default now()
 );
+-- Sit & Go format: 'standard', 'turbo' (one-minute blind levels) or 'omaha' (Pot-Limit Omaha).
+alter table public.tournaments add column if not exists variant text not null default 'standard';
 create unique index if not exists tournaments_round_key on public.tournaments (kind, tier, starts_at) where kind <> 'sng';
 create index if not exists tournaments_open_idx on public.tournaments (kind, status);
 create index if not exists tournaments_table_idx on public.tournaments (table_id);
@@ -89,7 +91,12 @@ as $$
       "sizes": [2, 3, 6], "entry_fees": [250, 2500, 25000], "stack": 1500, "level_seconds": 180,
       "levels": [[10, 20], [15, 30], [25, 50], [50, 100], [75, 150], [100, 200], [150, 300], [200, 400],
                  [300, 600], [500, 1000], [750, 1500], [1000, 2000]],
-      "payouts": {"2": [100], "3": [100], "6": [65, 35]}
+      "payouts": {"2": [100], "3": [100], "6": [65, 35]},
+      "variants": {
+        "standard": {"name": "Hold''em", "game": "poker_holdem", "level_seconds": 180},
+        "turbo":    {"name": "Turbo Hold''em", "game": "poker_holdem", "level_seconds": 60},
+        "omaha":    {"name": "Omaha", "game": "poker_omaha", "level_seconds": 180}
+      }
     },
     "showdown": {
       "round_seconds": 900, "spins": 30, "min_players": 2,
@@ -128,14 +135,27 @@ $$;
 -- Sit & Go poker
 -- -----------------------------------------------------------------------------
 -- Blind level (1-based) for a tournament that started at p_started.
-create or replace function private.sng_level(p_started timestamptz)
+-- p_seconds: how long a level lasts (turbo games and multi-table events differ); null = the standard length.
+drop function if exists private.sng_level(timestamptz);
+create or replace function private.sng_level(p_started timestamptz, p_seconds integer default null)
 returns integer
 language sql
 stable
 set search_path = ''
 as $$
   select least(jsonb_array_length(private.tourney_cfg() #> '{sng,levels}'),
-               floor(extract(epoch from now() - p_started) / (private.tourney_cfg() #>> '{sng,level_seconds}')::numeric)::integer + 1)
+               floor(extract(epoch from now() - p_started) / coalesce(p_seconds, (private.tourney_cfg() #>> '{sng,level_seconds}')::integer)::numeric)::integer + 1)
+$$;
+
+-- Seconds per blind level for a Sit & Go of this format.
+create or replace function private.sng_seconds(p_variant text)
+returns integer
+language sql
+immutable
+set search_path = ''
+as $$
+  select coalesce((private.tourney_cfg() #>> array['sng', 'variants', p_variant, 'level_seconds'])::integer,
+                  (private.tourney_cfg() #>> '{sng,level_seconds}')::integer)
 $$;
 
 -- A table's stakes at a blind level, in the shape the poker engine reads.
@@ -245,7 +265,7 @@ begin
   if (select count(*) from public.tournament_entries where tournament_id = t.id and status = 'playing') <= 1 then
     perform private.sng_finish(t.id);
   else
-    update public.game_tables set stakes = private.sng_stakes(private.sng_level(t.started_at)), last_activity_at = now()
+    update public.game_tables set stakes = private.sng_stakes(private.sng_level(t.started_at, private.sng_seconds(t.variant))), last_activity_at = now()
      where id = t.table_id;
   end if;
 end $$;
@@ -263,6 +283,9 @@ begin
   select id into v_id from public.tournaments where table_id = p_table and status = 'running';
   if v_id is not null then
     perform private.sng_sync(v_id);
+  elsif to_regprocedure('private.mtt_after_hand(uuid)') is not null then
+    -- A table of a multi-table tournament (18_tournaments_plus.sql).
+    execute 'select private.mtt_after_hand($1)' using p_table;
   end if;
 end $$;
 
@@ -294,7 +317,9 @@ begin
   delete from public.table_seats where user_id in (select user_id from public.tournament_entries where tournament_id = t.id);
 
   insert into public.game_tables (game_key, tier, name, max_seats, play_money, stakes)
-  values ('poker_holdem', 'low', 'Sit & Go #' || t.seq, t.size, true, private.sng_stakes(1))
+  values (coalesce(private.tourney_cfg() #>> array['sng', 'variants', t.variant, 'game'], 'poker_holdem'), 'low',
+          case t.variant when 'turbo' then 'Turbo Sit & Go #' when 'omaha' then 'Omaha Sit & Go #' else 'Sit & Go #' end || t.seq,
+          t.size, true, private.sng_stakes(1))
   returning id into v_table;
   for e in select user_id, row_number() over (order by random()) as seat from public.tournament_entries where tournament_id = t.id loop
     insert into public.table_seats (table_id, seat_no, user_id, stack)
@@ -309,7 +334,8 @@ begin
 end $$;
 
 -- Take a seat in the Sit & Go of this size and price that is filling up.
-create or replace function public.sng_register(p_size integer, p_entry_fee bigint)
+drop function if exists public.sng_register(integer, bigint);
+create or replace function public.sng_register(p_size integer, p_entry_fee bigint, p_variant text default 'standard')
 returns jsonb
 language plpgsql
 security definer
@@ -321,23 +347,24 @@ declare
   t public.tournaments;
   v_table uuid;
 begin
-  if not (c -> 'sizes' @> to_jsonb(p_size)) or not (c -> 'entry_fees' @> to_jsonb(p_entry_fee)) then
+  if not (c -> 'sizes' @> to_jsonb(p_size)) or not (c -> 'entry_fees' @> to_jsonb(p_entry_fee)) or not (c -> 'variants' ? coalesce(p_variant, '')) then
     raise exception 'unknown_tournament';
   end if;
   if not exists (select 1 from public.games where key = 'sng_poker' and released) then
     raise exception 'game_not_open';
   end if;
   if exists (select 1 from public.tournament_entries e join public.tournaments x on x.id = e.tournament_id
-              where e.user_id = v_uid and x.kind = 'sng' and e.status in ('registered', 'playing')) then
-    raise exception 'action_not_allowed' using hint = 'You are already in a Sit & Go. One at a time.';
+              where e.user_id = v_uid and x.kind in ('sng', 'mtt') and e.status in ('registered', 'playing')
+                and x.status in ('registering', 'running')) then
+    raise exception 'action_not_allowed' using hint = 'You are already in a poker tournament. One at a time.';
   end if;
 
   perform pg_advisory_xact_lock(hashtext('allin_sng'));
   select * into t from public.tournaments
-   where kind = 'sng' and status = 'registering' and size = p_size and entry_fee = p_entry_fee
+   where kind = 'sng' and status = 'registering' and size = p_size and entry_fee = p_entry_fee and variant = p_variant
    order by created_at limit 1 for update;
   if not found then
-    insert into public.tournaments (kind, status, size, entry_fee) values ('sng', 'registering', p_size, p_entry_fee) returning * into t;
+    insert into public.tournaments (kind, status, size, entry_fee, variant) values ('sng', 'registering', p_size, p_entry_fee, p_variant) returning * into t;
   end if;
 
   perform private.apply_chips(v_uid, -p_entry_fee, 'tournament_entry', 'sng_poker', t.id::text);
@@ -392,16 +419,16 @@ begin
   if not found then
     return null;
   end if;
-  v_level := case when t.status = 'running' then private.sng_level(t.started_at) end;
+  v_level := case when t.status = 'running' then private.sng_level(t.started_at, private.sng_seconds(t.variant)) end;
   return jsonb_build_object(
-    'tournament_id', t.id, 'status', t.status, 'size', t.size, 'entry_fee', t.entry_fee, 'prize_pool', t.entry_fee * t.size,
+    'tournament_id', t.id, 'kind', 'sng', 'variant', t.variant, 'status', t.status, 'size', t.size, 'entry_fee', t.entry_fee, 'prize_pool', t.entry_fee * t.size,
     'prizes', to_jsonb(private.pool_prizes(t.entry_fee * t.size, (select array_agg(x::integer order by o)
                  from jsonb_array_elements_text(c #> array['payouts', t.size::text]) with ordinality p(x, o)))),
     'level', v_level,
     'blinds', case when v_level is not null then c -> 'levels' -> (v_level - 1) end,
     'next_blinds', case when v_level is not null and v_level < v_count then c -> 'levels' -> v_level end,
     'next_level_at', case when v_level is not null and v_level < v_count
-                          then t.started_at + make_interval(secs => v_level * (c ->> 'level_seconds')::integer) end,
+                          then t.started_at + make_interval(secs => v_level * private.sng_seconds(t.variant)) end,
     'players_left', (select count(*) from public.tournament_entries where tournament_id = t.id and status = 'playing'),
     'entries', (select jsonb_agg(jsonb_build_object('user_id', e.user_id, 'username', e.username, 'status', e.status,
                                                     'place', e.place, 'prize', e.prize) order by e.place nulls first, e.username)
@@ -660,22 +687,23 @@ begin
     'config', c,
     -- One row per size and price: who is waiting in the one that is filling.
     'sng', (select jsonb_agg(jsonb_build_object(
-              'size', s.size, 'entry_fee', b.entry_fee, 'prize_pool', s.size * b.entry_fee, 'id', t.id,
+              'size', s.size, 'entry_fee', b.entry_fee, 'variant', v.variant, 'prize_pool', s.size * b.entry_fee, 'id', t.id,
               'players', coalesce((select jsonb_agg(e.username order by e.entered_at) from public.tournament_entries e where e.tournament_id = t.id), '[]'::jsonb),
               'registered', exists (select 1 from public.tournament_entries e where e.tournament_id = t.id and e.user_id = v_uid)
-            ) order by b.entry_fee, s.size)
+            ) order by v.variant, b.entry_fee, s.size)
               from (select x::integer as size from jsonb_array_elements_text(c #> '{sng,sizes}') x) s
              cross join (select x::bigint as entry_fee from jsonb_array_elements_text(c #> '{sng,entry_fees}') x) b
+             cross join (select x as variant from jsonb_object_keys(c #> '{sng,variants}') x) v
               left join lateral (select * from public.tournaments t0
-                                  where t0.kind = 'sng' and t0.status = 'registering' and t0.size = s.size and t0.entry_fee = b.entry_fee
+                                  where t0.kind = 'sng' and t0.status = 'registering' and t0.size = s.size and t0.entry_fee = b.entry_fee and t0.variant = v.variant
                                   order by t0.created_at limit 1) t on true),
     -- The Sit & Go you are in the middle of, if any.
-    'my_sng', (select jsonb_build_object('id', t.id, 'status', t.status, 'table_id', t.table_id, 'size', t.size, 'entry_fee', t.entry_fee)
+    'my_sng', (select jsonb_build_object('id', t.id, 'status', t.status, 'table_id', t.table_id, 'size', t.size, 'entry_fee', t.entry_fee, 'variant', t.variant)
                  from public.tournament_entries e join public.tournaments t on t.id = e.tournament_id
                 where e.user_id = v_uid and t.kind = 'sng' and e.status in ('registered', 'playing') limit 1),
     -- Sit & Gos being played right now, to watch.
     'live', (select coalesce(jsonb_agg(jsonb_build_object(
-               'id', t.id, 'table_id', t.table_id, 'size', t.size, 'entry_fee', t.entry_fee,
+               'id', t.id, 'table_id', t.table_id, 'size', t.size, 'entry_fee', t.entry_fee, 'variant', t.variant,
                'players_left', (select count(*) from public.tournament_entries e where e.tournament_id = t.id and e.status = 'playing')) order by t.started_at desc), '[]'::jsonb)
                from public.tournaments t where t.kind = 'sng' and t.status = 'running'),
     'showdowns', (select coalesce(jsonb_agg(private.showdown_json(t, v_uid) order by t.entry_fee), '[]'::jsonb)
@@ -697,7 +725,7 @@ declare
   f text;
 begin
   foreach f in array array[
-    'public.tournaments_state()', 'public.sng_register(integer, bigint)', 'public.sng_unregister(uuid)',
+    'public.tournaments_state()', 'public.sng_register(integer, bigint, text)', 'public.sng_unregister(uuid)',
     'public.sng_status(uuid)', 'public.showdown_enter(uuid)', 'public.showdown_spin(uuid)', 'public.showdown_state(uuid)'
   ]
   loop

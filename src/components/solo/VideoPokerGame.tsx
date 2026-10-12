@@ -7,6 +7,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { formatChips } from '@/lib/format';
 import { HAND_NAMES, holdBalance, settleBalance, sleep, useSoloGame, type SoloInfo } from '@/lib/solo';
 import { playSound } from '@/lib/sound';
+import { suggestHolds } from '@/lib/vpHint';
 import { toast } from '@/stores/toastStore';
 import { useWallet } from '@/stores/walletStore';
 import { BetStepper, Outcome, SoloGate, SoloShell } from './SoloShell';
@@ -49,6 +50,7 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
   const [holds, setHolds] = useState<boolean[]>([false, false, false, false, false]);
   const [final, setFinal] = useState<Final | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
   const bet = round?.bet ?? info.bets[betIndex];
   const tier = info.tiers.find((t) => bet >= t.min_bet && bet <= t.max_bet);
 
@@ -65,6 +67,7 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
     playSound('card');
     setFinal(null);
     setHolds([false, false, false, false, false]);
+    setHint(null);
     setRound(res);
     settleBalance(res.balance);
   };
@@ -82,11 +85,20 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
     }
     playSound('card');
     setRound(null);
+    setHint(null);
     setFinal(res);
     await sleep(700);
     settleBalance(res.balance);
     playSound(res.win > 0 ? 'win' : 'lose');
     setBusy(false);
+  };
+
+  const showHint = () => {
+    if (!round || busy) return;
+    const h = suggestHolds(round.hand, game, round.made);
+    setHolds(h.holds);
+    setHint(h.why);
+    playSound('click');
   };
 
   const toggle = (i: number) => {
@@ -116,6 +128,11 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
       controls={
         <>
           <BetStepper bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy || Boolean(round)} tiers={info.tiers} />
+          {round && (
+            <Button variant="outline" disabled={busy} onClick={showHint}>
+              Hint
+            </Button>
+          )}
           <Button size="lg" className="ml-auto min-w-36" loading={busy} disabled={!round && balance < bet} onClick={() => void (round ? draw() : deal())}>
             {round ? 'Draw' : 'Deal'}
           </Button>
@@ -190,6 +207,11 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
         })}
       </div>
 
+      {round && hint && (
+        <p className="mx-auto mt-3 max-w-md rounded-xl border border-gold-500/30 bg-gold-500/10 px-3 py-2 text-center text-sm text-cream/90" role="status">
+          <strong className="text-gold-200">Hint:</strong> {hint} <span className="text-xs text-muted">A simple guide, not perfect play. Change the holds if you like.</span>
+        </p>
+      )}
       {final && !round && <Outcome staked={final.bet} win={final.win} />}
       {!final && !round && (
         <p className="mt-3 text-center text-xs text-cream/60">

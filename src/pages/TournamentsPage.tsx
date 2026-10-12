@@ -21,6 +21,8 @@ import {
   type SngRow,
   type TourneyResult,
   type TourneyState,
+  type MttState,
+  VARIANT_LABEL,
 } from '@/lib/tournaments';
 import { useNow } from '@/hooks/useNow';
 import { toast } from '@/stores/toastStore';
@@ -33,6 +35,29 @@ export default function TournamentsPage() {
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const [busy, setBusy] = useState<string | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [variant, setVariant] = useState('standard');
+  // The multi-table event has its own feed; it stays empty until 18_tournaments_plus.sql is run.
+  const mtt = useTourneyFeed<MttState>('mtt_state', {}, 5000);
+  const mttTable = mtt.data?.my_table ?? null;
+  const mttWaiting = useRef(false);
+  useEffect(() => {
+    if (mttTable && mttWaiting.current) {
+      playSound('turn');
+      toast.success('The Main Event is starting', 'Good luck!');
+      navigate(`/table/${mttTable}`);
+    }
+    mttWaiting.current = Boolean(mtt.data?.next?.registered);
+  }, [mttTable, mtt.data?.next?.registered, navigate]);
+  // Remembered so the event still starts for you if you wander off to another page (see App.tsx).
+  const mttAt = mtt.data?.next?.registered ? mtt.data.next.starts_at : null;
+  useEffect(() => {
+    try {
+      if (mttAt) window.localStorage.setItem('allin-mtt-at', mttAt);
+      else if (mtt.data) window.localStorage.removeItem('allin-mtt-at');
+    } catch {
+      // private mode: the tournaments page itself still starts it
+    }
+  }, [mttAt, mtt.data]);
 
   // Your Sit & Go filled up while you were looking at this page: off to the table.
   const wasWaiting = useRef(false);
@@ -64,6 +89,7 @@ export default function TournamentsPage() {
     setBusy(null);
     void useWallet.getState().fetchStatus();
     void load();
+    void mtt.load();
     if (err) {
       playSound('error');
       toast.error(friendlyError(err));
@@ -73,9 +99,10 @@ export default function TournamentsPage() {
   };
 
   const register = async (row: SngRow) => {
-    const res = await run<{ started: boolean; table_id: string | null }>(`sng-${row.size}-${row.entry_fee}`, 'sng_register', {
+    const res = await run<{ started: boolean; table_id: string | null }>(`sng-${row.size}-${row.entry_fee}-${row.variant ?? 'standard'}`, 'sng_register', {
       p_size: row.size,
       p_entry_fee: row.entry_fee,
+      ...(row.variant && row.variant !== 'standard' ? { p_variant: row.variant } : {}),
     });
     if (!res) return;
     playSound('chip');
@@ -84,7 +111,7 @@ export default function TournamentsPage() {
   };
   const unregister = async (row: SngRow) => {
     if (!row.id) return;
-    if (await run(`sng-${row.size}-${row.entry_fee}`, 'sng_unregister', { p_tournament: row.id })) toast.info('Seat given up', 'Your entry is back in your wallet.');
+    if (await run(`sng-${row.size}-${row.entry_fee}-${row.variant ?? 'standard'}`, 'sng_unregister', { p_tournament: row.id })) toast.info('Seat given up', 'Your entry is back in your wallet.');
   };
   const enter = async (s: Showdown) => {
     if (await run(`sd-${s.id}`, 'showdown_enter', { p_tournament: s.id })) {
@@ -96,6 +123,9 @@ export default function TournamentsPage() {
   const freeroll = data.showdowns.find((s) => s.kind === 'freeroll');
   const showdowns = data.showdowns.filter((s) => s.kind === 'showdown');
   const fees = data.config.sng.entry_fees;
+  const variants = Object.keys(data.config.sng.variants ?? { standard: 1 }).sort((a, b) => ['standard', 'turbo', 'omaha'].indexOf(a) - ['standard', 'turbo', 'omaha'].indexOf(b));
+  const levelMinutes = (data.config.sng.variants?.[variant]?.level_seconds ?? data.config.sng.level_seconds) / 60;
+  const inPoker = Boolean(mySng) || Boolean(mtt.data?.next?.registered) || Boolean(mttTable);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
@@ -112,8 +142,8 @@ export default function TournamentsPage() {
           <Button variant="outline" size="sm" onClick={() => setRulesOpen(true)}>
             How it works
           </Button>
-          <ButtonLink to="/leaderboards" variant="ghost" size="sm">
-            Leaderboards
+          <ButtonLink to="/leaderboards?board=tournaments" variant="ghost" size="sm">
+            Tournament leaderboard
           </ButtonLink>
           <ButtonLink to="/lounge" variant="ghost" size="sm">
             ← Lounge
@@ -213,15 +243,112 @@ export default function TournamentsPage() {
         </ul>
       </section>
 
+      {/* Main Event: the multi-table tournament */}
+      {mtt.data && (
+        <section aria-labelledby="mtt-h" className="mt-10">
+          <h2 id="mtt-h" className="font-display text-2xl font-bold text-ivory">
+            Main Event
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            A multi-table Hold&apos;em tournament every {Math.round(mtt.data.config.every_seconds / 60)} minutes. Up to {mtt.data.config.max_players} players on
+            tables of {mtt.data.config.seats}; tables merge as players go out. Needs {mtt.data.config.min_players} to start, or entries are returned.
+          </p>
+          {mttTable && (
+            <div role="status" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold-500/40 bg-gold-500/10 px-5 py-4">
+              <p className="text-sm text-cream/90">You&apos;re in the Main Event that is being played now.</p>
+              <ButtonLink to={`/table/${mttTable}`} size="sm">
+                Return to your table
+              </ButtonLink>
+            </div>
+          )}
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {mtt.data.next && (
+              <div className={cn('surface flex flex-col gap-3 p-5', mtt.data.next.registered && 'border-gold-500/50')}>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-display text-lg font-bold text-ivory">Next event</h3>
+                  <span className="rounded-full bg-felt-600/60 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider tabular-nums text-felt-300">
+                    starts in {countdown(new Date(mtt.data.next.starts_at).getTime() - (Date.now() + mtt.offsetMs))}
+                  </span>
+                </div>
+                <dl className="grid grid-cols-3 gap-2 text-sm">
+                  <Stat label="Entry" value={<ChipAmount value={mtt.data.next.entry_fee} iconClassName="h-3.5 w-3.5" />} />
+                  <Stat label="Players" value={`${mtt.data.next.players.length} / ${mtt.data.config.max_players}`} />
+                  <Stat label="Pot so far" value={<ChipAmount value={mtt.data.next.entry_fee * mtt.data.next.players.length} iconClassName="h-3.5 w-3.5" />} />
+                </dl>
+                <p className="min-h-4 truncate text-xs text-muted">{mtt.data.next.players.length ? `In: ${mtt.data.next.players.join(', ')}` : 'Nobody in yet. Be the first.'}</p>
+                {mtt.data.next.registered ? (
+                  <Button size="sm" variant="outline" loading={busy === 'mtt'} onClick={() => void run('mtt', 'mtt_unregister', { p_tournament: mtt.data!.next!.id }).then((r) => r && toast.info('You are out of the event', 'Your entry is back in your wallet.'))}>
+                    Leave the event
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    loading={busy === 'mtt'}
+                    disabled={inPoker || balance < mtt.data.next.entry_fee || mtt.data.next.players.length >= mtt.data.config.max_players}
+                    onClick={() => void run('mtt', 'mtt_register', { p_tournament: mtt.data!.next!.id }).then((r) => r && toast.success('You are in the Main Event', 'You will be taken to your table when it starts.'))}
+                  >
+                    {balance < mtt.data.next.entry_fee ? 'Not enough chips' : 'Register'}
+                  </Button>
+                )}
+              </div>
+            )}
+            <div className="surface p-5">
+              <h3 className="font-display text-lg font-bold text-ivory">Events being played</h3>
+              {mtt.data.running.length === 0 ? (
+                <p className="mt-3 text-sm text-muted">No Main Event is running at the moment.</p>
+              ) : (
+                <ul className="mt-2 space-y-3">
+                  {mtt.data.running.map((ev) => (
+                    <li key={ev.id} className="text-sm">
+                      <p className="text-cream/90">
+                        {ev.players_left} of {ev.entrants} left · pot <ChipAmount value={ev.prize_pool} className="text-gold-200" iconClassName="h-3.5 w-3.5" />
+                      </p>
+                      <ul className="mt-1 flex flex-wrap gap-2">
+                        {ev.tables.map((tb) => (
+                          <li key={tb.table_id}>
+                            <Link to={`/table/${tb.table_id}`} className="rounded-lg border border-white/15 px-2.5 py-1 text-xs font-semibold text-gold-300 hover:border-gold-500/50">
+                              Watch {tb.name.split(' · ').pop()} ({tb.players})
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Sit & Go */}
       <section aria-labelledby="sng-h" className="mt-10">
         <h2 id="sng-h" className="font-display text-2xl font-bold text-ivory">
           Sit &amp; Go poker
         </h2>
         <p className="mt-1 text-sm text-muted">
-          No-Limit Hold&apos;em knockouts. Take a seat; it starts the moment the table is full. {formatChips(data.config.sng.stack)} tournament chips
-          each, blinds up every {Math.round(data.config.sng.level_seconds / 60)} minutes.
+          {variant === 'omaha' ? 'Pot-Limit Omaha' : 'No-Limit Hold’em'} knockouts. Take a seat; it starts the moment the table is full. {formatChips(data.config.sng.stack)} tournament chips
+          each, blinds up every {levelMinutes === 1 ? 'minute' : `${levelMinutes} minutes`}.
         </p>
+        {variants.length > 1 && (
+          <div role="radiogroup" aria-label="Format" className="mt-3 flex flex-wrap gap-1.5">
+            {variants.map((v) => (
+              <button
+                key={v}
+                role="radio"
+                aria-checked={variant === v}
+                onClick={() => setVariant(v)}
+                className={cn(
+                  'rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
+                  variant === v ? 'border-gold-500/60 bg-gold-500/15 text-gold-200' : 'border-white/10 text-cream/75 hover:border-white/20 hover:text-ivory',
+                )}
+              >
+                {VARIANT_LABEL[v] ?? v}
+                <span className="ml-1.5 text-xs text-muted">{v === 'turbo' ? 'fast blinds' : v === 'omaha' ? 'four cards, pot limit' : "Hold'em"}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="mt-4 space-y-5">
           {fees.map((b) => (
             <div key={b}>
@@ -230,11 +357,11 @@ export default function TournamentsPage() {
               </h3>
               <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {data.sng
-                  .filter((r) => r.entry_fee === b)
+                  .filter((r) => r.entry_fee === b && (r.variant ?? 'standard') === variant)
                   .map((r) => {
-                    const key = `sng-${r.size}-${r.entry_fee}`;
+                    const key = `sng-${r.size}-${r.entry_fee}-${r.variant ?? 'standard'}`;
                     const shares = data.config.sng.payouts[String(r.size)] ?? [100];
-                    const locked = Boolean(mySng) && !r.registered;
+                    const locked = inPoker && !r.registered;
                     return (
                       <li key={key} className={cn('surface flex flex-col gap-2.5 p-4', r.registered && 'border-gold-500/50')}>
                         <div className="flex items-center justify-between gap-2">
@@ -353,7 +480,7 @@ function ShowdownAction({ s, busy, canAfford, onEnter, big }: { s: Showdown; bus
 }
 
 function ResultRow({ r }: { r: TourneyResult }) {
-  const name = r.kind === 'sng' ? `Sit & Go · ${sizeLabel(r.size ?? 2)}` : r.kind === 'freeroll' ? 'Daily Freeroll' : `Slot Showdown · ${r.machine_name ?? ''}`;
+  const name = r.kind === 'mtt' ? 'Main Event' : r.kind === 'sng' ? `Sit & Go · ${sizeLabel(r.size ?? 2)}` : r.kind === 'freeroll' ? 'Daily Freeroll' : `Slot Showdown · ${r.machine_name ?? ''}`;
   const inner = (
     <>
       <span className="min-w-0">
@@ -373,7 +500,7 @@ function ResultRow({ r }: { r: TourneyResult }) {
   );
   return (
     <li className="text-sm">
-      {r.kind === 'sng' ? (
+      {r.kind === 'sng' || r.kind === 'mtt' ? (
         <div className="flex items-center justify-between gap-3 py-2.5">{inner}</div>
       ) : (
         <Link to={`/tournaments/${r.id}`} className="flex items-center justify-between gap-3 rounded-lg py-2.5 hover:bg-white/[0.03]">

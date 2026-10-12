@@ -18,8 +18,10 @@ export function useSngStatus(tableId: string, enabled: boolean, pulse: string) {
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
+    // tourney_status covers Sit & Gos and multi-table events; before 18_tournaments_plus.sql it doesn't exist.
     const load = () =>
-      void supabase.rpc('sng_status', { p_table: tableId }).then(({ data }) => {
+      void supabase.rpc('tourney_status', { p_table: tableId }).then(async (first) => {
+        const { data } = first.error ? await supabase.rpc('sng_status', { p_table: tableId }) : first;
         if (alive && data) setStatus(data as SngStatus);
       });
     load();
@@ -59,6 +61,7 @@ export function SngBar({ status, offsetMs }: { status: SngStatus; offsetMs: numb
           />
         )}
         <Item label="Players left" value={`${status.players_left} of ${status.size}`} />
+        {status.kind === 'mtt' && status.tables_left !== undefined && <Item label="Tables" value={status.tables_left} />}
         <Item
           label="Prizes"
           value={

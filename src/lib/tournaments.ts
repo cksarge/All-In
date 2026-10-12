@@ -13,6 +13,8 @@ export interface TourneyConfig {
     levels: number[][];
     /** Percent of the pool per place, by number of players. */
     payouts: Record<string, number[]>;
+    /** Formats: standard, turbo (faster blinds), omaha. Absent until the newer SQL is run. */
+    variants?: Record<string, { name: string; game: string; level_seconds: number }>;
   };
   showdown: { round_seconds: number; spins: number; min_players: number; tiers: Record<string, number>; machines: string[] };
   freeroll: { spins: number; prizes: number[] };
@@ -21,6 +23,7 @@ export interface TourneyConfig {
 export interface SngRow {
   size: number;
   entry_fee: number;
+  variant?: string;
   prize_pool: number;
   /** The one that is filling up, if anyone is waiting. */
   id: string | null;
@@ -56,7 +59,7 @@ export interface Showdown {
 
 export interface TourneyResult {
   id: string;
-  kind: 'sng' | 'showdown' | 'freeroll';
+  kind: 'sng' | 'showdown' | 'freeroll' | 'mtt';
   status: 'finished' | 'void';
   entry_fee: number;
   size: number | null;
@@ -81,6 +84,11 @@ export interface TourneyState {
 
 export interface SngStatus {
   tournament_id: string;
+  kind?: 'sng' | 'mtt';
+  variant?: string;
+  /** Multi-table events: tables still open, and the table your seat is at now. */
+  tables_left?: number;
+  my_table?: string | null;
   status: 'registering' | 'running' | 'finished' | 'void';
   size: number;
   entry_fee: number;
@@ -94,6 +102,17 @@ export interface SngStatus {
   entries: { user_id: string; username: string; status: 'registered' | 'playing' | 'out'; place: number | null; prize: number | null }[];
   me: { status: 'registered' | 'playing' | 'out'; place: number | null; prize: number | null } | null;
 }
+
+/** The multi-table "Main Event" (18_tournaments_plus.sql). */
+export interface MttState {
+  server_now: string;
+  config: { entry_fee: number; stack: number; seats: number; max_players: number; min_players: number; every_seconds: number; level_seconds: number };
+  next: { id: string; starts_at: string; entry_fee: number; players: string[]; registered: boolean } | null;
+  running: { id: string; entrants: number; prize_pool: number; players_left: number; tables: { table_id: string; name: string; players: number }[] }[];
+  my_table: string | null;
+}
+
+export const VARIANT_LABEL: Record<string, string> = { standard: 'Standard', turbo: 'Turbo', omaha: 'Omaha' };
 
 export const ordinal = (n: number) => {
   const tens = n % 100;

@@ -144,6 +144,7 @@ export const FELTS: Record<string, { base: string; glow: string }> = {
   felt_charcoal: { base: '#141816', glow: '91 100 95' },
   felt_royal: { base: '#22123f', glow: '140 96 220' },
   felt_final_table: { base: '#1c1508', glow: '212 175 55' },
+  felt_trophy_room: { base: '#2a1a0a', glow: '240 214 136' },
 };
 
 /**

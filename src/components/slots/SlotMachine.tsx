@@ -52,6 +52,10 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
   const [burst, setBurst] = useState(0);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Auto-spin: how many spins are left to play by themselves (0 = off).
+  const [autoLeft, setAutoLeft] = useState(0);
+  const spinRef = useRef<(() => Promise<void>) | null>(null);
+  const lastWin = useRef(0);
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const reduced = prefersReducedMotion(useSettings((s) => s.motion));
 
@@ -90,6 +94,16 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
       void useWallet.getState().fetchStatus();
     };
   }, [load]);
+
+  // Each time a spin ends, play the next one. Stops for a big win, a feature, or too few chips.
+  useEffect(() => {
+    if (autoLeft <= 0 || phase !== 'idle') return;
+    const id = window.setTimeout(() => {
+      setAutoLeft((n) => Math.max(0, n - 1));
+      void spinRef.current?.();
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [autoLeft, phase]);
 
   const cfg = info?.config;
   const idle = useMemo<Scene | null>(
@@ -133,6 +147,7 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
     if (busy || running.current) return;
     if (balance < bet) {
       playSound('error');
+      setAutoLeft(0);
       toast.info('Not enough chips for that bet', 'Lower your bet, or pick up free chips in the lounge.');
       return;
     }
@@ -161,11 +176,15 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
       wallet.setDisplayBalance(null);
       void wallet.fetchStatus();
       playSound('error');
+      setAutoLeft(0);
       toast.error(friendlyError(err));
       return;
     }
     const res = data as SpinResponse;
     const scenes = buildScenes(res, cfg);
+    lastWin.current = res.win;
+    // A feature or a win of 20 times the bet is worth watching: auto-spin stops there.
+    if (res.win >= bet * 20 || res.jackpot_won > 0 || scenes.length > 1) setAutoLeft(0);
     await sleep(Math.max(0, 650 * speed - (performance.now() - t0)));
     setPhase('playing');
 
@@ -224,6 +243,8 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
     running.current = false;
     setPhase('idle');
   };
+
+  spinRef.current = spin;
 
   const onSkip = () => {
     skip.current = true;
@@ -366,6 +387,22 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
               Spin
             </Button>
           )}
+          <div className="flex items-center gap-1.5" role="group" aria-label="Auto-spin">
+            {autoLeft > 0 ? (
+              <Button size="sm" variant="outline" onClick={() => setAutoLeft(0)}>
+                Stop auto ({autoLeft} left)
+              </Button>
+            ) : (
+              <>
+                <span className="text-xs text-muted">Auto</span>
+                {[10, 25, 50].map((n) => (
+                  <Button key={n} size="sm" variant="ghost" disabled={busy || balance < bet} aria-label={`Auto: ${n} rounds`} onClick={() => setAutoLeft(n)}>
+                    {n}
+                  </Button>
+                ))}
+              </>
+            )}
+          </div>
           <p className="w-full text-center text-xs text-muted md:w-auto md:text-right">
             {balance < bet ? (
               <>

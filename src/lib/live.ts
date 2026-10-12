@@ -105,7 +105,7 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
     case 'tournament_result': {
       const place = Number(d.place);
       const prize = Number(d.prize ?? 0);
-      const what = d.kind === 'sng' ? 'Sit & Go' : d.kind === 'freeroll' ? 'Daily Freeroll' : 'Slot Showdown';
+      const what = d.kind === 'mtt' ? 'Main Event' : d.kind === 'sng' ? 'Sit & Go' : d.kind === 'freeroll' ? 'Daily Freeroll' : 'Slot Showdown';
       return {
         title: `${what}: you finished ${ordinal(place)} of ${String(d.players)}`,
         body: prize > 0 ? `You won ${formatChips(prize)} chips.` : undefined,
@@ -130,6 +130,8 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
       return { title: d.role === 'owner' ? `You now own ${String(d.club ?? 'the club')}` : d.role === 'officer' ? `You are now an officer of ${String(d.club ?? 'the club')}` : `You are a member of ${String(d.club ?? 'the club')} again`, to: '/clubs', action: 'Open club' };
     case 'club_removed':
       return { title: `You were removed from ${String(d.club ?? 'a club')}`, to: '/clubs', action: 'Find a club' };
+    case 'tournament_off':
+      return { title: 'The Main Event was called off', body: 'Not enough players entered. Your entry is back in your wallet.', to: '/tournaments', action: 'Tournaments' };
     case 'chips_adjusted':
       return { title: 'A moderator changed your chip balance', body: `${Number(d.delta) > 0 ? '+' : ''}${formatChips(Number(d.delta ?? 0))} chips.` };
     default:

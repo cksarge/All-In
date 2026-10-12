@@ -1,5 +1,6 @@
 import { SectionNav } from '@/components/layout/SectionNav';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PlayerLine } from '@/components/progress/bits';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
@@ -14,6 +15,7 @@ const BOARDS = [
   { key: 'chips', label: 'Chips', blurb: 'The biggest stacks right now.' },
   { key: 'biggest_win', label: 'Biggest win', blurb: 'The most won in a single round.' },
   { key: 'week', label: 'This week', blurb: 'Net chips won since Monday (UTC), for everyone who has played.' },
+  { key: 'tournaments', label: 'Tournaments', blurb: 'Tournaments won, among everyone who has finished one.' },
 ] as const;
 type Board = (typeof BOARDS)[number]['key'];
 
@@ -30,12 +32,14 @@ interface Data {
 
 function Value({ board, value }: { board: Board; value: number }) {
   if (board === 'level') return <span className="tabular-nums text-cream/85">{value.toLocaleString('en-US')} XP</span>;
+  if (board === 'tournaments') return <span className="tabular-nums font-semibold text-gold-200">{value.toLocaleString('en-US')} won</span>;
   return <ChipAmount value={value} signed={board === 'week'} className={cn('font-semibold', board === 'week' && value < 0 ? 'text-ruby-300' : 'text-gold-200')} iconClassName="h-4 w-4" />;
 }
 
 export default function LeaderboardPage() {
   const userId = useAuth((s) => s.user?.id);
-  const [board, setBoard] = useState<Board>('level');
+  const [params] = useSearchParams();
+  const [board, setBoard] = useState<Board>(BOARDS.some((b) => b.key === params.get('board')) ? (params.get('board') as Board) : 'level');
   const [friends, setFriends] = useState(false);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);

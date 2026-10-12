@@ -172,6 +172,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_contender',    'title', 'Contender',      null, 140),
   ('title_taskmaster',   'title', 'Taskmaster',     null, 160),
   ('title_founder',      'title', 'Founder',        null, 165),
+  ('title_field_marshal', 'title', 'Field Marshal', null, 167),
   ('title_season_veteran', 'title', 'Season Veteran', null, 170),
   ('title_tournament_champion', 'title', 'Tournament Champion', null, 150),
 
@@ -189,7 +190,8 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('felt_burgundy',   'felt', 'Burgundy',       9,  30),
   ('felt_charcoal',   'felt', 'Charcoal',       14, 40),
   ('felt_royal',      'felt', 'Royal Purple',   22, 50),
-  ('felt_final_table', 'felt', 'Final Table',   null, 60)
+  ('felt_final_table', 'felt', 'Final Table',   null, 60),
+  ('felt_trophy_room', 'felt', 'Trophy Room',   null, 65)
 on conflict (key) do update set
   kind = excluded.kind, name = excluded.name, unlock_level = excluded.unlock_level, sort_order = excluded.sort_order;
 
@@ -260,6 +262,10 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('nemesis',         'Nemesis',           'Beat the same player 10 times at poker.',     'feats',    'h2h_best',      10,  2500,  300,  'avatar_swords',     595),
   ('club_member',     'Clubbable',         'Join or start a club.',                       'social',   'clubs_joined',  1,   500,   100,  null,                806),
   ('club_founder',    'Founder',           'Start a club of your own.',                   'social',   'clubs_founded', 1,   1000,  200,  'title_founder',     807),
+
+  ('mtt_win',         'Field Marshal',     'Win a multi-table tournament.',               'tournaments', 'mtt_wins',   1,   5000,  500,  'title_field_marshal', 690),
+  ('trophies_10',     'Trophy Cabinet',    'Collect 10 tournament trophies.',             'tournaments', 'trophies',   10,  5000,  500,  'felt_trophy_room',  695),
+  ('show_off',        'Show-off',          'Show your cards when you didn''t have to.',   'feats',       'cards_shown', 1,  250,   50,   null,                597),
 
   ('friend_1',        'Friendly',          'Make a friend.',                                     'social', 'friends',         1,       500,   50,   null,                 510),
   ('friend_5',        'Popular',           'Have 5 friends.',                                    'social', 'friends',         5,       2500,  200,  'title_socialite',    520)
@@ -347,6 +353,7 @@ begin
     if (s ->> 'place')::integer = 1 and (s ->> 'players')::integer >= 2 then
       v_bump := array_append(v_bump, 'tourney_wins');
       if s ->> 'kind' = 'sng' then v_bump := array_append(v_bump, 'sng_wins'); end if;
+      if s ->> 'kind' = 'mtt' then v_bump := array_append(v_bump, 'mtt_wins'); end if;
       if s ->> 'kind' = 'showdown' then v_bump := array_append(v_bump, 'showdown_wins'); end if;
     end if;
     if s ->> 'kind' = 'freeroll' and (s ->> 'place')::integer <= 3 and (s ->> 'players')::integer >= 4 then
@@ -752,7 +759,7 @@ declare
   v_rows jsonb;
   v_me jsonb;
 begin
-  if p_board not in ('level', 'chips', 'biggest_win', 'week') then
+  if p_board not in ('level', 'chips', 'biggest_win', 'week', 'tournaments') then
     raise exception 'unknown_board';
   end if;
 
@@ -768,10 +775,15 @@ begin
         when 'level' then coalesce((select xp from public.player_progress where user_id = po.id), 0)
         when 'chips' then coalesce((select balance from public.wallets where user_id = po.id), 0)
         when 'biggest_win' then coalesce((select max(biggest_win) from public.player_game_stats where user_id = po.id), 0)
+        when 'tournaments' then coalesce((select (counters ->> 'tourney_wins')::bigint from public.player_progress where user_id = po.id), 0)
         else coalesce((select returned - wagered from public.weekly_stats where user_id = po.id and week_start = v_week), 0)
       end as value,
       -- The weekly board only lists people who played this week.
-      (p_board <> 'week' or exists (select 1 from public.weekly_stats where user_id = po.id and week_start = v_week)) as listed
+      -- ... and the tournament board only people who have finished one.
+      case p_board
+        when 'week' then exists (select 1 from public.weekly_stats where user_id = po.id and week_start = v_week)
+        when 'tournaments' then coalesce((select (counters ->> 'tourney_played')::bigint from public.player_progress where user_id = po.id), 0) > 0
+        else true end as listed
       from pool po
   ), ranked as (
     select s.id, s.value, rank() over (order by s.value desc) as rnk from scored s where s.listed

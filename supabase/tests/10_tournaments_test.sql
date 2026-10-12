@@ -61,7 +61,7 @@ select tests.ok(public.sng_register(2, 250) @> '{"started":false}', 'first in: w
 select tests.ok(tests.bal(:A) = 9750 and (public.get_economy_status() ->> 'chips_in_play')::int = 250, 'entry fee taken and counted as in play');
 select tests.throws($$select public.sng_register(3, 250)$$, 'action_not_allowed');
 select tests.ok((select s -> 'players' = '["TourAnn"]' and (s ->> 'registered')::boolean
-                   from jsonb_array_elements(public.tournaments_state() -> 'sng') s where s @> '{"size":2,"entry_fee":250}'), 'the lobby shows who is waiting');
+                   from jsonb_array_elements(public.tournaments_state() -> 'sng') s where s @> '{"size":2,"entry_fee":250,"variant":"standard"}'), 'the lobby shows who is waiting');
 select tests.ok(public.tournaments_state() -> 'my_sng' @> '{"status":"registering"}', 'and that you are in one');
 select tests.ok((public.sng_unregister((tests.tour(:A, 'sng')).id) ->> 'balance')::int = 10000, 'leaving before it starts gives the fee back');
 select tests.ok(public.tournaments_state() -> 'my_sng' = 'null', 'no longer in one');

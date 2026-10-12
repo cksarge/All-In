@@ -10,6 +10,11 @@ interface SettingsState {
   /** First-visit game guides: on or off, and which have been shown. */
   tipsOn: boolean;
   tipsSeen: Record<string, true>;
+  /** Starred games, and the last few played, newest first. Kept on this device. */
+  favourites: string[];
+  recentGames: string[];
+  toggleFavourite: (key: string) => void;
+  noteGame: (key: string) => void;
   setSoundOn: (on: boolean) => void;
   toggleSound: () => void;
   setMotion: (m: MotionPreference) => void;
@@ -27,6 +32,10 @@ export const useSettings = create<SettingsState>()(
       tourSeen: false,
       tipsOn: true,
       tipsSeen: {},
+      favourites: [],
+      recentGames: [],
+      toggleFavourite: (key) => set((s) => ({ favourites: s.favourites.includes(key) ? s.favourites.filter((k) => k !== key) : [...s.favourites, key] })),
+      noteGame: (key) => set((s) => (s.recentGames[0] === key ? s : { recentGames: [key, ...s.recentGames.filter((k) => k !== key)].slice(0, 6) })),
       setSoundOn: (soundOn) => set({ soundOn }),
       toggleSound: () => set((s) => ({ soundOn: !s.soundOn })),
       setMotion: (motion) => set({ motion }),

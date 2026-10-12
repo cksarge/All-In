@@ -18,6 +18,7 @@ import { usePokerTable } from '@/hooks/usePokerTable';
 import { formatChips } from '@/lib/format';
 import { POKER_GAMES, seatLayout, stakesLabel, type PkAction, type PkHand, type PkState } from '@/lib/poker';
 import { playSound } from '@/lib/sound';
+import { supabase } from '@/lib/supabase';
 import { toast } from '@/stores/toastStore';
 import { useWallet } from '@/stores/walletStore';
 import { SngBar, SngResult, useSngStatus } from '@/components/tournaments/SngBar';
@@ -68,6 +69,39 @@ export function PokerTable({ tableId }: { tableId: string }) {
     void useWallet.getState().fetchStatus();
     return !err;
   };
+  // ---- Decide before it is your turn ---------------------------------------------
+  // 'checkfold': check if it is free, else fold. 'check': check only while it stays free.
+  const [pre, setPre] = useState<'checkfold' | 'check' | null>(null);
+  const handId = viewHand?.id;
+  useEffect(() => setPre(null), [handId]);
+  const preKey = options && pre ? `${handId}-${viewHand?.street}-${viewHand?.current_bet}` : null;
+  const preDone = useRef<string | null>(null);
+  useEffect(() => {
+    if (!preKey || !options || !pre || preDone.current === preKey) return;
+    preDone.current = preKey;
+    const choice: PkAction | null = options.can_check ? 'check' : pre === 'checkfold' ? 'fold' : null;
+    setPre(null);
+    if (choice) void run(choice, () => t.act(choice), 'click');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preKey]);
+
+  // ---- Tournaments on several tables ----------------------------------------------
+  // Tables are rebalanced between hands: if your seat has moved, follow it.
+  const movedTo = tourney && sng?.status === 'running' && sng.me?.status === 'playing' && sng.my_table && sng.my_table !== tableId ? sng.my_table : null;
+  useEffect(() => {
+    if (!movedTo) return;
+    toast.info('You have been moved to another table', 'Tables are balanced as players go out.');
+    navigate(`/table/${movedTo}`, { replace: true });
+  }, [movedTo, navigate]);
+  // Between hands, ask the server to deal the next one and rebalance (it decides whether to).
+  const idleEvent = tourney && sng?.kind === 'mtt' && sng.status === 'running' && (!hand || hand.phase === 'settled');
+  useEffect(() => {
+    if (!idleEvent) return;
+    const id = window.setInterval(() => void supabase.rpc('mtt_poke', { p_table: tableId }).then(() => t.refetch()), 3000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idleEvent, tableId]);
+
   const act = (a: PkAction, amount?: number) => void run(a, () => t.act(a, amount), a === 'fold' || a === 'check' ? 'click' : 'chip');
 
   // Seated with nothing in front of you: offer to bring chips (once per visit).
@@ -361,7 +395,43 @@ export function PokerTable({ tableId }: { tableId: string }) {
               </Button>
             </div>
           ) : (
-            <p className="flex-1 text-sm text-cream/80">{waitingLine(state, viewHand, userId)}</p>
+            <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+              <p className="text-sm text-cream/80">{waitingLine(state, viewHand, userId)}</p>
+              {/* Waiting for your turn: decide now and it is played the moment the action reaches you. */}
+              {viewHand?.phase === 'betting' && myPlayer?.status === 'active' && (
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Decide in advance">
+                  {(
+                    [
+                      ['checkfold', 'Check / fold'],
+                      ['check', 'Check'],
+                    ] as const
+                  ).map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-pressed={pre === k}
+                      onClick={() => {
+                        setPre(pre === k ? null : k);
+                        playSound('click');
+                      }}
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                        pre === k ? 'border-gold-400 bg-gold-500/20 text-gold-100' : 'border-white/15 text-cream/80 hover:border-white/30',
+                      )}
+                    >
+                      {pre === k ? '✓ ' : ''}
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* A hand that ended without a showdown: you may show what you had. */}
+              {hand?.phase === 'settled' && !stale && me?.hole && myPlayer && !myPlayer.shown_cards && (
+                <Button size="sm" variant="outline" loading={busy === 'show'} onClick={() => void run('show', () => t.call('pk_show'), 'card')}>
+                  Show my cards
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </section>

@@ -41,6 +41,22 @@ export function TournamentRules({ open, onClose, config }: { open: boolean; onCl
           </ul>
         </section>
         <section>
+          <h3 className="font-display text-lg font-bold text-ivory">Sit &amp; Go formats and the Main Event</h3>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5">
+            <li>
+              <strong className="text-ivory">Turbo</strong> games raise the blinds every minute. <strong className="text-ivory">Omaha</strong> games deal four
+              cards each and are pot limit: you must use exactly two of your cards.
+            </li>
+            <li>
+              The <strong className="text-ivory">Main Event</strong> is a bigger Hold&apos;em tournament on several tables. Register any time before it starts;
+              at the start time everyone is seated. If too few have entered, it is called off and entries are returned.
+            </li>
+            <li>As players go out, tables are evened up and merged between hands, so you may be moved. Your chips move with you.</li>
+            <li>One poker tournament at a time: you can&apos;t be in a Sit &amp; Go and the Main Event together.</li>
+            <li>Top finishes earn trophies, shown on your profile. Second place needs a field of three, third a field of four.</li>
+          </ul>
+        </section>
+        <section>
           <h3 className="font-display text-lg font-bold text-ivory">Slot Showdown</h3>
           <ul className="mt-2 list-disc space-y-1.5 pl-5">
             <li>
