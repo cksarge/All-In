@@ -22,6 +22,8 @@ const REASONS: Record<string, string> = {
   achievement: 'Achievement reward',
   level_up: 'Level-up reward',
   admin_adjust: 'Adjusted by a moderator',
+  mission: 'Mission rewards',
+  season_reward: 'Season rewards',
   tournament_entry: 'Tournament entry',
   tournament_prize: 'Tournament prize',
 };

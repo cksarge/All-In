@@ -40,7 +40,8 @@ select tests.ok((select count(*) from public.cosmetics where unlock_level = 1) =
 select tests.ok(not exists (select 1 from public.achievements a where not (private.player_metrics(:A) ? a.metric)
                               and a.metric not in ('jackpots', 'royals', 'straight_flushes', 'slot_features', 'crash_10x', 'mines_cleared',
                                                    'bingo_fast', 'keno_perfect', 'best_streak', 'max_multiple',
-                                                   'tourney_played', 'tourney_wins', 'sng_wins', 'showdown_wins', 'freeroll_podiums')), 'every achievement measures something that exists');
+                                                   'tourney_played', 'tourney_wins', 'sng_wins', 'showdown_wins', 'freeroll_podiums',
+                                                   'missions_done', 'weeklies_done', 'daily_sweeps', 'season_tiers', 'seasons_done', 'invites_sent')), 'every achievement measures something that exists');
 
 -- ----------------------------------------------------------------------------
 -- A new player

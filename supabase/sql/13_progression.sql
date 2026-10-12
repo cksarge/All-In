@@ -120,7 +120,7 @@ create index if not exists player_progress_xp_idx on public.player_progress (xp 
 -- Stage 8 added a 'tournaments' group of achievements.
 alter table public.achievements drop constraint if exists achievements_category_check;
 alter table public.achievements add constraint achievements_category_check
-  check (category in ('play', 'wins', 'games', 'feats', 'tournaments', 'social'));
+  check (category in ('play', 'wins', 'games', 'feats', 'tournaments', 'missions', 'social'));
 
 -- -----------------------------------------------------------------------------
 -- Catalogue: cosmetics
@@ -141,6 +141,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('avatar_diamond',  'avatar', 'Diamond',        null, 130),
   ('avatar_whale',    'avatar', 'The Whale',      null, 140),
   ('avatar_medal',    'avatar', 'Gold Medal',     null, 150),
+  ('avatar_clipboard', 'avatar', 'To-Do List',    null, 160),
 
   ('frame_none',      'frame',  'No frame',       1,    10),
   ('frame_felt',      'frame',  'Felt Green',     3,    20),
@@ -151,6 +152,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('frame_diamond',   'frame',  'Diamond',        30,   70),
   ('frame_jackpot',   'frame',  'Jackpot',        null, 80),
   ('frame_laurel',    'frame',  'Laurel Wreath',  null, 90),
+  ('frame_clockwork', 'frame',  'Clockwork',      null, 95),
 
   ('title_newcomer',     'title', 'Newcomer',       1,    10),
   ('title_sharp',        'title', 'Sharp',          10,   20),
@@ -166,6 +168,8 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_veteran',      'title', 'Veteran',        null, 120),
   ('title_socialite',    'title', 'Socialite',      null, 130),
   ('title_contender',    'title', 'Contender',      null, 140),
+  ('title_taskmaster',   'title', 'Taskmaster',     null, 160),
+  ('title_season_veteran', 'title', 'Season Veteran', null, 170),
   ('title_tournament_champion', 'title', 'Tournament Champion', null, 150),
 
   ('back_ruby',       'card_back', 'Ruby Lattice',   1,  10),
@@ -175,6 +179,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('back_royal',      'card_back', 'Royal Purple',   20, 50),
   ('back_diamond',    'card_back', 'Diamond',        35, 60),
   ('back_tournament', 'card_back', 'Tournament Gold', null, 70),
+  ('back_planner',    'card_back', 'Day Planner',   null, 75),
 
   ('felt_classic',    'felt', 'Classic Green',  1,  10),
   ('felt_midnight',   'felt', 'Midnight Blue',  6,  20),
@@ -237,6 +242,16 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('sng_win',         'Last One Standing', 'Win a Sit & Go poker tournament.',                   'tournaments', 'sng_wins',       1,   2500,  300,  'avatar_medal',       660),
   ('showdown_win',    'Showstopper',       'Win a Slot Showdown.',                               'tournaments', 'showdown_wins',  1,   2500,  300,  'back_tournament',    670),
   ('freeroll_podium', 'Free Lunch',        'Finish in the top three of a Daily Freeroll with four or more players.', 'tournaments', 'freeroll_podiums', 1, 1000, 150, null, 680),
+
+  ('mission_first',   'On a Mission',      'Finish your first mission.',                  'missions', 'missions_done', 1,   250,   50,   null,                700),
+  ('mission_25',      'Busy Bee',          'Finish 25 missions.',                         'missions', 'missions_done', 25,  2500,  300,  'avatar_clipboard',  710),
+  ('mission_100',     'Taskmaster',        'Finish 100 missions.',                        'missions', 'missions_done', 100, 10000, 1000, 'title_taskmaster',  720),
+  ('daily_sweep',     'Clean Sweep',       'Finish all three daily missions in one day.', 'missions', 'daily_sweeps',  1,   500,   100,  null,                730),
+  ('daily_sweep_20',  'Creature of Habit', 'Finish all three daily missions on 20 days.', 'missions', 'daily_sweeps',  20,  10000, 1000, 'frame_clockwork',   740),
+  ('weekly_10',       'Weekly Regular',    'Finish 10 weekly missions.',                  'missions', 'weeklies_done', 10,  5000,  500,  'back_planner',      750),
+  ('season_tier_5',   'Season Ticket',     'Collect five season rewards.',                'missions', 'season_tiers',  5,   1000,  200,  null,                760),
+  ('season_done',     'Season Finale',     'Reach the end of a season track.',            'missions', 'seasons_done',  1,   5000,  1000, 'title_season_veteran', 770),
+  ('invite_first',    'Good Host',         'Invite a friend to your table.',              'social',   'invites_sent',  1,   250,   50,   null,                805),
 
   ('friend_1',        'Friendly',          'Make a friend.',                                     'social', 'friends',         1,       500,   50,   null,                 510),
   ('friend_5',        'Popular',           'Have 5 friends.',                                    'social', 'friends',         5,       2500,  200,  'title_socialite',    520)

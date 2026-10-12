@@ -153,6 +153,17 @@ with d as (
   returning 1)
 insert into cleanup_report (what, rows_deleted) select 'weekly leaderboard rows', count(*) from d;
 
+-- ---- Missions from past weeks, and notifications already read ------------------
+with d as (
+  delete from public.player_missions where period_start < current_date - 60
+  returning 1)
+insert into cleanup_report (what, rows_deleted) select 'old missions', count(*) from d;
+
+with d as (
+  delete from public.notifications where read_at < now() - interval '30 days' or created_at < now() - interval '90 days'
+  returning 1)
+insert into cleanup_report (what, rows_deleted) select 'old notifications', count(*) from d;
+
 -- ---- Report --------------------------------------------------------------------
 select what, rows_deleted from cleanup_report
 union all

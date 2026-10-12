@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { InviteModal } from './InviteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { formatChips } from '@/lib/format';
 import type { TierKey } from '@/lib/types';
@@ -41,8 +43,10 @@ export function TableHeader({
   /** Tournament tables have no stake level, and leaving goes back to the tournaments. */
   tournament?: boolean;
 }) {
+  const [inviteOpen, setInviteOpen] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
       <Button size="sm" variant={mySeat ? 'outline' : 'ghost'} onClick={onLeave}>
         ← {tournament ? (mySeat ? 'Leave tournament' : 'Tournaments') : mySeat ? 'Leave table' : 'Lobby'}
       </Button>
@@ -85,6 +89,11 @@ export function TableHeader({
         </span>
         {!connected && <span className="text-xs text-ruby-300">Reconnecting…</span>}
         {extra}
+        {mySeat && !tournament && (
+          <Button size="sm" variant="ghost" onClick={() => setInviteOpen(true)}>
+            Invite
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={onRules}>
           Rules
         </Button>

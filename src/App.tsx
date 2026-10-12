@@ -15,7 +15,9 @@ import LandingPage from '@/pages/LandingPage';
 import LeaderboardPage from '@/pages/LeaderboardPage';
 import LockerPage from '@/pages/LockerPage';
 import LogInPage from '@/pages/LogInPage';
+import InboxPage from '@/pages/InboxPage';
 import LobbyPage from '@/pages/LobbyPage';
+import MissionsPage from '@/pages/MissionsPage';
 import LoungePage from '@/pages/LoungePage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import PlayPage from '@/pages/PlayPage';
@@ -30,6 +32,7 @@ import { GuestOnly, RequireAuth } from '@/routes/guards';
 import { useOnlinePresence } from '@/hooks/useLobby';
 import { useAccount } from '@/stores/accountStore';
 import { useAuth } from '@/stores/authStore';
+import { useLive } from '@/stores/liveStore';
 import { useProgress } from '@/stores/progressStore';
 import { prefersReducedMotion, useSettings } from '@/stores/settingsStore';
 import { toast } from '@/stores/toastStore';
@@ -51,6 +54,8 @@ const TITLES: Record<string, string> = {
   '/leaderboards': 'Leaderboards · All In',
   '/tournaments': 'Tournaments · All In',
   '/admin': 'All In',
+  '/missions': 'Missions · All In',
+  '/inbox': 'Inbox · All In',
 };
 
 function RouteEffects() {
@@ -121,6 +126,26 @@ function AccountConnector() {
   return null;
 }
 
+/** Keeps missions, the season and the inbox loaded while signed in; missions are re-read as you leave a game. */
+function LiveConnector() {
+  const userId = useAuth((s) => s.user?.id);
+  const connect = useLive((s) => s.connect);
+  const reset = useLive((s) => s.reset);
+  const fetchMissions = useLive((s) => s.fetchMissions);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (!userId) {
+      reset();
+      return;
+    }
+    return connect(userId);
+  }, [userId, connect, reset]);
+  useEffect(() => {
+    if (userId && useLive.getState().missions) void fetchMissions();
+  }, [pathname, userId, fetchMissions]);
+  return null;
+}
+
 /** Takes you to your Sit & Go table the moment it fills, wherever you are on the site. */
 function TournamentConnector() {
   const userId = useAuth((s) => s.user?.id);
@@ -172,6 +197,7 @@ export default function App() {
         <ProgressConnector />
         <TournamentConnector />
         <AccountConnector />
+        <LiveConnector />
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<LandingPage />} />
@@ -191,6 +217,8 @@ export default function App() {
             <Route path="locker" element={<RequireAuth><LockerPage /></RequireAuth>} />
             <Route path="friends" element={<RequireAuth><FriendsPage /></RequireAuth>} />
             <Route path="leaderboards" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
+            <Route path="missions" element={<RequireAuth><MissionsPage /></RequireAuth>} />
+            <Route path="inbox" element={<RequireAuth><InboxPage /></RequireAuth>} />
             <Route path="tournaments" element={<RequireAuth><TournamentsPage /></RequireAuth>} />
             <Route path="tournaments/:id" element={<RequireAuth><ShowdownPage /></RequireAuth>} />
             {/* No link leads here. The page itself answers "Access not allowed" to everyone but the admin. */}

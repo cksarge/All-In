@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useToasts } from '@/stores/toastStore';
 import { cn } from './cn';
 
@@ -32,6 +33,11 @@ export function Toaster() {
           >
             <p className="text-sm font-semibold text-ivory">{t.title}</p>
             {t.body && <p className="mt-0.5 text-sm text-cream/80">{t.body}</p>}
+            {t.action && (
+              <Link to={t.action.to} onClick={() => dismiss(t.id)} className="mt-1.5 inline-block rounded-lg bg-gold-500 px-3 py-1 text-sm font-semibold text-ink-950 hover:bg-gold-400">
+                {t.action.label}
+              </Link>
+            )}
             <button
               onClick={() => dismiss(t.id)}
               className="absolute right-2 top-2 rounded-md p-1 text-muted hover:text-ivory"

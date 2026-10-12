@@ -78,17 +78,17 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 6.5 | Ultimate Texas Hold'em, Dragon Tiger, Casino War, Crash, Plinko, Mines, Scratch Cards, Power Draw, Bingo; lounge sections; every game in the lobby picker | ✅ on `main` |
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
-| 9 | **Live-service features, in four parts (below)** | **Part 1 built on `main`; parts 2 to 4 next** |
+| 9 | **Live-service features, in four parts (below)** | **Parts 1 and 2 built on `main`; parts 3 and 4 next** |
 | 10 | More games (the user's list, below) | |
 
-**User action pending for stage 9 part 1:** re-run `02_economy.sql` and `05_tables.sql`, then run the new
-`15_moderation.sql`. No dashboard settings. (Realtime gains `player_sanctions`: 23 tables.)
+**User action pending for stage 9 part 2:** re-run `13_progression.sql` and `15_moderation.sql`, then run the new
+`16_missions_seasons.sql`. No dashboard settings. (Realtime gains `notifications` and `player_missions`: 25 tables.)
 
 ### Stage 9: what the user asked for (2026-10-11), delivered in parts, each committed and tested
 1. ✅ **Admin and moderation** (`15_moderation.sql`): hidden `/admin` page for the account called Carter, reports,
    blocks, bans, timeouts, forced renames, chip changes, site notice. Profile page: the Leaderboards / Friends /
    Open locker buttons and the Tournaments pill were removed (the user's request).
-2. **Missions** (daily and weekly), **monthly season tracks** (first one Halloween, October 2026; rewards defined up
+2. ✅ (`16_missions_seasons.sql`) **Missions** (daily and weekly), **monthly season tracks** (first one Halloween, October 2026; rewards defined up
    to October 2027 but a season's rewards must be invisible and unearnable until its month starts, checked on the
    server; **a season's rewards are gone for good when it ends**), a **notification inbox**, **invite a friend to
    your table**.
@@ -357,6 +357,34 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      list on the Friends page, `src/pages/AdminPage.tsx`.
    - Not done yet: banned players still appear on leaderboards.
 
+16. `16_missions_seasons.sql` (stage 9 part 2): missions, seasons, the inbox, table invites.
+   - **Missions:** `private.mission_pool()` (kinds: rounds, wins, wager, category, games, multiple, net, tourney).
+     Each player is dealt three daily and three weekly ones, picked by a hash of player and date
+     (`private.missions_ensure`), into `player_missions`. A second trigger on `game_history`
+     (`private.on_round_missions`) moves them along, so **every game counts with no changes**. Rewards (chips, XP,
+     season points) wait for `missions_claim()`, like every other reward. Ledger reason `mission`.
+   - **Seasons:** `private.season_cfg()` lists 13 monthly seasons, October 2026 to October 2027, each with a title,
+     an avatar, a card back or felt, and a frame, on a ten-step track (`private.season_tiers`; 1,000 points; points
+     come only from missions). **Secrecy and timing are enforced on the server:** the config is a private function,
+     a season's cosmetics are inserted into `cosmetics` (with their `look` JSON and `season`) only by
+     `private.season_sync()` once its month has begun, and `missions_state` / `season_claim` only read the month of
+     `private.live_now()`. Points only go to the current month. When a month ends, `private.season_settle` hands
+     over the steps a player had reached and the rest is gone (the user's choice). Ledger reason `season_reward`.
+     (The repo is public, so the list can be read in this file; it cannot be seen or earned in the app.)
+   - `private.live_now()` is the clock for all of it; the tests replace it to travel between months.
+   - Because season cosmetics can't be built into the app, `cosmetics.look` carries their look and
+     `registerLooks()` in `src/lib/progress.ts` adds them to `AVATAR_GLYPH` / `FRAMES` / `CARD_BACKS` / `FELTS` when
+     the catalogue loads. The locker already hides cosmetics with no level and no achievement from non-owners.
+   - **Inbox:** `notifications` (own rows, realtime, newest 60 kept), written by `private.notify(user, kind, data)`
+     from triggers: friend request and answer, achievement unlocked, tournament result (from the `game_history` row),
+     season start and end, table invite, a moderator's chip change. Never free text: the client words each kind in
+     `inboxText()` (`src/lib/live.ts`). RPCs `inbox`, `inbox_read`, `inbox_clear`.
+   - **Invites:** `invite_friend(user)`: you must be seated (not at a tournament table), they must be a friend, once
+     a minute each. A private table's code travels in the notification. The friend gets a toast with a Join link.
+   - Frontend: `useLive` (`src/stores/liveStore.ts`), `/missions` (season track + missions), `/inbox`, `MissionsCard`
+     on the lounge, the bell in the top bar (wide screens; the account menu on phones), `InviteModal` behind an
+     Invite button in `TableHeader`. Counters for achievements are bumped with `private.bump(user, key)`.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -378,7 +406,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
   `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`, `level_up`, `achievement`. Solo games use `bet` and `payout` only (a returned
   stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
-**Realtime publication** now has 22 tables (the last two are tournaments, tournament_entries): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
+**Realtime publication** now has 25 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
+notifications, player_missions): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
 bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots, crash_rounds,
 crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Postgres Changes enforce RLS.
 
@@ -491,6 +520,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/social.cjs /tmp/shots       # stage 7: rewards, profile, locker, friends, join their table, leaderboards (24 checks)
    node scripts/e2e/tournaments.cjs /tmp/shots  # stage 8: freeroll, showdown, heads-up Sit & Go, first-visit guide (30 checks)
    node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban (18 checks)
+   node scripts/e2e/live.cjs /tmp/shots         # stage 9 part 2: missions, season track, inbox, table invite (17 checks; season checks need a running season)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

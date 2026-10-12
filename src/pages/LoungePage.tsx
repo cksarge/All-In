@@ -4,6 +4,7 @@ import { BalanceCard } from '@/components/economy/BalanceCard';
 import { DailyBonusCard } from '@/components/economy/DailyBonusCard';
 import { RecentActivity } from '@/components/economy/RecentActivity';
 import { RefillCard } from '@/components/economy/RefillCard';
+import { MissionsCard } from '@/components/lounge/MissionsCard';
 import { GameGrid } from '@/components/lounge/GameGrid';
 import { ReturnToTable } from '@/components/lounge/ReturnToTable';
 import { ButtonLink } from '@/components/ui/Button';
@@ -81,6 +82,7 @@ export default function LoungePage() {
         <div className="flex flex-col gap-5 lg:col-span-2">
           <BalanceCard />
           <DailyBonusCard />
+          <MissionsCard />
         </div>
         <div className="flex flex-col gap-5">
           <ProgressCard />

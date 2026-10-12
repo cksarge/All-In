@@ -6,6 +6,8 @@ import { Logo } from '@/components/ui/Logo';
 import { cn } from '@/components/ui/cn';
 import { SettingsButton } from '@/components/settings/SettingsModal';
 import { useAuth } from '@/stores/authStore';
+import { seasonReady } from '@/lib/live';
+import { useLive } from '@/stores/liveStore';
 import { useProgress } from '@/stores/progressStore';
 import { useUi } from '@/stores/uiStore';
 import { BalancePill } from './BalancePill';
@@ -41,7 +43,9 @@ function UserMenu() {
 
   const me = useProgress((s) => s.me);
   // A dot on the avatar when something is waiting: rewards to collect or a friend request.
-  const waiting = Boolean(me && (me.unclaimed_chips > 0 || me.friend_requests > 0));
+  const unread = useLive((s) => s.unread);
+  const rewards = useLive((s) => (s.missions ? s.missions.to_collect + seasonReady(s.missions.season) : 0));
+  const waiting = Boolean(me && (me.unclaimed_chips > 0 || me.friend_requests > 0)) || unread > 0 || rewards > 0;
 
   return (
     <div className="relative" ref={ref}>
@@ -76,6 +80,14 @@ function UserMenu() {
           </Link>
           <Link role="menuitem" to="/tournaments" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Tournaments
+          </Link>
+          <Link role="menuitem" to="/missions" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Missions
+            {rewards > 0 && <span className="ml-2 text-xs text-gold-300">rewards waiting</span>}
+          </Link>
+          <Link role="menuitem" to="/inbox" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Inbox
+            {unread > 0 && <span className="ml-2 rounded-full bg-gold-500 px-1.5 text-xs font-bold text-ink-950">{unread}</span>}
           </Link>
           <Link role="menuitem" to="/profile" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Profile
@@ -122,6 +134,28 @@ function UserMenu() {
   );
 }
 
+/** The bell in the top bar (wide screens; on a phone the inbox is in the account menu). */
+function InboxBell() {
+  const unread = useLive((s) => s.unread);
+  return (
+    <Link
+      to="/inbox"
+      aria-label={unread > 0 ? `Inbox, ${unread} unread` : 'Inbox'}
+      className="relative hidden h-10 w-10 items-center justify-center rounded-xl text-cream/80 transition hover:bg-white/[0.06] hover:text-ivory sm:flex"
+    >
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" />
+        <path d="M10 20a2 2 0 0 0 4 0" />
+      </svg>
+      {unread > 0 && (
+        <span className="absolute right-1 top-1 min-w-4 rounded-full bg-gold-500 px-1 text-center text-[0.6rem] font-bold leading-4 text-ink-950" aria-hidden="true">
+          {unread > 9 ? '9+' : unread}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export function SiteHeader() {
   const status = useAuth((s) => s.status);
   const signedIn = status === 'signedIn';
@@ -162,6 +196,7 @@ export function SiteHeader() {
         </nav>
         {signedIn && <BalancePill />}
         <div className="flex items-center">
+          {signedIn && <InboxBell />}
           <SoundToggle />
           <SettingsButton />
         </div>

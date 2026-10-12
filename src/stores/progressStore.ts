@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { friendlyError } from '@/lib/errors';
-import { FELTS, type Achievement, type Cosmetic, type Loadout, type MyProgress } from '@/lib/progress';
+import { FELTS, type Achievement, type Cosmetic, type Loadout, type MyProgress, registerLooks } from '@/lib/progress';
 import { playSound } from '@/lib/sound';
 import { supabase } from '@/lib/supabase';
 import { toast } from './toastStore';
@@ -21,7 +21,7 @@ interface ProgressState {
   looks: Record<string, Look>;
   claiming: boolean;
   fetch: () => Promise<void>;
-  fetchCatalogue: () => Promise<void>;
+  fetchCatalogue: (force?: boolean) => Promise<void>;
   claim: () => Promise<void>;
   equip: (key: string) => Promise<string | null>;
   /** Ask for a player's look; several asks in the same moment become one request. */
@@ -76,13 +76,17 @@ export const useProgress = create<ProgressState>()((set, get) => ({
     if (next.friend_requests > prev.friend_requests) toast.info('New friend request', 'Answer it on the Friends page.');
   },
 
-  fetchCatalogue: async () => {
-    if (get().achievements.length > 0) return;
-    const [c, a] = await Promise.all([
-      supabase.from('cosmetics').select('key, kind, name, unlock_level, sort_order').order('sort_order'),
+  fetchCatalogue: async (force = false) => {
+    if (get().achievements.length > 0 && !force) return;
+    const [first, a] = await Promise.all([
+      supabase.from('cosmetics').select('key, kind, name, unlock_level, sort_order, season, look').order('sort_order'),
       supabase.from('achievements').select('key, name, description, category, metric, goal, reward_chips, reward_xp, cosmetic_key, sort_order').order('sort_order'),
     ]);
-    if (!c.error && !a.error) set({ cosmetics: (c.data ?? []) as Cosmetic[], achievements: (a.data ?? []) as Achievement[] });
+    // Before 16_missions_seasons.sql is run the two newer columns don't exist yet.
+    const c = first.error ? await supabase.from('cosmetics').select('key, kind, name, unlock_level, sort_order').order('sort_order') : first;
+    if (c.error || a.error) return;
+    registerLooks((c.data ?? []) as Cosmetic[]);
+    set({ cosmetics: (c.data ?? []) as Cosmetic[], achievements: (a.data ?? []) as Achievement[] });
   },
 
   claim: async () => {

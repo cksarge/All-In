@@ -7,6 +7,8 @@ export interface Toast {
   tone: ToastTone;
   title: string;
   body?: string;
+  /** A link shown under the text (e.g. "Join" on a table invite). */
+  action?: { label: string; to: string };
 }
 
 interface ToastState {
@@ -31,4 +33,6 @@ export const toast = {
   success: (title: string, body?: string) => useToasts.getState().push({ tone: 'success', title, body }),
   error: (title: string, body?: string) => useToasts.getState().push({ tone: 'error', title, body }, 6000),
   info: (title: string, body?: string) => useToasts.getState().push({ tone: 'info', title, body }),
+  /** Stays longer, with a link to act on. */
+  action: (title: string, body: string, action: { label: string; to: string }) => useToasts.getState().push({ tone: 'info', title, body, action }, 12000),
 };
