@@ -33,9 +33,9 @@ export const spotTotal = (bets: Spots) => Object.values(bets).reduce((n, v) => n
 /**
  * Loads a game's rules and any round in progress, and wraps its RPCs.
  * `infoFn`: 'solo_info' for the games in 11_solo_games.sql, 'more_info' for 12_more_games.sql,
- * 'game_info' for the dealer card games in 19_table_poker.sql.
+ * 'game_info' for the dealer card games in 19_table_poker.sql, 'quick_info' for 20_blackjack_variants.sql.
  */
-export function useSoloGame<C, R = Record<string, unknown>>(game: string, infoFn: 'solo_info' | 'more_info' | 'game_info' = 'solo_info') {
+export function useSoloGame<C, R = Record<string, unknown>>(game: string, infoFn: 'solo_info' | 'more_info' | 'game_info' | 'quick_info' = 'solo_info') {
   const [info, setInfo] = useState<SoloInfo<C, R> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -166,6 +166,22 @@ export function historyLine(game: string, s: Record<string, unknown>): string {
     case 'four_card_poker':
     case 'teen_patti':
       return `${made ?? 'Hand'} · ${{ win: 'won', lose: 'lost', tie: 'tied', push: 'bets returned', fold: 'folded', no_qualify: 'dealer did not qualify' }[String(s.outcome)] ?? ''}`;
+    case 'spanish_21':
+    case 'blackjack_switch':
+    case 'free_bet_blackjack':
+    case 'pontoon': {
+      const outs = Array.isArray(s.outcomes) ? (s.outcomes as string[]) : [];
+      const words: Record<string, string> = { win: 'won', lose: 'lost', push: 'push', bust: 'bust', blackjack: 'blackjack', surrender: 'surrendered', bonus: 'bonus 21', five_card: 'five-card trick' };
+      return `${outs.map((o) => words[o] ?? o).join(', ') || 'Hand'} · dealer ${Number(s.dealer) > 21 ? 'bust' : s.dealer}`;
+    }
+    case 'red_dog':
+      return { win: 'In between', lose: 'Outside the spread', push: 'Bet returned', triple: 'Three of a kind' }[String(s.outcome)] ?? 'Hand';
+    case 'hi_lo':
+      return s.outcome === 'collect' ? `Collected after ${s.steps} right` : `Wrong after ${s.steps} right`;
+    case 'andar_bahar':
+      return `${s.winner === 'andar' ? 'Andar' : 'Bahar'} won on card ${s.cards}`;
+    case 'chuck_a_luck':
+      return Array.isArray(s.dice) ? `Rolled ${s.dice.join(' · ')}` : 'Roll';
     case 'ultimate_holdem':
       return `${made ?? 'Hand'} · ${{ win: 'won', lose: 'lost', tie: 'tied', fold: 'folded' }[String(s.outcome)] ?? ''}`;
     case 'plinko':

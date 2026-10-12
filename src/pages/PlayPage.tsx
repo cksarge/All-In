@@ -17,6 +17,8 @@ import { SicBoGame } from '@/components/solo/SicBoGame';
 import { ThreeCardGame } from '@/components/solo/ThreeCardGame';
 import { VideoPokerGame } from '@/components/solo/VideoPokerGame';
 import { WheelGame } from '@/components/solo/WheelGame';
+import { BlackjackVariantGame } from '@/components/stage10/BlackjackVariantGame';
+import { AndarBaharGame, ChuckGame, HiLoGame, RedDogGame } from '@/components/stage10/QuickGames';
 import { TablePokerGame } from '@/components/tablepoker/TablePokerGame';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/States';
@@ -32,12 +34,18 @@ export default function PlayPage() {
   );
 }
 
+const BJ_VARIANTS = new Set(['spanish_21', 'blackjack_switch', 'free_bet_blackjack', 'pontoon']);
 const TABLE_POKER = new Set(['caribbean_stud', 'casino_holdem', 'let_it_ride', 'mississippi_stud', 'four_card_poker', 'teen_patti']);
 
 function Game({ gameKey }: { gameKey: string }) {
   const navigate = useNavigate();
   if (gameKey.startsWith('slots_')) return <SlotMachine key={gameKey} gameKey={gameKey} />;
   if (gameKey.startsWith('video_poker_')) return <VideoPokerGame key={gameKey} gameKey={gameKey} />;
+  if (BJ_VARIANTS.has(gameKey)) return <BlackjackVariantGame key={gameKey} gameKey={gameKey} />;
+  if (gameKey === 'red_dog') return <RedDogGame />;
+  if (gameKey === 'hi_lo') return <HiLoGame />;
+  if (gameKey === 'andar_bahar') return <AndarBaharGame />;
+  if (gameKey === 'chuck_a_luck') return <ChuckGame />;
   if (TABLE_POKER.has(gameKey)) return <TablePokerGame key={gameKey} gameKey={gameKey} />;
   if (gameKey === 'baccarat') return <BaccaratGame />;
   if (gameKey === 'three_card_poker') return <ThreeCardGame />;

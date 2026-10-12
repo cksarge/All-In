@@ -108,6 +108,7 @@ export const AVATAR_GLYPH: Record<string, string | null> = {
   avatar_clipboard: '📋',
   avatar_swords: '⚔️',
   avatar_jester: '🎭',
+  avatar_crystal_ball: '🔮',
 };
 
 /** Ring around the avatar: a border colour, or a gradient for the fancy ones. */

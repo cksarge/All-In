@@ -47,7 +47,7 @@ const fits = (page) => page.evaluate(() => document.documentElement.scrollWidth 
   await ann.screenshot({ path: `${SHOTS}/m-lounge.png`, fullPage: true });
   // Lobby: the picker lists every game
   await ann.goto(`${BASE}/lobby`);
-  await ann.getByRole('tab', { name: /Blackjack/ }).waitFor();
+  await ann.getByRole('tab', { name: /^Blackjack/ }).first().waitFor();
   const tabs = await ann.getByRole('tab').count();
   const total = Number((await pool.query('select count(*) from public.games')).rows[0].count);
   ok(tabs === total, `lobby picker has all ${total} games (${tabs})`);
@@ -263,7 +263,7 @@ const fits = (page) => page.evaluate(() => document.documentElement.scrollWidth 
   ok(await fits(tiny), 'lounge fits 360px');
   await tiny.screenshot({ path: `${SHOTS}/m-mobile-lounge.png`, fullPage: true });
   await tiny.goto(`${BASE}/lobby`);
-  await tiny.getByRole('tab', { name: /Blackjack/ }).waitFor();
+  await tiny.getByRole('tab', { name: /^Blackjack/ }).first().waitFor();
   ok(await fits(tiny), 'lobby fits 360px');
 
   const errors = ann.errors.concat(ben.errors, tiny.errors);

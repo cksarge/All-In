@@ -79,16 +79,16 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
-| 10 | **More games (the user's list, below), in four parts** | **Part 1 built on `main`; parts 2 to 4 next** |
+| 10 | **More games (the user's list, below), in four parts** | **Parts 1 and 2 built on `main`; parts 3 and 4 next** |
 
-**User action pending for stage 10 part 1:** re-run `03_games_and_stakes.sql`, `11_solo_games.sql` and
-`13_progression.sql`, then run the new `19_table_poker.sql`. No dashboard settings, no new realtime tables.
-(Also still to run if not done: `13_progression.sql` carries the Plinko XP change.)
+**User action pending for stage 10 part 2:** re-run `03_games_and_stakes.sql` and `13_progression.sql`, then run the
+new `20_blackjack_variants.sql` (and from part 1, if not yet done: re-run `11_solo_games.sql` and `17_clubs_records.sql`,
+run `19_table_poker.sql`). No dashboard settings, no new realtime tables.
 
 ### Stage 10 plan (agreed 2026-10-11; the user's answers: blackjack variants solo, horse racing a shared live
 race, Teen Patti both against the dealer and at player-against-player tables)
 1. ✅ Video poker (Bonus, Double Bonus, Joker) and six dealer card games (`19_table_poker.sql`).
-2. Blackjack variants, all solo: Spanish 21, Blackjack Switch, Free Bet Blackjack, Pontoon. Quick games: Red Dog,
+2. ✅ (`20_blackjack_variants.sql`) Blackjack variants, all solo: Spanish 21, Blackjack Switch, Free Bet Blackjack, Pontoon. Quick games: Red Dog,
    Hi-Lo, Andar Bahar, Chuck-a-Luck.
 3. Player-against-player poker in the 09 engine: Short Deck, Razz, 2-7 Triple Draw, Badugi.
 4. Horse racing as a live room (like Crash), and Teen Patti tables (player against player; a new betting engine).
@@ -460,6 +460,24 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      best of the 52 substitutions, kings or better). The Hint button uses the Jacks or Better list for the bonus
      machines and is hidden on Joker Poker.
 
+20. `20_blackjack_variants.sql` (stage 10 part 2). Their `games` rows are in file 3; config in `private.s10_cfg`;
+    info RPC `quick_info(game)` (`useSoloGame(key, 'quick_info')`).
+   - **Four solo blackjack variants on one engine** (the multiplayer tables in 06 are untouched):
+     `bjv_deal(game, tier, bet)` then `bjv_act(game, action)`; `state.actions` lists the choices and their cost, as
+     in 19. A hand has a `stake` (the player's chips) and a `free` amount (chips the house put up): a win returns
+     `stake * 2 + free`, a push the stake. Rules are flags in the config: `no_tens` and `player_21_wins` and
+     `bonuses` (Spanish 21), `two_hands` and `push_22` and even-money blackjack (Switch), `free` and `push_22`
+     (Free Bet: free doubles on hard 9 to 11, free splits except tens), `pontoon` (both dealer cards hidden, no
+     standing below 15, dealer wins ties, pontoon and five-card trick pay 2 to 1, cards may still be taken after
+     doubling). The dealer peeks for blackjack with an ace or ten showing; no insurance.
+     One React component: `src/components/stage10/BlackjackVariantGame.tsx`.
+   - **Pontoon's word for doubling is banned by the copy guard**, so the button says "Double".
+   - **Red Dog** (`reddog_deal`, `reddog_act`), **Hi-Lo** (`hilo_start`, `hilo_guess`, `hilo_collect`; multiples in
+     hundredths, always multiples of 10, fair odds less 3% rounded down), **Andar Bahar** (`andar_bahar_deal`;
+     Andar pays 1 to 1 less a 10% commission rounded up), **Chuck-a-Luck** (`chuck_roll`). Screens in
+     `src/components/stage10/QuickGames.tsx`.
+   - As in 19, the payouts are standard ones and house edges were not measured by simulation.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -599,6 +617,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/clubs.cjs /tmp/shots        # stage 9 part 3: clubs, ticker, head-to-head, personal records (14 checks)
    node scripts/e2e/events.cjs /tmp/shots       # stage 9 part 4: favourites, VP hint, auto-spin, formats, a three-player Main Event, trophies (20 checks)
    node scripts/e2e/stage10.cjs /tmp/shots      # stage 10 part 1: the six dealer card games, a resumed hand, two video poker machines, phone widths (23 checks)
+   node scripts/e2e/stage10b.cjs /tmp/shots     # stage 10 part 2: four blackjack variants, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, phone widths (23 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

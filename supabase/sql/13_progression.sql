@@ -144,6 +144,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('avatar_clipboard', 'avatar', 'To-Do List',    null, 160),
   ('avatar_swords',   'avatar', 'Crossed Swords', null, 170),
   ('avatar_jester',   'avatar', 'The Jester',     null, 175),
+  ('avatar_crystal_ball', 'avatar', 'Crystal Ball', null, 177),
 
   ('frame_none',      'frame',  'No frame',       1,    10),
   ('frame_felt',      'frame',  'Felt Green',     3,    20),
@@ -174,6 +175,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_taskmaster',   'title', 'Taskmaster',     null, 160),
   ('title_founder',      'title', 'Founder',        null, 165),
   ('title_trail_blazer', 'title', 'Trail Blazer',   null, 168),
+  ('title_trickster',    'title', 'Trickster',      null, 169),
   ('title_field_marshal', 'title', 'Field Marshal', null, 167),
   ('title_season_veteran', 'title', 'Season Veteran', null, 170),
   ('title_tournament_champion', 'title', 'Tournament Champion', null, 150),
@@ -265,6 +267,10 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('four_aces',       'Four Bullets',      'Hit four aces in Bonus or Double Bonus Poker.',         'feats', 'four_aces',  1, 2500, 300, 'back_aces',          582),
   ('trail_blazer',    'Trail Blazer',      'Be dealt a trail (three of a kind) in Teen Patti.',     'feats', 'trails',     1, 2500, 300, 'title_trail_blazer', 583),
   ('full_ride',       'Let It All Ride',   'Win at Let It Ride with all three bets still down.',    'feats', 'full_rides', 1, 1000, 150, null,                 584),
+  ('five_card_trick', 'Trickster',         'Make a five-card trick in Pontoon.',                    'feats', 'five_card_tricks', 1, 1000, 150, 'title_trickster',     585),
+  ('spanish_bonus',   'Spanish Gold',      'Win a bonus 21 in Spanish 21.',                         'feats', 'spanish_bonuses',  1, 1000, 150, null,                  586),
+  ('hilo_run',        'Fortune Teller',    'Collect at Hi-Lo after five right guesses in a row.',   'feats', 'hilo_runs',        1, 2500, 300, 'avatar_crystal_ball', 587),
+  ('top_dog',         'Top Dog',           'Hit three of a kind at Red Dog.',                       'feats', 'red_dog_triples',  1, 2500, 300, null,                  588),
   ('headliner',       'Headliner',         'Land a win big enough for the lounge''s big-win ticker.', 'feats', 'big_wins', 1, 2500, 300, 'frame_spotlight', 590),
   ('nemesis',         'Nemesis',           'Beat the same player 10 times at poker.',     'feats',    'h2h_best',      10,  2500,  300,  'avatar_swords',     595),
   ('club_member',     'Clubbable',         'Join or start a club.',                       'social',   'clubs_joined',  1,   500,   100,  null,                806),
@@ -365,6 +371,10 @@ begin
   if r.game_key in ('video_poker_bonus', 'video_poker_double') and s ->> 'made' = 'four_aces' then v_bump := array_append(v_bump, 'four_aces'); end if;
   if r.game_key = 'teen_patti' and s ->> 'made' = 'trail' then v_bump := array_append(v_bump, 'trails'); end if;
   if r.game_key = 'let_it_ride' and s ->> 'outcome' = 'win' and (s #>> '{bets,bet}')::bigint = 3 * (s ->> 'main')::bigint then v_bump := array_append(v_bump, 'full_rides'); end if;
+  if r.game_key = 'pontoon' and (s ->> 'five_card')::boolean then v_bump := array_append(v_bump, 'five_card_tricks'); end if;
+  if r.game_key = 'spanish_21' and (s ->> 'bonus')::boolean then v_bump := array_append(v_bump, 'spanish_bonuses'); end if;
+  if r.game_key = 'hi_lo' and s ->> 'outcome' = 'collect' and (s ->> 'steps')::integer >= 5 then v_bump := array_append(v_bump, 'hilo_runs'); end if;
+  if r.game_key = 'red_dog' and s ->> 'outcome' = 'triple' then v_bump := array_append(v_bump, 'red_dog_triples'); end if;
   -- Tournaments (14_tournaments.sql) record one round per player when they end.
   if r.game_key in ('sng_poker', 'slot_showdown') then
     v_bump := array_append(v_bump, 'tourney_played');
