@@ -5,6 +5,7 @@ import { BlackjackTable } from '@/components/blackjack/BlackjackTable';
 import { CrapsTable } from '@/components/craps/CrapsTable';
 import { PokerTable } from '@/components/poker/PokerTable';
 import { RouletteTable } from '@/components/roulette/RouletteTable';
+import { TeenPattiTable } from '@/components/teenpatti/TeenPattiTable';
 import { Button } from '@/components/ui/Button';
 import { ErrorState, FullPageLoader } from '@/components/ui/States';
 import { friendlyError } from '@/lib/errors';
@@ -51,6 +52,7 @@ export default function TablePage() {
     game === 'blackjack' ? <BlackjackTable key={id} tableId={id} /> :
     game === 'roulette' ? <RouletteTable key={id} tableId={id} /> :
     game === 'craps' ? <CrapsTable key={id} tableId={id} /> :
+    game === 'teen_patti_live' ? <TeenPattiTable key={id} tableId={id} /> :
     game.startsWith('poker_') ? <PokerTable key={id} tableId={id} /> : null;
   if (table) {
     return (

@@ -107,7 +107,7 @@ declare
 begin
   -- Poker hands: a player who came out ahead beat every player who came out behind.
   -- Rows for one hand arrive one by one, so each pair is settled when its second row lands.
-  if new.round_id is not null and new.table_id is not null and new.game_key like 'poker\_%' then
+  if new.round_id is not null and new.table_id is not null and (new.game_key like 'poker\_%' or new.game_key = 'teen_patti_live') then
     for o in select user_id, wagered, returned from public.game_history
               where round_id = new.round_id and game_key = new.game_key and user_id <> new.user_id and id <> new.id loop
       if new.returned > new.wagered and o.returned < o.wagered then

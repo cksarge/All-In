@@ -3,13 +3,13 @@ import { cn } from './cn';
 type IconKind = 'cards' | 'spade' | 'wheel' | 'dice' | 'seven' | 'grid' | 'diamond' | 'chart' | 'pegs' | 'ticket';
 
 export function iconForGame(key: string): IconKind {
-  if (key.startsWith('poker_') || ['three_card_poker', 'pai_gow_poker', 'ultimate_holdem', 'caribbean_stud', 'casino_holdem', 'let_it_ride', 'mississippi_stud', 'four_card_poker', 'teen_patti', 'sng_poker'].includes(key)) return 'spade';
+  if (key.startsWith('poker_') || ['three_card_poker', 'pai_gow_poker', 'ultimate_holdem', 'caribbean_stud', 'casino_holdem', 'let_it_ride', 'mississippi_stud', 'four_card_poker', 'teen_patti', 'teen_patti_live', 'sng_poker'].includes(key)) return 'spade';
   if (['blackjack', 'baccarat', 'dragon_tiger', 'casino_war', 'spanish_21', 'blackjack_switch', 'free_bet_blackjack', 'pontoon', 'red_dog', 'hi_lo', 'andar_bahar'].includes(key) || key.startsWith('video_poker')) return 'cards';
   if (key === 'roulette' || key === 'money_wheel') return 'wheel';
   if (key === 'craps' || key === 'sic_bo' || key === 'chuck_a_luck') return 'dice';
   if (key === 'keno' || key === 'bingo' || key === 'power_draw') return 'grid';
   if (key === 'slots_cascade' || key === 'slots_holdwin' || key === 'mines') return 'diamond';
-  if (key === 'crash') return 'chart';
+  if (key === 'crash' || key === 'horse_racing') return 'chart';
   if (key === 'plinko') return 'pegs';
   if (key === 'scratch_cards') return 'ticket';
   return 'seven';

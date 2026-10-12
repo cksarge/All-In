@@ -54,6 +54,7 @@ export default function HowChipsWorkPage() {
 
   const gameTiers = useMemo(() => tiers.filter((t) => t.game_key === game), [tiers, game]);
   const isPoker = game.startsWith('poker_');
+  const isTeenPatti = game === 'teen_patti_live';
 
   const start = config?.starting_chips ?? 10000;
   const base = config?.daily_base ?? 1000;
@@ -176,11 +177,13 @@ export default function HowChipsWorkPage() {
                   <TierBadge tier={t.tier} />
                   <dl className="mt-4 space-y-2 text-sm">
                     <div>
-                      <dt className="text-xs uppercase tracking-wider text-cream/60">{isPoker ? 'Blinds' : 'Bets'}</dt>
+                      <dt className="text-xs uppercase tracking-wider text-cream/60">{isPoker ? 'Blinds' : isTeenPatti ? 'Boot' : 'Bets'}</dt>
                       <dd className="font-semibold text-ivory">
                         {isPoker && t.params.small_blind !== undefined
                           ? `${formatChips(t.params.small_blind)} / ${formatChips(t.params.big_blind)}`
-                          : `${formatChips(t.min_bet)} – ${formatChips(t.max_bet)}`}
+                          : isTeenPatti && t.params.big_blind !== undefined
+                            ? formatChips(t.params.big_blind)
+                            : `${formatChips(t.min_bet)} – ${formatChips(t.max_bet)}`}
                       </dd>
                     </div>
                     <div>

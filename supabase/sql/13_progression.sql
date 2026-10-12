@@ -184,6 +184,11 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_trail_blazer', 'title', 'Trail Blazer',   null, 168),
   ('title_trickster',    'title', 'Trickster',      null, 169),
   ('title_number_one',   'title', 'Number One',     null, 171),
+  ('title_jockey',       'title', 'Jockey',         null, 172),
+  ('title_blind_faith',  'title', 'Blind Faith',    null, 173),
+  ('avatar_horse',       'avatar', 'Racehorse',     null, 174),
+  ('back_teen_patti',    'card_back', 'Marigold',   null, 175),
+  ('frame_trail',        'frame', 'Trail',          null, 176),
   ('title_grandmaster',  'title', 'Grandmaster',    null, 998),
   ('title_completionist', 'title', 'Completionist', null, 999),
   ('title_field_marshal', 'title', 'Field Marshal', null, 167),
@@ -286,6 +291,12 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('razz_wheel',      'The Bicycle',       'Win a Razz pot with 5-4-3-2-A.',                        'feats', 'razz_wheels', 1, 2500, 300, 'avatar_bicycle',      589),
   ('number_one',      'Number One',        'Win a 2-7 Triple Draw pot with 7-5-4-3-2.',             'feats', 'number_ones', 1, 5000, 500, 'title_number_one',    5891),
   ('badugi_made',     'Badugi!',           'Win a Badugi pot with a four-card badugi.',             'feats', 'badugis',     1, 1000, 150, 'back_four_suits',     5892),
+  ('race_winner',     'First Past the Post', 'Back the winner of a horse race.',                    'feats', 'race_winners',   1,  500,  75,  null,                  5893),
+  ('race_regular',    'Stable Regular',    'Back 25 winners at the races.',                         'feats', 'race_winners',   25, 5000, 500, 'title_jockey',        5894),
+  ('race_longshot',   'Long Shot',         'Back a winner that pays 10 times your bet or more.',    'feats', 'race_longshots', 1,  2500, 300, 'avatar_horse',        5895),
+  ('tpt_blind',       'Blind Faith',       'Win a pot at a Teen Patti table without looking at your cards.', 'feats', 'tpt_blind_wins', 1, 1000, 150, 'title_blind_faith', 5896),
+  ('tpt_regular',     'Patti Party',       'Win 25 pots at Teen Patti tables.',                     'feats', 'tpt_wins',       25, 5000, 500, 'back_teen_patti',     5897),
+  ('tpt_trail',       'Three of a Kind',   'Win a showdown at a Teen Patti table with a trail.',    'feats', 'tpt_trails',     1,  5000, 500, 'frame_trail',         5898),
   ('completionist',   'Completionist',     'Unlock every other achievement.',                       'feats', 'all_achievements', 1, 500000, 0, 'title_completionist', 9999),
   ('headliner',       'Headliner',         'Land a win big enough for the lounge''s big-win ticker.', 'feats', 'big_wins', 1, 2500, 300, 'frame_spotlight', 590),
   ('nemesis',         'Nemesis',           'Beat the same player 10 times at poker.',     'feats',    'h2h_best',      10,  2500,  300,  'avatar_swords',     595),
@@ -399,6 +410,15 @@ begin
   if r.returned > r.wagered and r.game_key = 'poker_razz' and s ->> 'hand' = '5-4-3-2-A low' then v_bump := array_append(v_bump, 'razz_wheels'); end if;
   if r.returned > r.wagered and r.game_key = 'poker_27' and s ->> 'hand' = '7-5-4-3-2 low' then v_bump := array_append(v_bump, 'number_ones'); end if;
   if r.returned > r.wagered and r.game_key = 'poker_badugi' and s ->> 'hand' like 'Badugi,%' then v_bump := array_append(v_bump, 'badugis'); end if;
+  if r.game_key = 'horse_racing' and (s ->> 'picked_winner')::boolean then
+    v_bump := array_append(v_bump, 'race_winners');
+    if (s ->> 'win_units')::integer >= 1000 then v_bump := array_append(v_bump, 'race_longshots'); end if;
+  end if;
+  if r.game_key = 'teen_patti_live' and r.returned > r.wagered then
+    v_bump := array_append(v_bump, 'tpt_wins');
+    if (s ->> 'blind')::boolean then v_bump := array_append(v_bump, 'tpt_blind_wins'); end if;
+    if (s ->> 'showdown')::boolean and s ->> 'made' = 'trail' then v_bump := array_append(v_bump, 'tpt_trails'); end if;
+  end if;
   -- Tournaments (14_tournaments.sql) record one round per player when they end.
   if r.game_key in ('sng_poker', 'slot_showdown') then
     v_bump := array_append(v_bump, 'tourney_played');

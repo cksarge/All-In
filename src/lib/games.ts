@@ -11,7 +11,7 @@ export const CATEGORIES = [
 export type CategoryKey = (typeof CATEGORIES)[number]['key'];
 
 /** Solo-style games that are really one room shared by everyone (no tables or seats). */
-const LIVE_ROOMS = new Set(['crash', 'bingo']);
+const LIVE_ROOMS = new Set(['crash', 'bingo', 'horse_racing']);
 
 /** Catalogue entries that are really the tournaments page. */
 const TOURNAMENTS = new Set(['sng_poker', 'slot_showdown']);

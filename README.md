@@ -130,6 +130,6 @@ After deploying, set **Authentication → URL Configuration → Site URL** in Su
 | 7 | XP, achievements, cosmetics, locker, leaderboards, profile, friends | ✅ Done |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll), game guides, sounds, animations, accessibility, mobile | ✅ Done |
 | 9 | Admin and moderation, missions, monthly seasons, inbox, clubs, records, multi-table tournaments, quality of play | ✅ Done |
-| 10 | More games: table poker, blackjack and poker variants, more video poker, and others (list in CLAUDE.md) | Next |
+| 10 | 23 more games: six dealer poker games, four blackjack variants, four more poker games, three video pokers, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, horse racing and Teen Patti tables | ✅ Done |
 
 Free to play. No real money. No purchases. Chips have no cash value.

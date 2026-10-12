@@ -177,15 +177,18 @@ export const POKER_GAMES: Record<string, { short: string; limit: string }> = {
   poker_razz: { short: 'Razz', limit: 'Fixed limit' },
   poker_27: { short: '2-7 Triple Draw', limit: 'Fixed limit' },
   poker_badugi: { short: 'Badugi', limit: 'Fixed limit' },
+  teen_patti_live: { short: 'Teen Patti', limit: 'Blind or seen' },
 };
 
 export function isPokerGame(key: string | null | undefined) {
-  return Boolean(key && key.startsWith('poker_'));
+  // Teen Patti tables are their own engine, but their stakes are shown the same way.
+  return Boolean(key && (key.startsWith('poker_') || key === 'teen_patti_live'));
 }
 
 /** "Blinds 5/10" · "Blinds 2.5K/5K · Ante 500" · "Limit 10/20 · Ante 2". Never a currency sign. */
 export function stakesLabel(game: string, p: Partial<PkStakes> | null | undefined): string {
   if (!p) return '';
+  if (game === 'teen_patti_live') return `Boot ${formatChips(p.big_blind ?? 0)}`;
   const ante = p.ante ? ` · Ante ${formatChips(p.ante)}` : '';
   if (game === 'poker_stud' || game === 'poker_razz') return `Limit ${formatChips(p.small_bet ?? 0)}/${formatChips(p.big_bet ?? 0)}${ante}`;
   // Fixed limit played with blinds: bets are the big blind, then twice that.

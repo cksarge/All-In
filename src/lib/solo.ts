@@ -35,7 +35,7 @@ export const spotTotal = (bets: Spots) => Object.values(bets).reduce((n, v) => n
  * `infoFn`: 'solo_info' for the games in 11_solo_games.sql, 'more_info' for 12_more_games.sql,
  * 'game_info' for the dealer card games in 19_table_poker.sql, 'quick_info' for 20_blackjack_variants.sql.
  */
-export function useSoloGame<C, R = Record<string, unknown>>(game: string, infoFn: 'solo_info' | 'more_info' | 'game_info' | 'quick_info' = 'solo_info') {
+export function useSoloGame<C, R = Record<string, unknown>>(game: string, infoFn: 'solo_info' | 'more_info' | 'game_info' | 'quick_info' | 'race_info' = 'solo_info') {
   const [info, setInfo] = useState<SoloInfo<C, R> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -194,6 +194,10 @@ export function historyLine(game: string, s: Record<string, unknown>): string {
       return `${s.hits} number${s.hits === 1 ? '' : 's'}${s.power_hit ? ' + power ball' : ''}`;
     case 'crash':
       return s.collected_at ? `Collected at ×${s.collected_at}` : 'Crashed before collecting';
+    case 'horse_racing':
+      return `${s.winner_name ?? 'Race'} won · ${Number(s.hits) > 0 ? `${s.hits} bet${Number(s.hits) === 1 ? '' : 's'} came in` : 'no winning bet'}`;
+    case 'teen_patti_live':
+      return `${s.hand ?? 'Hand'} · ${s.folded ? 'packed' : s.showdown ? 'went to a show' : 'no show'}`;
     case 'bingo':
       return `${s.cards} card${s.cards === 1 ? '' : 's'} · ${s.line_at ? `line on call ${s.line_at}` : 'no line'}`;
     default:

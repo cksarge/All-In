@@ -79,11 +79,11 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
-| 10 | **More games (the user's list, below), in four parts** | **Parts 1 to 3 built on `main`; part 4 next** |
+| 10 | **More games (the user's list, below), in four parts** | ✅ all four parts built on `main` |
 
-**User action pending for stage 10 part 3 (and the changes made with it):** re-run `03_games_and_stakes.sql`,
-`09_poker.sql`, `13_progression.sql`, `15_moderation.sql` and `16_missions_seasons.sql`. No new files, no dashboard
-settings. Realtime gains `site_status` (28 tables). Earlier parts still to run if not done: `11`, `17`, `19`, `20`.
+**User action pending for stage 10 part 4:** re-run `03_games_and_stakes.sql`, `13_progression.sql` and
+`17_clubs_records.sql`, then run the new `21_racing_teen_patti.sql`. No dashboard settings (the file adds its four
+tables to Realtime: 32 in all). Afterwards `supabase/maintenance/check_database.sql` should say OK.
 
 ### Stage 10 plan (agreed 2026-10-11; the user's answers: blackjack variants solo, horse racing a shared live
 race, Teen Patti both against the dealer and at player-against-player tables)
@@ -91,10 +91,9 @@ race, Teen Patti both against the dealer and at player-against-player tables)
 2. ✅ (`20_blackjack_variants.sql`) Blackjack variants, all solo: Spanish 21, Blackjack Switch, Free Bet Blackjack, Pontoon. Quick games: Red Dog,
    Hi-Lo, Andar Bahar, Chuck-a-Luck.
 3. ✅ (in `09_poker.sql`) Player-against-player poker in the 09 engine: Short Deck, Razz, 2-7 Triple Draw, Badugi.
-4. Horse racing as a live room (like Crash), and Teen Patti tables (player against player; a new betting engine).
-   **Table names are already promised** to `supabase/maintenance/cleanup.sql`, which trims them once they exist:
-   `race_rounds` (`round_no`, `phase` ending in `'done'`; bets and secrets cascade from it) and `tpt_hands`
-   (`table_id`, `hand_no`, `phase` ending in `'settled'`; players, cards and decks cascade from it).
+4. ✅ (`21_racing_teen_patti.sql`) Horse racing as a live room (like Crash), and Teen Patti tables (player against player; a new betting engine).
+   `supabase/maintenance/cleanup.sql` trims `race_rounds` and `tpt_hands` by name: keep those names and their
+   `round_no` / `hand_no` / `phase` columns.
 
 ### Stage 9: what the user asked for (2026-10-11), delivered in parts, each committed and tested
 1. ✅ **Admin and moderation** (`15_moderation.sql`): hidden `/admin` page for the account called Carter, reports,
@@ -154,7 +153,7 @@ scripts/gen-db-check.sh              regenerates supabase/maintenance/check_data
 supabase/maintenance/                run by hand, not numbered: check_database.sql (is the live database up to date?),
                                      cleanup.sql (frees space), maintenance_off.sql, season_bonus_2026_10.sql
 scripts/e2e/                         local end-to-end harness (see §9)
-supabase/sql/01…13_*.sql             the database, applied in order (see §7)
+supabase/sql/01…21_*.sql             the database, applied in order (see §7)
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
 supabase/tests/0N_*_test.sql         tests: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
@@ -509,6 +508,31 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      `src/components/stage10/QuickGames.tsx`.
    - As in 19, the payouts are standard ones and house edges were not measured by simulation.
 
+21. `21_racing_teen_patti.sql` (stage 10 part 4). Their `games` rows are in file 3.
+   - **Horse racing** (`horse_racing`, a live room built like Crash: `private.race_tick`, an advisory lock, rounds only
+     move when someone calls `race_state()` or from the lobby's stale tick). betting 25 s → racing 12 s → done 7 s.
+     `private.race_cfg()` has three "fields" of six chances (out of 100); a race takes one and deals the chances out at
+     random with six names. A bet returns `92 / chance` in hundredths of the bet, rounded down to a multiple of 10;
+     Place (first or second) is priced from the chance of finishing in the first two. `race_bet(horse, kind, amount)`:
+     up to six bets a race, one Win and one Place per horse, amounts in multiples of 10.
+     **The finishing order is drawn only when betting closes** (`private.race_draw`: each place goes to a horse still
+     running, by its chance) and is then public in `race_rounds.result`: there is no secrets table because nothing is
+     known while bets are open. Winnings are paid when the race ends, so the balance never gives the result away
+     early. The browser only draws the race: `progress()` in `HorseRacingGame.tsx` turns the order into lane positions
+     with a wobble seeded from the round id, so every browser shows the same race. One `game_history` row per player
+     per race (summary `picked_winner`, `win_units`, `hits`).
+   - **Teen Patti tables** (`teen_patti_live`, its own small engine, not `pk_*`; uses the `poker` stake profile, the
+     **boot is the big blind**). `tpt_hands`, `tpt_players` (public) and the **hidden `tpt_cards`**: `tpt_state` returns
+     a player's own cards only once `seen` is true, and everyone's at a showdown (`shown_cards`).
+     `tpt_action(table, 'see' | 'pack' | 'bet' | 'raise' | 'show')`: `see` works at any time while you are in; the rest
+     on your turn. `stake` is what a blind player pays to stay; a seen player pays twice it. A raise doubles the stake,
+     up to `max_stake` (8) boots. Show: only with two players left, costs one bet, and **the player who asked loses a
+     tie**. A player who cannot cover a bet may put in what is left and show, which turns everyone's cards over. At
+     `pot_limit` (200) boots in the pot everyone shows; equal hands then share. Top-ups only between hands (there is
+     no waiting top-up as in poker). There is **no side show**. Timeout = pack and sit out, as in poker.
+     Hands rank with `private.tpt_score` from file 19. The seats are drawn by `PokerSeat` (the state is shaped to
+     fit it); the screen is `src/components/teenpatti/TeenPattiTable.tsx`. Head-to-head records (17) count these hands.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -530,8 +554,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
   `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`, `level_up`, `achievement`. Solo games use `bet` and `payout` only (a returned
   stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
-**Realtime publication** now has 28 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
-notifications, player_missions, big_wins, club_members, site_status): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
+**Realtime publication** now has 32 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
+notifications, player_missions, big_wins, club_members, site_status, race_rounds, race_bets, tpt_hands, tpt_players): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
 bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots, crash_rounds,
 crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Postgres Changes enforce RLS.
 
@@ -657,6 +681,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage10.cjs /tmp/shots      # stage 10 part 1: the six dealer card games, a resumed hand, two video poker machines, phone widths (23 checks)
    node scripts/e2e/stage10b.cjs /tmp/shots     # stage 10 part 2: four blackjack variants, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, phone widths (23 checks)
    node scripts/e2e/stage10c.cjs /tmp/shots     # stage 10 part 3: a full Badugi hand with three draws, lobby entries, Grandmaster, seasonal tag (12 checks)
+   node scripts/e2e/stage10d.cjs /tmp/shots     # stage 10 part 4: a horse race with two players, a Teen Patti hand with a show, phone widths (23 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

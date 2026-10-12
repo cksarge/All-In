@@ -18,6 +18,7 @@ import { ThreeCardGame } from '@/components/solo/ThreeCardGame';
 import { VideoPokerGame } from '@/components/solo/VideoPokerGame';
 import { WheelGame } from '@/components/solo/WheelGame';
 import { BlackjackVariantGame } from '@/components/stage10/BlackjackVariantGame';
+import { HorseRacingGame } from '@/components/stage10/HorseRacingGame';
 import { AndarBaharGame, ChuckGame, HiLoGame, RedDogGame } from '@/components/stage10/QuickGames';
 import { TablePokerGame } from '@/components/tablepoker/TablePokerGame';
 import { Button } from '@/components/ui/Button';
@@ -62,6 +63,7 @@ function Game({ gameKey }: { gameKey: string }) {
   if (gameKey === 'power_draw') return <PowerDrawGame />;
   if (gameKey === 'crash') return <CrashGame />;
   if (gameKey === 'bingo') return <BingoGame />;
+  if (gameKey === 'horse_racing') return <HorseRacingGame />;
   if (gameKey === 'sng_poker' || gameKey === 'slot_showdown') return <Navigate to="/tournaments" replace />;
   return (
     <div className="mx-auto max-w-lg px-4 py-16">

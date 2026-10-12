@@ -49,7 +49,7 @@ select tests.ok(not exists (select 1 from public.achievements a where not (priva
                                                    'bingo_fast', 'keno_perfect', 'best_streak', 'max_multiple',
                                                    'tourney_played', 'tourney_wins', 'sng_wins', 'showdown_wins', 'freeroll_podiums',
                                                    'missions_done', 'weeklies_done', 'daily_sweeps', 'season_tiers', 'seasons_done', 'invites_sent', 'big_wins', 'h2h_best', 'clubs_joined', 'clubs_founded', 'mtt_wins', 'trophies', 'cards_shown', 'joker_big', 'four_aces', 'trails', 'full_rides', 'five_card_tricks', 'spanish_bonuses', 'hilo_runs', 'red_dog_triples',
-                                                   'razz_wheels', 'number_ones', 'badugis', 'all_achievements')), 'every achievement measures something that exists');
+                                                   'razz_wheels', 'number_ones', 'badugis', 'race_winners', 'race_longshots', 'tpt_wins', 'tpt_blind_wins', 'tpt_trails', 'all_achievements')), 'every achievement measures something that exists');
 
 -- ----------------------------------------------------------------------------
 -- A new player

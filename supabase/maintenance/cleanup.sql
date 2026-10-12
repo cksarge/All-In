@@ -10,10 +10,10 @@
 --
 -- Every game is covered, by what it stores:
 --   * Table games keep rounds per table, trimmed below:
---       blackjack; roulette; craps;
+--       blackjack; roulette; craps; Teen Patti tables;
 --       all nine poker games (Hold'em, Omaha, Omaha Hi-Lo, Stud, Draw, Short Deck, Razz,
 --       2-7 Triple Draw, Badugi) and every tournament table, which share one set of tables.
---   * Live rooms keep rounds, trimmed below: Crash, Bingo.
+--   * Live rooms keep rounds, trimmed below: Crash, Bingo, horse racing.
 --   * Everything else stores nothing but the player's History and chip activity, both trimmed
 --     below for every game at once: the six slots, the six video pokers, baccarat, Three Card
 --     Poker, Pai Gow, Sic Bo, keno, the wheel, Dragon Tiger, Casino War, Ultimate Hold'em,
@@ -22,8 +22,8 @@
 --     Switch, Free Bet Blackjack, Pontoon, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, and the
 --     tournaments. (A hand left open in one of these is one small row and is never deleted:
 --     its chips are still in play.)
---   * Not built yet (stage 10 part 4): horse racing and Teen Patti tables. Their steps are at
---     the end and do nothing until those tables exist.
+--   * Horse racing and Teen Patti tables come with 21_racing_teen_patti.sql. Their steps are at
+--     the end and are skipped on a database where that file has not been run yet.
 --
 -- What goes (finished things only; every number is a setting below):
 --   * old rounds at each table: the last few stay because the screens show them
@@ -56,8 +56,8 @@ create temp table cleanup_keep as select
   50  as poker_hands,           -- per table (hand history goes back up to 50)
   30  as crash_rounds,          -- the room shows the last 20
   10  as bingo_rounds,
-  30  as race_rounds,           -- horse racing (stage 10 part 4)
-  50  as teen_patti_hands,      -- per Teen Patti table (stage 10 part 4)
+  30  as race_rounds,           -- horse racing (the room shows the last 12 winners)
+  50  as teen_patti_hands,      -- per Teen Patti table (hand history goes back up to 50)
   25  as history_per_game,      -- per player, per game (the History popups show 20 to 25)
   100 as ledger_rows,           -- per player (Recent activity shows 25)
   interval '1 day'   as closed_table_age,
@@ -201,9 +201,9 @@ with d as (
   returning 1)
 insert into cleanup_report (what, rows_deleted) select 'admin log entries', count(*) from d;
 
--- ---- Stage 10 part 4, once it exists: horse racing and Teen Patti tables -----------
--- Old finished races (bets and secrets go with them) and old finished Teen Patti hands
--- (players, cards and decks go with them). Skipped while the tables are not there.
+-- ---- Horse racing and Teen Patti tables (21_racing_teen_patti.sql) ----------------
+-- Old finished races (their bets go with them) and old finished Teen Patti hands
+-- (players and cards go with them). Skipped while the tables are not there.
 do $$
 declare n bigint;
 begin

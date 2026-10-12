@@ -101,7 +101,7 @@ export function PokerSeat({
     if (player.last_action) {
       const a = player.last_action;
       const cls =
-        a === 'Fold' || a === 'Left' ? 'bg-ink-700 text-cream/70'
+        a === 'Fold' || a === 'Left' || a === 'Pack' ? 'bg-ink-700 text-cream/70'
         : a === 'Raise' || a === 'Bet' || a === 'Complete' ? 'bg-gold-500 text-ink-950'
         : 'bg-felt-600 text-ivory';
       return { text: a, cls };
