@@ -106,6 +106,7 @@ export const AVATAR_GLYPH: Record<string, string | null> = {
   avatar_whale: '🐋',
   avatar_medal: '🥇',
   avatar_clipboard: '📋',
+  avatar_swords: '⚔️',
 };
 
 /** Ring around the avatar: a border colour, or a gradient for the fancy ones. */
@@ -117,6 +118,7 @@ export const FRAMES: Record<string, { color: string; gradient?: string; glow?: s
   frame_gold: { color: '#f0d688', glow: 'rgba(240,214,136,0.45)' },
   frame_royal: { color: '#c9a4f5', glow: 'rgba(201,164,245,0.45)' },
   frame_diamond: { color: '#e8f4ff', gradient: 'conic-gradient(#e8f4ff, #8fb0f0, #c9a4f5, #e8f4ff, #5cc392, #e8f4ff)', glow: 'rgba(232,244,255,0.5)' },
+  frame_spotlight: { color: '#fff7d6', gradient: 'conic-gradient(#fff7d6, #f0d688, #ffffff, #b8902a, #fff7d6)', glow: 'rgba(255,247,214,0.65)' },
   frame_clockwork: { color: '#c9a36a', gradient: 'conic-gradient(#c9a36a, #5a4630, #f0d688, #5a4630, #c9a36a)', glow: 'rgba(201,163,106,0.5)' },
   frame_laurel: { color: '#5cc392', gradient: 'conic-gradient(#5cc392, #f0d688, #1a774f, #f0d688, #5cc392)', glow: 'rgba(92,195,146,0.5)' },
   frame_jackpot: { color: '#f0d688', gradient: 'conic-gradient(#f0d688, #c9303f, #f0d688, #ad872b, #f0d688)', glow: 'rgba(240,214,136,0.6)' },

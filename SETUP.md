@@ -28,6 +28,7 @@ look for the same setting name under **Authentication**.
 14. `14_tournaments.sql`
 15. `15_moderation.sql`
 16. `16_missions_seasons.sql`
+17. `17_clubs_records.sql`
 
 Every file is safe to re-run. See `supabase/sql/README.md` for what each one does.
 
@@ -129,8 +130,8 @@ organization**. Anyone else sees *"We can't send email to that address yet"*.
 
 The SQL files add `wallets`, `chip_ledger`, `game_tables`, `table_seats`, `bj_rounds`, `bj_hands`, `rl_rounds`,
 `rl_bets`, `cr_state`, `cr_rolls`, `cr_bets`, `pk_hands`, `pk_players`, `jackpots`, `crash_rounds`, `crash_bets`, `bingo_rounds`,
-`player_progress`, `player_achievements`, `friendships`, `tournaments`, `tournament_entries`, `player_sanctions`, `notifications` and `player_missions` to the `supabase_realtime` publication. Check
-**Database → Publications → supabase_realtime**: all twenty-five should be listed. The hidden tables (`bj_shoes`,
+`player_progress`, `player_achievements`, `friendships`, `tournaments`, `tournament_entries`, `player_sanctions`, `notifications`, `player_missions`, `big_wins` and `club_members` to the `supabase_realtime` publication. Check
+**Database → Publications → supabase_realtime**: all twenty-seven should be listed. The hidden tables (`bj_shoes`,
 `bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`, `bingo_secrets`), poker hole cards (`pk_hole`)
 and bingo cards (`bingo_cards`) must **not** be in the publication.
 

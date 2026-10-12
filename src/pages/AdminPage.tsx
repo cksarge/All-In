@@ -87,7 +87,7 @@ export default function AdminPage() {
   const status = useAuth((s) => s.status);
   const account = useAccount((s) => s.account);
   const loaded = useAccount((s) => s.loaded);
-  const [tab, setTab] = useState<'reports' | 'players' | 'overview'>('reports');
+  const [tab, setTab] = useState<'reports' | 'players' | 'clubs' | 'overview'>('reports');
   const [selected, setSelected] = useState<string | null>(null);
 
   if (status === 'loading' || (status === 'signedIn' && !loaded)) return <FullPageLoader label="One moment…" />;
@@ -109,7 +109,7 @@ export default function AdminPage() {
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">Moderator only</p>
       <h1 className="font-display text-4xl font-bold text-ivory">Admin</h1>
       <div role="tablist" aria-label="Admin sections" className="mt-5 flex flex-wrap gap-1.5">
-        {(['reports', 'players', 'overview'] as const).map((t) => (
+        {(['reports', 'players', 'clubs', 'overview'] as const).map((t) => (
           <button
             key={t}
             role="tab"
@@ -127,6 +127,7 @@ export default function AdminPage() {
       <div className="mt-5">
         {tab === 'reports' && <Reports onOpen={open} />}
         {tab === 'players' && <Players selected={selected} onSelect={setSelected} />}
+        {tab === 'clubs' && <Clubs onOpen={open} />}
         {tab === 'overview' && <OverviewTab />}
       </div>
     </div>
@@ -500,6 +501,62 @@ function List({ title, empty, children }: { title: string; empty: string; childr
       <h3 className="font-display text-lg font-bold text-ivory">{title}</h3>
       {children.length === 0 ? <p className="mt-2 text-sm text-muted">{empty}</p> : <ul className="mt-2 max-h-72 divide-y divide-white/[0.06] overflow-y-auto">{children}</ul>}
     </div>
+  );
+}
+
+interface AdminClub {
+  id: string;
+  name: string;
+  tag: string;
+  members: number;
+  week_rounds: number;
+  owner: string | null;
+  owner_id: string | null;
+}
+
+function Clubs({ onOpen }: { onOpen: (userId: string) => void }) {
+  const { data, load } = useRpc<AdminClub[]>('admin_clubs', { p_query: '' }, 30_000);
+  const rename = async (c: AdminClub) => {
+    const name = window.prompt('New club name (3 to 24 letters, numbers and spaces)', c.name);
+    if (!name) return;
+    const tag = window.prompt('New tag (2 to 5 letters or numbers)', c.tag);
+    if (!tag) return;
+    if (await run('admin_club_rename', { p_club: c.id, p_name: name, p_tag: tag }, 'Club renamed')) void load();
+  };
+  const remove = async (c: AdminClub) => {
+    if (!window.confirm(`Close the club "${c.name}" for good? Its ${c.members} members are simply left without a club.`)) return;
+    if (await run('admin_club_delete', { p_club: c.id }, 'Club closed')) void load();
+  };
+  if (!data) return <p className="text-sm text-muted">Loading…</p>;
+  if (data.length === 0) return <p className="surface p-5 text-sm text-muted">No clubs yet.</p>;
+  return (
+    <ul className="space-y-2" aria-label="Clubs">
+      {data.map((c) => (
+        <li key={c.id} className="surface flex flex-wrap items-center gap-3 p-4">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-ivory">
+              {c.name} <span className="ml-1 rounded border border-white/15 px-1.5 py-0.5 text-[0.65rem] font-bold tracking-wider text-cream/80">{c.tag}</span>
+            </p>
+            <p className="text-xs text-muted">
+              {c.members} members · {formatChips(c.week_rounds)} rounds this week · owner{' '}
+              {c.owner_id ? (
+                <button type="button" className="text-gold-200 underline" onClick={() => onOpen(c.owner_id!)}>
+                  {c.owner}
+                </button>
+              ) : (
+                'nobody'
+              )}
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => void rename(c)}>
+            Rename
+          </Button>
+          <Button size="sm" variant="ruby" onClick={() => void remove(c)}>
+            Close club
+          </Button>
+        </li>
+      ))}
+    </ul>
   );
 }
 

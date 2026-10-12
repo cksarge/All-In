@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/Toaster';
 import { playSound } from '@/lib/sound';
 import { supabase, supabaseConfigured } from '@/lib/supabase';
 import AdminPage from '@/pages/AdminPage';
+import ClubsPage from '@/pages/ClubsPage';
 import ConfigMissingPage from '@/pages/ConfigMissingPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import FriendsPage from '@/pages/FriendsPage';
@@ -55,6 +56,7 @@ const TITLES: Record<string, string> = {
   '/tournaments': 'Tournaments · All In',
   '/admin': 'All In',
   '/missions': 'Missions · All In',
+  '/clubs': 'Clubs · All In',
   '/inbox': 'Inbox · All In',
 };
 
@@ -63,7 +65,7 @@ function RouteEffects() {
   useEffect(() => {
     document.title =
       TITLES[pathname] ??
-      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : pathname.startsWith('/profile/') ? 'Profile · All In' : pathname.startsWith('/tournaments/') ? 'Tournament · All In' : 'All In');
+      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : pathname.startsWith('/profile/') ? 'Profile · All In' : pathname.startsWith('/tournaments/') ? 'Tournament · All In' : pathname.startsWith('/clubs/') ? 'Club · All In' : 'All In');
     window.scrollTo({ top: 0 });
   }, [pathname]);
   return null;
@@ -217,6 +219,8 @@ export default function App() {
             <Route path="locker" element={<RequireAuth><LockerPage /></RequireAuth>} />
             <Route path="friends" element={<RequireAuth><FriendsPage /></RequireAuth>} />
             <Route path="leaderboards" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
+            <Route path="clubs" element={<RequireAuth><ClubsPage /></RequireAuth>} />
+            <Route path="clubs/:id" element={<RequireAuth><ClubsPage /></RequireAuth>} />
             <Route path="missions" element={<RequireAuth><MissionsPage /></RequireAuth>} />
             <Route path="inbox" element={<RequireAuth><InboxPage /></RequireAuth>} />
             <Route path="tournaments" element={<RequireAuth><TournamentsPage /></RequireAuth>} />

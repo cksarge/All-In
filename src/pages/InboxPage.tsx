@@ -16,6 +16,9 @@ const ICON: Record<string, string> = {
   season_start: '📅',
   season_rewards: '🎁',
   chips_adjusted: '🛡️',
+  club_joined: '♣️',
+  club_role: '♣️',
+  club_removed: '♣️',
 };
 
 /** /inbox: friend requests, invites, results and rewards in one place. */

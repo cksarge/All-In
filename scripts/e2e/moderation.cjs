@@ -47,7 +47,7 @@ async function login(browser, email, vp) {
   await ben.goto(BASE + '/profile');
   await ben.getByRole('navigation', { name: 'Your pages' }).waitFor();
   const links = await ben.getByRole('navigation', { name: 'Your pages' }).getByRole('link').allInnerTexts();
-  ok(links.join(',') === 'Profile,Locker,Friends,Leaderboards', `profile links (${links})`);
+  ok(links.join(',') === 'Profile,Locker,Friends,Clubs,Leaderboards', `profile links (${links})`);
   ok((await ben.getByRole('link', { name: 'Open locker' }).count()) === 0, 'the old Leaderboards / Friends / Open locker buttons are gone');
 
   // Ben reports and blocks Cat.

@@ -6,6 +6,7 @@ const LINKS = [
   { to: '/profile', label: 'Profile' },
   { to: '/locker', label: 'Locker' },
   { to: '/friends', label: 'Friends' },
+  { to: '/clubs', label: 'Clubs' },
   { to: '/leaderboards', label: 'Leaderboards' },
 ];
 

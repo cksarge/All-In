@@ -78,11 +78,12 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 6.5 | Ultimate Texas Hold'em, Dragon Tiger, Casino War, Crash, Plinko, Mines, Scratch Cards, Power Draw, Bingo; lounge sections; every game in the lobby picker | ✅ on `main` |
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
-| 9 | **Live-service features, in four parts (below)** | **Parts 1 and 2 built on `main`; parts 3 and 4 next** |
+| 9 | **Live-service features, in four parts (below)** | **Parts 1 to 3 built on `main`; part 4 next** |
 | 10 | More games (the user's list, below) | |
 
-**User action pending for stage 9 part 2:** re-run `13_progression.sql` and `15_moderation.sql`, then run the new
-`16_missions_seasons.sql`. No dashboard settings. (Realtime gains `notifications` and `player_missions`: 25 tables.)
+**User action pending for stage 9 part 3:** re-run `13_progression.sql`, then run the new `17_clubs_records.sql`
+(and anything from parts 1 and 2 not yet run: 02, 05, 15, 16). No dashboard settings. (Realtime gains `big_wins`
+and `club_members`: 27 tables.)
 
 ### Stage 9: what the user asked for (2026-10-11), delivered in parts, each committed and tested
 1. ✅ **Admin and moderation** (`15_moderation.sql`): hidden `/admin` page for the account called Carter, reports,
@@ -92,7 +93,7 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
    to October 2027 but a season's rewards must be invisible and unearnable until its month starts, checked on the
    server; **a season's rewards are gone for good when it ends**), a **notification inbox**, **invite a friend to
    your table**.
-3. **Clubs** (a typed name and tag only, preset chat, members, club leaderboard: the user chose no free text),
+3. ✅ (`17_clubs_records.sql`) **Clubs** (a typed name and tag only, preset chat, members, club leaderboard: the user chose no free text),
    **head-to-head records**, a **big-win ticker**, a **personal records** section on the profile page.
 4. **Tournament leaderboard and trophies**, **multi-table tournaments**, **more tournament formats**, and quality of
    play: poker pre-action buttons, showing cards after everyone folds, slot auto-spin, a video poker strategy hint,
@@ -355,7 +356,6 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
    - Frontend: `useAccount` (`src/stores/accountStore.ts`), `AccountGate` inside `RequireAuth` (the suspended /
      timeout / choose-a-new-name screens), `ReportModal`, Block and Report on other players' profiles, the blocked
      list on the Friends page, `src/pages/AdminPage.tsx`.
-   - Not done yet: banned players still appear on leaderboards.
 
 16. `16_missions_seasons.sql` (stage 9 part 2): missions, seasons, the inbox, table invites.
    - **Missions:** `private.mission_pool()` (kinds: rounds, wins, wager, category, games, multiple, net, tourney).
@@ -385,6 +385,27 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      on the lounge, the bell in the top bar (wide screens; the account menu on phones), `InviteModal` behind an
      Invite button in `TableHeader`. Counters for achievements are bumped with `private.bump(user, key)`.
 
+17. `17_clubs_records.sql` (stage 9 part 3): clubs, head-to-head, the big-win ticker, personal records.
+   - **Clubs:** `clubs` (name 3 to 24 letters/numbers/spaces, tag 2 to 5, one of twelve preset emblems, open or
+     invite only, a 6-character code whose column clients cannot select) and `club_members` (**one club per
+     player**, 50 per club, roles owner / officer / member). RPCs `clubs_list`, `club_state`, `club_create`,
+     `club_join(club or code)`, `club_leave`, `club_kick`, `club_set_role`, `club_update`. An owner who leaves hands
+     over to the longest-serving officer, then member; the last member leaving deletes the club. Clubs are ranked
+     by rounds their members played this week. **No typed text beyond name and tag** (the user's choice): club
+     chat is a broadcast channel of the same preset phrases as the tables, not stored. Admin: `admin_clubs`,
+     `admin_club_rename`, `admin_club_delete` (a Clubs tab on `/admin`).
+   - **Head to head** (`head_to_head`, hidden): a third trigger on `game_history` (`private.on_round_records`)
+     pairs up the rows of one poker hand (same `round_id`; ahead beats behind) and of one Sit & Go (lower place
+     beats higher). Each pair is settled when its second row arrives.
+   - **Ticker** (`big_wins`, newest 40, realtime): a round paying 25 times the bet and at least 2,500 more than
+     it cost, or a tournament win of 1,000 or more. `big_wins_recent()` joins the current username.
+   - `profile_extras(username)`: club, personal records (from counters, stats and wallets), `versus` (you against
+     them, other profiles only) and `rivals` (your own only). The profile also charts your own last 100 ledger
+     balances.
+   - `private.is_banned(uuid)` (in 13, guarded so it works before 15 exists) keeps banned players off the
+     leaderboards and the ticker.
+   - Frontend: `/clubs` and `/clubs/:id` (`ClubsPage`), `ProfileExtras`, `BigWinTicker` on the lounge.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -406,8 +427,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
   `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`, `level_up`, `achievement`. Solo games use `bet` and `payout` only (a returned
   stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
-**Realtime publication** now has 25 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
-notifications, player_missions): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
+**Realtime publication** now has 27 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
+notifications, player_missions, big_wins, club_members): wallets, chip_ledger, game_tables, table_seats, bj_rounds,
 bj_hands, rl_rounds, rl_bets, cr_state, cr_rolls, cr_bets, pk_hands, pk_players, jackpots, crash_rounds,
 crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Postgres Changes enforce RLS.
 
@@ -478,7 +499,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   The site links to its public repo from the landing page and the footer (`GitHubLink`).
 - **UX decisions the user asked for (keep them):**
   - Top bar: Lounge, Lobby, Tournaments, Profile. The profile pages' row of links is Profile, Locker, Friends,
-    Leaderboards (no Tournaments, and no duplicate buttons on the profile itself).
+    Clubs, Leaderboards (no Tournaments, and no duplicate buttons on the profile itself).
   - Equipped titles are visible to everyone at the tables.
   - The landing page says the project is open source and links to the repo; so does the footer.
   - Settings is a popup opened by the gear next to the sound icon.
@@ -521,6 +542,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/tournaments.cjs /tmp/shots  # stage 8: freeroll, showdown, heads-up Sit & Go, first-visit guide (30 checks)
    node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban (18 checks)
    node scripts/e2e/live.cjs /tmp/shots         # stage 9 part 2: missions, season track, inbox, table invite (17 checks; season checks need a running season)
+   node scripts/e2e/clubs.cjs /tmp/shots        # stage 9 part 3: clubs, ticker, head-to-head, personal records (14 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

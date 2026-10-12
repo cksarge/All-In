@@ -1,3 +1,4 @@
+import { ProfileExtras } from '@/components/progress/ProfileExtras';
 import { ReportModal } from '@/components/account/ReportModal';
 import { useAccount } from '@/stores/accountStore';
 import { SectionNav } from '@/components/layout/SectionNav';
@@ -206,6 +207,7 @@ export default function ProfilePage() {
           <Stat label="Games tried">{p.totals.games}</Stat>
         </div>
       </section>
+      <ProfileExtras username={p.username} self={self} />
 
       <section className="mt-8" aria-labelledby="ach-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

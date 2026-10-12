@@ -142,6 +142,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('avatar_whale',    'avatar', 'The Whale',      null, 140),
   ('avatar_medal',    'avatar', 'Gold Medal',     null, 150),
   ('avatar_clipboard', 'avatar', 'To-Do List',    null, 160),
+  ('avatar_swords',   'avatar', 'Crossed Swords', null, 170),
 
   ('frame_none',      'frame',  'No frame',       1,    10),
   ('frame_felt',      'frame',  'Felt Green',     3,    20),
@@ -153,6 +154,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('frame_jackpot',   'frame',  'Jackpot',        null, 80),
   ('frame_laurel',    'frame',  'Laurel Wreath',  null, 90),
   ('frame_clockwork', 'frame',  'Clockwork',      null, 95),
+  ('frame_spotlight', 'frame',  'Spotlight',      null, 97),
 
   ('title_newcomer',     'title', 'Newcomer',       1,    10),
   ('title_sharp',        'title', 'Sharp',          10,   20),
@@ -169,6 +171,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_socialite',    'title', 'Socialite',      null, 130),
   ('title_contender',    'title', 'Contender',      null, 140),
   ('title_taskmaster',   'title', 'Taskmaster',     null, 160),
+  ('title_founder',      'title', 'Founder',        null, 165),
   ('title_season_veteran', 'title', 'Season Veteran', null, 170),
   ('title_tournament_champion', 'title', 'Tournament Champion', null, 150),
 
@@ -252,6 +255,11 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('season_tier_5',   'Season Ticket',     'Collect five season rewards.',                'missions', 'season_tiers',  5,   1000,  200,  null,                760),
   ('season_done',     'Season Finale',     'Reach the end of a season track.',            'missions', 'seasons_done',  1,   5000,  1000, 'title_season_veteran', 770),
   ('invite_first',    'Good Host',         'Invite a friend to your table.',              'social',   'invites_sent',  1,   250,   50,   null,                805),
+
+  ('headliner',       'Headliner',         'Land a win big enough for the lounge''s big-win ticker.', 'feats', 'big_wins', 1, 2500, 300, 'frame_spotlight', 590),
+  ('nemesis',         'Nemesis',           'Beat the same player 10 times at poker.',     'feats',    'h2h_best',      10,  2500,  300,  'avatar_swords',     595),
+  ('club_member',     'Clubbable',         'Join or start a club.',                       'social',   'clubs_joined',  1,   500,   100,  null,                806),
+  ('club_founder',    'Founder',           'Start a club of your own.',                   'social',   'clubs_founded', 1,   1000,  200,  'title_founder',     807),
 
   ('friend_1',        'Friendly',          'Make a friend.',                                     'social', 'friends',         1,       500,   50,   null,                 510),
   ('friend_5',        'Popular',           'Have 5 friends.',                                    'social', 'friends',         5,       2500,  200,  'title_socialite',    520)
@@ -670,6 +678,24 @@ as $$
          and greatest(f.requester, f.addressee) = greatest(p_me, p_other)), 'none') end
 $$;
 
+-- Banned players are left off the leaderboards. The table is made by 15_moderation.sql;
+-- until that file is run nobody is banned.
+create or replace function private.is_banned(p_user uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v boolean := false;
+begin
+  if to_regclass('public.player_sanctions') is not null then
+    execute 'select exists (select 1 from public.player_sanctions where user_id = $1 and banned_at is not null)' into v using p_user;
+  end if;
+  return v;
+end $$;
+
 create or replace function public.get_profile(p_username text)
 returns jsonb
 language plpgsql
@@ -732,10 +758,11 @@ begin
 
   with pool as (
     select pr.id from public.profiles pr
-     where not coalesce(p_friends, false)
+     where not private.is_banned(pr.id)
+       and (not coalesce(p_friends, false)
         or pr.id = v_uid
         or exists (select 1 from public.friendships f where f.status = 'accepted'
-                    and ((f.requester = v_uid and f.addressee = pr.id) or (f.addressee = v_uid and f.requester = pr.id)))
+                    and ((f.requester = v_uid and f.addressee = pr.id) or (f.addressee = v_uid and f.requester = pr.id))))
   ), scored as (
     select po.id, case p_board
         when 'level' then coalesce((select xp from public.player_progress where user_id = po.id), 0)

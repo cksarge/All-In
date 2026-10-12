@@ -19,3 +19,5 @@ delete from public.cr_bets;
 delete from public.cr_rolls;
 delete from public.cr_state;
 delete from public.cosmetics where season is not null;
+delete from public.clubs;
+delete from public.big_wins;

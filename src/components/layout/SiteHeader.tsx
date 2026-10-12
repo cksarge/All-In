@@ -100,6 +100,9 @@ function UserMenu() {
             Friends
             {me && me.friend_requests > 0 && <span className="ml-2 rounded-full bg-gold-500 px-1.5 text-xs font-bold text-ink-950">{me.friend_requests}</span>}
           </Link>
+          <Link role="menuitem" to="/clubs" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Clubs
+          </Link>
           <Link role="menuitem" to="/leaderboards" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Leaderboards
           </Link>

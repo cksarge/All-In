@@ -124,6 +124,12 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
         to: '/locker',
         action: 'Open locker',
       };
+    case 'club_joined':
+      return { title: `${from} joined ${String(d.club ?? 'your club')}`, to: '/clubs', action: 'Open club' };
+    case 'club_role':
+      return { title: d.role === 'owner' ? `You now own ${String(d.club ?? 'the club')}` : d.role === 'officer' ? `You are now an officer of ${String(d.club ?? 'the club')}` : `You are a member of ${String(d.club ?? 'the club')} again`, to: '/clubs', action: 'Open club' };
+    case 'club_removed':
+      return { title: `You were removed from ${String(d.club ?? 'a club')}`, to: '/clubs', action: 'Find a club' };
     case 'chips_adjusted':
       return { title: 'A moderator changed your chip balance', body: `${Number(d.delta) > 0 ? '+' : ''}${formatChips(Number(d.delta ?? 0))} chips.` };
     default:
