@@ -89,12 +89,35 @@ export function RouletteTable({ tableId }: { tableId: string }) {
     prevPhase.current = round?.phase;
   }, [round?.phase]);
 
+  // The server pays the moment the spin ends, a few seconds before the ball has landed on screen, and the
+  // wallet updates live. So the header balance is held at what it was from "no more bets" until the ball
+  // lands: otherwise your chips going up would give the result away.
+  const heldFor = useRef<string | null>(null);
+  const roundId = round?.id;
+  const roundPhase = round?.phase;
+  useEffect(() => {
+    if (roundPhase === 'spinning' && roundId && heldFor.current !== roundId) {
+      const now = useWallet.getState().status?.balance;
+      if (now !== undefined) {
+        heldFor.current = roundId;
+        useWallet.getState().setDisplayBalance(now);
+      }
+    } else if (roundPhase === 'betting' && heldFor.current) {
+      // A new round began without this one landing here (the tab was in the background): show the truth.
+      heldFor.current = null;
+      useWallet.getState().setDisplayBalance(null);
+    }
+  }, [roundId, roundPhase]);
+  useEffect(() => () => useWallet.getState().setDisplayBalance(null), []);
+
   // After the ball lands: result banner, sounds, chip burst.
   useEffect(() => {
     if (!round || round.phase !== 'settled' || round.result === null || landedRound === round.id) return;
     const delay = animateLanding ? LANDING_MS : 0;
     const id = window.setTimeout(() => {
       setLandedRound(round.id);
+      heldFor.current = null;
+      useWallet.getState().setDisplayBalance(null);
       void useWallet.getState().fetchStatus();
       const mine = state?.bets.filter((b) => b.user_id === userId) ?? [];
       if (mine.length === 0) return;

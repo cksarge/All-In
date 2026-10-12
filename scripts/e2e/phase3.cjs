@@ -59,7 +59,17 @@ async function sitAt(page, game, name) {
   await pool.query(`update public.rl_secrets set result = 17 where round_id = $1`, [spinning.id]);
   await ann.waitForTimeout(1500);
   await ann.screenshot({ path: `${SHOTS}/rl-spinning.png` });
+  // The server pays when the spin ends, before the ball has landed on screen: the header must not show it yet.
+  const fmt = (n) => n.toLocaleString('en-US');
+  for (let i = 0; i < 80 && (await bal('ann@allin.test')) === a0 - 200; i++) await sleep(250);
+  await ann.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await ann.waitForTimeout(900);
+  const during = await ann.getByRole('banner').innerText();
+  ok((await bal('ann@allin.test')) === a0 + 3600 && during.includes(fmt(a0 - 200)) && !during.includes(fmt(a0 + 3600)) && (await ann.getByText('You win').count()) === 0,
+     'paid on the server, but the header balance waits for the ball to land');
   await ann.getByText('You win').waitFor({ timeout: 25000 });
+  await ann.waitForTimeout(900);
+  ok((await ann.getByRole('banner').innerText()).includes(fmt(a0 + 3600)), 'once it lands, the balance goes up');
   await ann.screenshot({ path: `${SHOTS}/rl-win.png` });
   ok((await bal('ann@allin.test')) === a0 - 200 + 3600 + 200, `straight 17 + black paid (balance ${await bal('ann@allin.test')})`);
   ok((await bal('ben@allin.test')) === b0 - 25 + 75, 'column 2 (17 is in it) paid 2:1');

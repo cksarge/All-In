@@ -669,7 +669,9 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   by `games.category`) with a Live or Solo tag per card. The lobby's picker lists **every** game; games
   without tables show a panel linking to `/play/:key`.
 - Roulette keeps a just-settled number out of "Last numbers" and the hot/cold stats until the ball has
-  landed on screen, and shows the last 8 only (both asked for by the user).
+  landed on screen, and shows the last 8 only (both asked for by the user) For the same reason the header balance is
+  held (`displayBalance`) from "no more bets" until the ball lands: the server pays when the spin ends, a few
+  seconds earlier (asked for by the user).
 - **Progress (stage 7):** `useProgress` (`src/stores/progressStore.ts`) holds your own `my_progress()` result,
   the two catalogues, and other players' looks. `ProgressConnector` in `App.tsx` loads it at sign-in and
   refetches on every route change, on Realtime changes, when the tab regains focus and every 45 s; each
@@ -742,7 +744,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    npx vite preview --outDir /tmp/allin-e2e-dist --port 4180 --strictPort &
    psql -h localhost -p 55432 -U postgres -f scripts/e2e/reset.sql   # fresh players before each run
    node scripts/e2e/poker.cjs /tmp/shots        # Hold'em, Draw, Stud (24 checks); screenshots to /tmp/shots
-   node scripts/e2e/phase3.cjs /tmp/shots       # roulette + craps
+   node scripts/e2e/phase3.cjs /tmp/shots       # roulette (incl. the balance waiting for the ball) + craps (11 checks)
    node scripts/e2e/slots.cjs /tmp/shots        # all six machines, features, jackpot, phone widths (21 checks)
    node scripts/e2e/solo.cjs /tmp/shots         # the eight Phase 6 games, a resumed hand, phone widths (29 checks)
    node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (44 checks)
