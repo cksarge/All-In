@@ -5,6 +5,7 @@ import { SectionNav } from '@/components/layout/SectionNav';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ReputationCard } from '@/components/progress/ReputationCard';
+import { EMBLEMS, type ProfileExtras as Extras } from '@/lib/clubs';
 import { LevelBadge, useTitleName, XpBar } from '@/components/progress/bits';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -112,6 +113,8 @@ export default function ProfilePage() {
   }, [load, fetchCatalogue]);
 
   const [reportOpen, setReportOpen] = useState(false);
+  // The player's club arrives with the rest of the profile's extras (ProfileExtras) and is shown in the top card.
+  const [club, setClub] = useState<Extras['club']>(null);
   const blocked = useAccount((s) => Boolean(p && s.account?.blocked.some((b) => b.user_id === p.user_id)));
 
   if (error) {
@@ -164,6 +167,15 @@ export default function ProfilePage() {
             <p className="mt-0.5 text-xs text-muted">
               Playing since {new Date(p.member_since).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
             </p>
+            {club && (
+              <p className="mt-1.5 text-sm text-cream/85">
+                <span aria-hidden="true">{EMBLEMS[club.emblem] ?? '♠️'}</span> Member of{' '}
+                <Link to={`/clubs/${club.id}`} className="font-semibold text-gold-200 hover:underline">
+                  {club.name}
+                </Link>{' '}
+                <span className="rounded border border-white/15 px-1.5 py-0.5 text-[0.65rem] font-bold tracking-wider text-cream/80">{club.tag}</span>
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {self ? null : blocked ? (
@@ -215,7 +227,7 @@ export default function ProfilePage() {
         </div>
       </section>
       {self && <ReputationCard />}
-      <ProfileExtras username={p.username} self={self} />
+      <ProfileExtras username={p.username} self={self} onClub={setClub} />
 
       <section className="mt-8" aria-labelledby="ach-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { PlayerLine } from '@/components/progress/bits';
 import { ChipAmount } from '@/components/ui/ChipAmount';
-import { EMBLEMS, type ProfileExtras as Extras } from '@/lib/clubs';
+import type { ProfileExtras as Extras } from '@/lib/clubs';
 import { formatChips } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 
 /** The profile's club, personal records and head-to-head (17_clubs_records.sql). Shows nothing until that file is run. */
-export function ProfileExtras({ username, self }: { username: string; self: boolean }) {
+/** `onClub` hands the player's club to the page, which shows it in the top card. */
+export function ProfileExtras({ username, self, onClub }: { username: string; self: boolean; onClub?: (club: Extras['club']) => void }) {
   const [x, setX] = useState<Extras | null>(null);
   const [trend, setTrend] = useState<number[]>([]);
   const [trophies, setTrophies] = useState<{ kind: string; place: number; count: number }[]>([]);
   useEffect(() => {
     setX(null);
+    onClub?.(null);
     void supabase.rpc('profile_extras', { p_username: username }).then(({ data, error }) => {
-      if (!error) setX(data as Extras);
+      if (!error) {
+        setX(data as Extras);
+        onClub?.((data as Extras).club);
+      }
     });
     setTrophies([]);
     void supabase.rpc('trophies_for', { p_username: username }).then(({ data, error }) => {
@@ -39,16 +43,6 @@ export function ProfileExtras({ username, self }: { username: string; self: bool
 
   return (
     <>
-      {x.club && (
-        <p className="mt-4 text-sm text-cream/85">
-          <span aria-hidden="true">{EMBLEMS[x.club.emblem] ?? '♠️'}</span> Member of{' '}
-          <Link to={`/clubs/${x.club.id}`} className="font-semibold text-gold-200 hover:underline">
-            {x.club.name}
-          </Link>{' '}
-          <span className="rounded border border-white/15 px-1.5 py-0.5 text-[0.65rem] font-bold tracking-wider text-cream/80">{x.club.tag}</span>
-        </p>
-      )}
-
       {v && (
         <section className="surface mt-5 p-5" aria-labelledby="versus-h">
           <h2 id="versus-h" className="font-display text-xl font-bold text-ivory">
