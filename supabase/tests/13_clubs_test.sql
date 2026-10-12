@@ -43,6 +43,8 @@ select tests.throws($$select public.club_create('x', 'AB')$$, 'action_not_allowe
 select tests.throws($$select public.club_create('Bad!Name', 'AB')$$, 'action_not_allowed');
 select tests.throws($$select public.club_create('Night Owls', 'toolong')$$, 'action_not_allowed');
 select tests.throws($$select public.club_create('Night Owls', 'OWL', 'banana')$$, 'action_not_allowed');
+select tests.throws($$select public.club_create('All In', 'ALLIN')$$, 'action_not_allowed');
+select tests.throws($$select public.club_create('Night Owls', 'STAFF')$$, 'action_not_allowed');
 select tests.ok(public.club_create('  Night   Owls ', 'owl', 'crown', true) ->> 'id' is not null, 'created (name tidied, tag upper-cased)');
 select tests.ok(public.club_state() @> '{"name":"Night Owls","tag":"OWL","emblem":"crown","members":1,"my_role":"owner","is_open":true}'
             and public.club_state() ->> 'invite_code' ~ '^[A-Z0-9]{6}$', 'the owner sees the club and its code');
@@ -84,6 +86,8 @@ select tests.throws($$select public.club_set_role('00000000-0000-0000-0000-00000
 select tests.throws($$select public.admin_club_rename((tests.club('Night Owls')).id, 'Nice Owls', 'NICE')$$, 'not_admin');
 select tests.throws($$select public.admin_club_delete((tests.club('Night Owls')).id)$$, 'not_admin');
 select tests.as_user(:D);
+select tests.ok(public.club_create('All In', 'allin', 'spade', true) ->> 'id' is not null and public.club_state() @> '{"name":"All In","tag":"ALLIN"}', 'the admin can use a reserved name and tag');
+select public.club_leave();
 select public.admin_club_rename((tests.club('Night Owls')).id, 'Nice Owls', 'nice');
 select tests.ok(jsonb_array_length(public.admin_clubs('nice')) = 1 and public.admin_clubs('') -> 0 ->> 'owner' = 'ClubBen', 'the admin can list and rename clubs');
 select tests.as_user(:B);

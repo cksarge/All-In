@@ -275,7 +275,8 @@ begin
   if v_tag !~ '^[A-Z0-9]{2,5}$' then
     raise exception 'action_not_allowed' using hint = 'Tags are 2 to 5 letters or numbers.';
   end if;
-  if private.username_is_reserved(replace(v_name, ' ', '')) or private.username_is_reserved(v_tag) then
+  -- Official-sounding names (All In, Staff, Admin, ...) are kept for the admin's own clubs.
+  if not private.is_admin(v_uid) and (private.username_is_reserved(replace(v_name, ' ', '')) or private.username_is_reserved(v_tag)) then
     raise exception 'action_not_allowed' using hint = 'That name is not available.';
   end if;
   if exists (select 1 from public.clubs where lower(name) = lower(v_name)) then
