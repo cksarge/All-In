@@ -33,6 +33,13 @@ create table if not exists public.player_sanctions (
   updated_at      timestamptz not null default now()
 );
 
+-- When each player was last on the site with a working session (hidden; the admin page shows it).
+-- auth.users.last_sign_in_at only moves on a password sign-in, not when a saved session is reused.
+create table if not exists public.player_activity (
+  user_id       uuid primary key references auth.users (id) on delete cascade,
+  last_seen_at  timestamptz not null default now()
+);
+
 create table if not exists public.player_blocks (
   blocker     uuid not null references auth.users (id) on delete cascade,
   blocked     uuid not null references auth.users (id) on delete cascade,
@@ -198,7 +205,6 @@ end $$;
 create or replace function public.my_account()
 returns jsonb
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -209,6 +215,9 @@ begin
   if v_uid is null then
     raise exception 'not_authenticated' using errcode = '28000';
   end if;
+  -- The app calls this when it opens and about once a minute: that is "last seen".
+  insert into public.player_activity as a (user_id, last_seen_at) values (v_uid, now())
+  on conflict (user_id) do update set last_seen_at = now() where a.last_seen_at < now() - interval '30 seconds';
   select * into s from public.player_sanctions where user_id = v_uid;
   return jsonb_build_object(
     'server_now', now(),
@@ -433,6 +442,7 @@ begin
   return (select coalesce(jsonb_agg(x.j order by x.created_at desc), '[]'::jsonb)
             from (select p.created_at, jsonb_build_object(
                            'user_id', p.id, 'username', p.username, 'email', u.email, 'joined', p.created_at,
+                           'last_seen', (select last_seen_at from public.player_activity a where a.user_id = p.id),
                            'balance', w.balance, 'level', coalesce(pp.level, 1),
                            'banned', s.banned_at is not null, 'timeout_until', case when s.timeout_until > now() then s.timeout_until end,
                            'must_rename', coalesce(s.must_rename, false), 'admin', private.is_admin(p.id),
@@ -469,6 +479,8 @@ begin
     'user_id', p.id, 'username', p.username, 'joined', p.created_at, 'admin', private.is_admin(p.id),
     'email', (select email from auth.users where id = p.id),
     'last_sign_in', (select last_sign_in_at from auth.users where id = p.id),
+    'last_seen', (select last_seen_at from public.player_activity where user_id = p.id),
+    'reports_open', (select count(*) from public.player_reports r where r.reported = p.id and r.status = 'open'),
     'balance', (select balance from public.wallets where user_id = p.id),
     'peak_balance', (select peak_balance from public.wallets where user_id = p.id),
     'in_play', private.chips_in_play(p.id),
@@ -617,6 +629,9 @@ begin
     v_balance := private.apply_chips(p_user, v_delta, 'admin_adjust', null, null,
                                      jsonb_strip_nulls(jsonb_build_object('note', nullif(left(btrim(coalesce(p_note, '')), 200), ''))));
   end if;
+  if v_delta <> 0 and to_regprocedure('private.notify(uuid,text,jsonb)') is not null then
+    execute 'select private.notify($1, $2, $3)' using p_user, 'chips_adjusted', jsonb_build_object('delta', v_delta);
+  end if;
   perform private.admin_note('chips', p_user, jsonb_build_object('mode', p_mode, 'amount', p_amount, 'delta', v_delta, 'note', p_note));
   return jsonb_build_object('balance', v_balance, 'delta', v_delta);
 end $$;
@@ -670,6 +685,7 @@ end $$;
 -- and the log are not readable by clients at all.
 -- -----------------------------------------------------------------------------
 alter table public.admins            enable row level security;
+alter table public.player_activity   enable row level security;
 alter table public.player_sanctions  enable row level security;
 alter table public.player_blocks     enable row level security;
 alter table public.player_reports    enable row level security;
@@ -683,7 +699,7 @@ create policy "player_blocks: own rows" on public.player_blocks for select to au
 drop policy if exists "site_notice: signed-in players can read" on public.site_notice;
 create policy "site_notice: signed-in players can read" on public.site_notice for select to authenticated using (true);
 
-revoke all on public.admins, public.player_reports, public.admin_log from anon, authenticated;
+revoke all on public.admins, public.player_reports, public.admin_log, public.player_activity from anon, authenticated;
 revoke all on public.player_sanctions, public.player_blocks, public.site_notice from anon;
 revoke insert, update, delete, truncate on public.player_sanctions, public.player_blocks, public.site_notice from authenticated;
 grant select on public.player_sanctions, public.player_blocks, public.site_notice to authenticated;

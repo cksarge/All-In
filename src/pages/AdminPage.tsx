@@ -47,6 +47,7 @@ interface PlayerRow {
   username: string;
   email: string | null;
   joined: string;
+  last_seen: string | null;
   balance: number;
   level: number;
   banned: boolean;
@@ -57,6 +58,7 @@ interface PlayerRow {
 }
 interface Player extends PlayerRow {
   last_sign_in: string | null;
+  reports_open: number;
   peak_balance: number;
   in_play: number;
   xp: number;
@@ -142,7 +144,8 @@ async function run(fn: string, args: Record<string, unknown>, done: string): Pro
   return true;
 }
 
-function useRpc<T>(fn: string, args: Record<string, unknown>) {
+/** Loads an admin RPC, and reloads it every `everyMs` and when the tab is looked at again. */
+function useRpc<T>(fn: string, args: Record<string, unknown>, everyMs = 15_000) {
   const [data, setData] = useState<T | null>(null);
   const key = JSON.stringify(args);
   const load = useCallback(async () => {
@@ -153,7 +156,14 @@ function useRpc<T>(fn: string, args: Record<string, unknown>) {
   useEffect(() => {
     setData(null);
     void load();
-  }, [load]);
+    const id = window.setInterval(() => document.visibilityState === 'visible' && void load(), everyMs);
+    const onVisible = () => document.visibilityState === 'visible' && void load();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [load, everyMs]);
   return { data, load };
 }
 
@@ -271,7 +281,9 @@ function Players({ selected, onSelect }: { selected: string | null; onSelect: (i
                 <span className="font-semibold text-ivory">{p.username}</span>
                 <span className="text-xs text-muted">Lv {p.level}</span>
                 <Badges p={p} />
-                <span className="w-full truncate text-xs text-muted">{p.email}</span>
+                <span className="w-full truncate text-xs text-muted">
+                  {p.email} · {p.last_seen ? `seen ${formatRelativeTime(p.last_seen)}` : 'not seen yet'}
+                </span>
               </button>
             </li>
           ))}
@@ -305,12 +317,16 @@ function PlayerPanel({ userId }: { userId: string }) {
       <div className="surface p-5">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="font-display text-2xl font-bold text-ivory">{p.username}</h2>
-          <Badges p={{ ...p, open_reports: p.reports.filter((r) => r.status === 'open').length }} />
+          <Badges p={{ ...p, open_reports: p.reports_open }} />
+          <Button size="sm" variant="ghost" className="ml-auto" onClick={() => void load()}>
+            Refresh
+          </Button>
         </div>
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
           <Fact label="Email">{p.email ?? '–'}</Fact>
           <Fact label="Joined">{when(p.joined)}</Fact>
-          <Fact label="Last sign-in">{when(p.last_sign_in)}</Fact>
+          <Fact label="Last seen on the site">{p.last_seen ? `${formatRelativeTime(p.last_seen)} (${when(p.last_seen)})` : 'not since this was added'}</Fact>
+          <Fact label="Last password sign-in">{when(p.last_sign_in)}</Fact>
           <Fact label="Balance">
             <ChipAmount value={p.balance} iconClassName="h-4 w-4" />
           </Fact>
@@ -328,7 +344,10 @@ function PlayerPanel({ userId }: { userId: string }) {
             <ChipAmount value={p.totals.returned - p.totals.wagered} signed iconClassName="h-4 w-4" />
           </Fact>
           <Fact label="Seated at">{p.seat ? `${p.seat.name} (${p.seat.game})` : 'nowhere'}</Fact>
-          <Fact label="Reports made">{p.reports_made}</Fact>
+          <Fact label="Reports against them">
+            {p.reports.length} ({p.reports_open} open)
+          </Fact>
+          <Fact label="Reports they sent">{p.reports_made}</Fact>
           <Fact label="Account id">
             <span className="break-all text-xs">{p.user_id}</span>
           </Fact>

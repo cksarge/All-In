@@ -52,6 +52,9 @@ set role authenticated;
 select tests.as_user(:A);
 select tests.ok(public.my_account() @> '{"admin":true}', 'the admin is told so');
 select tests.ok((public.admin_overview() ->> 'players')::int >= 3, 'the admin gets the overview');
+select tests.ok((public.admin_player('00000000-0000-0000-0000-00000000a0b2') ->> 'last_seen')::timestamptz > now() - interval '1 minute'
+            and public.admin_player('00000000-0000-0000-0000-00000000a0c3') -> 'last_seen' = 'null', 'last seen: set by opening the app, empty for someone who has not');
+select tests.throws($$select * from public.player_activity$$, 'permission denied');
 
 -- ----------------------------------------------------------------------------
 -- Reports and blocks
@@ -75,6 +78,7 @@ select public.unblock_player(:C);
 select tests.ok(public.friend_request('ModCat') is not null or true, 'unblocked: requests work again');
 
 select tests.as_user(:A);
+select tests.ok((public.admin_player('00000000-0000-0000-0000-00000000a0c3') ->> 'reports_open')::int = 1 and (public.admin_player('00000000-0000-0000-0000-00000000a0b2') ->> 'reports_made')::int = 1, 'the player page counts reports against and reports sent');
 select tests.ok(jsonb_array_length(public.admin_reports('open')) = 1 and public.admin_reports('open') -> 0 @> '{"reason":"name","note":"rude name","reported":"ModCat","reporter":"ModBen","name_then":"ModCat"}', 'the admin reads the report');
 select public.admin_resolve_report((public.admin_reports('open') #>> '{0,id}')::bigint, 'actioned', 'renamed');
 select tests.ok(jsonb_array_length(public.admin_reports('open')) = 0 and jsonb_array_length(public.admin_reports('actioned')) = 1, 'resolved');
