@@ -24,42 +24,52 @@ A web-based, free-play, multiplayer social casino game.
 Vite · React 19 · TypeScript · Tailwind CSS v4 · Framer Motion · Zustand · `@supabase/supabase-js` v2.
 It builds to a static site.
 
+## What's in it
+
+- **56 games.** Live tables for blackjack, roulette, craps, nine kinds of poker and Teen Patti; live rooms for Crash,
+  Bingo and horse racing; six slot machines with a shared jackpot; and about thirty solo games against the house
+  (baccarat, video poker, dealer poker games, blackjack variants, keno, Plinko, Mines and more).
+- **Tournaments:** Sit & Go poker, a multi-table Main Event, Slot Showdowns and a Daily Freeroll.
+- **Progress:** XP and 100 levels, 81 achievements, earned cosmetics, daily and weekly missions, monthly seasons.
+- **Social:** friends, clubs, leaderboards, profiles with records, preset quick chat (no free text anywhere).
+- **Moderation:** reports, blocks, an admin page, and a site maintenance switch.
+
 ## Folder structure
 
 ```
 .
 ├── .github/workflows/     deploy-pages.yml (GitHub Pages)
 ├── index.html
-├── public/                  favicon, _redirects (Netlify SPA fallback)
+├── public/                  favicon, CNAME, _redirects (Netlify SPA fallback)
 ├── vercel.json              SPA fallback for Vercel
 ├── scripts/
 │   ├── check-copy.mjs       "no real money" copy guard
-│   ├── test-sql.sh          runs the SQL against a throwaway local Postgres
+│   ├── test-sql.sh          runs the SQL and its tests against a throwaway local Postgres
+│   ├── gen-db-check.sh      regenerates supabase/maintenance/check_database.sql
 │   └── e2e/                 local two-browser end-to-end tests (see CLAUDE.md)
 ├── src/
 │   ├── App.tsx, main.tsx, index.css (design tokens)
 │   ├── components/
-│   │   ├── ui/              Button, TextField, Modal, ChipIcon, ChipAmount, states, …
-│   │   ├── layout/          header, footer, balance pill, sound toggle, no-real-money notice
-│   │   ├── auth/            OTP input, password checklist, resend button, auth card
-│   │   ├── economy/         balance, daily bonus, refill, recent activity
-│   │   ├── lounge/          game grid
-│   │   └── onboarding/      first-time welcome tour
-│   ├── hooks/               useNow, useUsernameCheck
-│   ├── lib/                 supabase client, friendly errors, validation, formatting, sound
-│   ├── pages/               Landing, SignUp, VerifyEmail, LogIn, ForgotPassword, Lounge,
-│   │                        HowChipsWork, Settings, NotFound
+│   │   ├── ui/, layout/, auth/, economy/, onboarding/, settings/, account/
+│   │   ├── table/           what every live table shares (header, timers, quick chat, seats)
+│   │   ├── blackjack/, roulette/, craps/, poker/, teenpatti/     the live table games
+│   │   ├── slots/, solo/, more/, tablepoker/, stage10/           solo games and live rooms
+│   │   ├── tournaments/, progress/, lounge/, cards/
+│   ├── hooks/               useLiveTable (tables), useLiveRoom (shared rooms), useLobby, …
+│   ├── lib/                 supabase client, friendly errors, formatting, sound, per-game helpers
+│   ├── pages/               one file per route
 │   ├── routes/              auth guards
-│   └── stores/              auth, wallet (with Realtime), settings, toasts
+│   └── stores/              auth, wallet, progress, account, live data, settings, toasts
 └── supabase/
-    ├── sql/                 numbered, re-runnable SQL files and their README
+    ├── sql/                 21 numbered, re-runnable SQL files and their README
+    ├── maintenance/         scripts run by hand: database check, cleanup, maintenance off
     ├── email-templates/     confirm-signup.html, reset-password.html (+ subjects)
-    └── tests/               local-only Supabase stub and SQL tests
+    └── tests/               local-only Supabase stub and 18 SQL test files
 ```
 
 ## Local setup
 
-Requirements: Node 20+ and a Supabase project.
+Requirements: Node 22 (what CI uses) and a Supabase project.
 
 ```bash
 npm install
@@ -68,7 +78,8 @@ npm run dev                   # http://localhost:5173
 ```
 
 Then follow **[SETUP.md](./SETUP.md)** to run the SQL files and configure the Supabase dashboard
-(email OTP, password rules, email templates, SMTP, Realtime).
+(email OTP, password rules, email templates, SMTP, Realtime). `supabase/maintenance/check_database.sql` tells you
+whether a database has everything the SQL files create.
 
 ### Scripts
 
@@ -81,6 +92,7 @@ Then follow **[SETUP.md](./SETUP.md)** to run the SQL files and configure the Su
 | `npm run check:copy` | Copy guard for the "no real money" rules |
 | `npm run check` | Typecheck + copy guard |
 | `npm run test:sql` | Apply `supabase/sql` twice to a throwaway Postgres and run the SQL tests (needs Postgres 15+ binaries locally) |
+| `bash scripts/gen-db-check.sh` | Regenerate `supabase/maintenance/check_database.sql` after changing any SQL file |
 
 ## Deploy to GitHub Pages (recommended)
 

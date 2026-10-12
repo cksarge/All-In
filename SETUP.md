@@ -32,8 +32,13 @@ look for the same setting name under **Authentication**.
 18. `18_tournaments_plus.sql`
 19. `19_table_poker.sql`
 20. `20_blackjack_variants.sql`
+21. `21_racing_teen_patti.sql`
 
 Every file is safe to re-run. See `supabase/sql/README.md` for what each one does.
+
+To check the result, run `supabase/maintenance/check_database.sql` (it only reads). It lists anything missing or
+out of date and names the file to re-run; when everything is current its first row says **OK**. The SQL Editor
+warns that it "creates tables without RLS": those are temporary tables, so choose **Run without RLS**.
 
 Then check **Settings → Data API → Exposed schemas**: it should list `public` (default).
 Do **not** add `private`.
@@ -135,12 +140,13 @@ The SQL files add `wallets`, `chip_ledger`, `game_tables`, `table_seats`, `bj_ro
 `rl_bets`, `cr_state`, `cr_rolls`, `cr_bets`, `pk_hands`, `pk_players`, `jackpots`, `crash_rounds`, `crash_bets`, `bingo_rounds`,
 `player_progress`, `player_achievements`, `friendships`, `tournaments`, `tournament_entries`, `player_sanctions`, `notifications`, `player_missions`, `big_wins`, `club_members`, `site_status`, `race_rounds`, `race_bets`, `tpt_hands` and `tpt_players` to the `supabase_realtime` publication. Check
 **Database → Publications → supabase_realtime**: all thirty-two should be listed. The hidden tables (`bj_shoes`,
-`bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`, `bingo_secrets`), poker hole cards (`pk_hole`)
-and bingo cards (`bingo_cards`) must **not** be in the publication.
+`bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`, `bingo_secrets`, `tpt_cards`, `admins`,
+`player_reports`, `admin_log`, `player_activity`, `head_to_head`), poker hole cards (`pk_hole`) and bingo cards (`bingo_cards`)
+must **not** be in the publication.
 
-**Realtime → Settings**: for Phase 1, leave **"Allow public access"** enabled (do not switch
-to private-channels-only yet). Postgres Changes still enforce RLS, so each player only
-receives their own wallet and ledger rows. Later phases will say if this needs to change.
+**Realtime → Settings**: leave **"Allow public access"** enabled (do not switch to
+private-channels-only). Postgres Changes still enforce RLS, so each player only receives
+rows they are allowed to read.
 
 ## 9. API keys
 
@@ -173,3 +179,24 @@ sure the code is on `main`, and check that the latest **Deploy to GitHub Pages**
    the Lounge with **10,000** chips.
 3. **Table Editor**: `profiles`, `wallets` and `chip_ledger` each have a row for you
    (`chip_ledger.reason = signup_bonus`).
+
+## 12. The admin, and scripts you run by hand
+
+- **The admin** is the account whose username is `Carter` when `15_moderation.sql` first runs. It gets the hidden
+  `/admin` page (reports, bans, timeouts, renames, chip changes, clubs, a site notice, site maintenance).
+- **Site maintenance** closes the site to everyone but the admin, **including the login page**, so the admin must
+  already be signed in before switching it on. If you get locked out, run `supabase/maintenance/maintenance_off.sql`.
+- **Supabase's security advisor** lists every game function as "SECURITY DEFINER function executable". That is how
+  the game is built (players can only act through server functions, each of which checks who is calling), so those
+  warnings are expected. Only `check_username` and `site_status` are callable without signing in, on purpose.
+
+Scripts in `supabase/maintenance/` are run in the SQL Editor when needed, never as part of the numbered files:
+
+| File | What it does |
+| --- | --- |
+| `check_database.sql` | Reads only. Compares the database with what the numbered files create and names any file to re-run. |
+| `cleanup.sql` | Deletes old finished rounds, history and activity nobody will look at again, to save space. Safe to re-run. |
+| `maintenance_off.sql` | Switches site maintenance off. |
+| `season_bonus_2026_10.sql` | One-off: 333 season points for accounts made before November 2026. |
+| `special_cosmetics.sql` | One-off: the Developer title and avatar. |
+| `email_logs.sql` | A query for checking recent sign-ups when an email goes missing. |

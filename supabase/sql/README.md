@@ -15,7 +15,7 @@ When a later phase adds or changes a file, re-running everything from `01` is al
 | 6 | `06_blackjack.sql` | Multiplayer blackjack, fully server-side. `bj_rounds` and `bj_hands` (public to the table: blackjack cards are dealt face up), plus the **hidden** `bj_shoes` (undealt cards) and `bj_secrets` (dealer hole card), which have RLS on with no policies and no client privileges. RPCs: `bj_state`, `bj_place_bet`, `bj_clear_bet`, `bj_deal_now`, `bj_insurance`, `bj_action` (hit/stand/double/split/surrender), `bj_advance`. Opens blackjack and seeds four always-open house tables. |
 | 7 | `07_roulette.sql` | Shared-table roulette with 20 s betting rounds. European (single 0) and American (0 + 00) wheels via the table's `variant`. `rl_rounds`, `rl_bets` (public to the table) and the **hidden** `rl_secrets`: the pocket is drawn when betting closes and stays unreadable until the ball lands. Every bet is validated server-side (straight, split, street, corner, line, dozen, column, red/black, odd/even, low/high) and pays 36 ÷ numbers covered. Hot/cold numbers over the last 100 spins. RPCs: `rl_state`, `rl_place_bet`, `rl_undo_bet`, `rl_rebet`, `rl_advance`. Seeds a European and an American house wheel per stake level. |
 | 8 | `08_craps.sql` | Shared-table craps with a rotating shooter. `cr_state` (point, shooter, roll timer), `cr_rolls` (history), `cr_bets` (bets that ride across rolls). Pass / don't pass, come / don't come, odds (up to 3×, true odds), place, field, hardways and proposition bets. Dice are rolled by the server; the shooter can roll after 3 s, otherwise it auto-rolls after 20 s. Players who leave get optional bets back; contract bets play out. RPCs: `cr_state`, `cr_place_bet`, `cr_add_odds`, `cr_remove_bet`, `cr_roll`, `cr_advance`. |
-| 9 | `09_poker.sql` | Multiplayer poker, 2 to 9 seats, one engine for five games: no-limit **Texas Hold'em**, pot-limit **Omaha** and **Omaha Hi-Lo** (8 or better), fixed-limit **Seven-Card Stud** (antes, bring-in, best hand showing acts first) and no-limit **Five-Card Draw**. Players bring chips from their wallet to the table (`table_seats.stack`) and can top up between hands. Blinds/antes, a moving dealer button, server-checked minimum raises, pot-limit maths and fixed-limit caps, short all-ins that don't reopen the betting, side pots, split pots (odd chip left of the button), showdowns with hand names and the winning five cards. Tables: `pk_hands`, `pk_players` (public to the table), **`pk_hole`** (each player can read only their own cards), and the **hidden** `pk_decks` and `pk_topups`. RPCs: `pk_state`, `pk_action`, `pk_draw`, `pk_bring_chips`, `pk_advance`, `pk_hand_history`. Opens all five games with four always-open house tables each. Stage 10 added four more to the same engine, each with its own hand ranking behind `private.pk_show`: **Short Deck** (36 cards, a flush beats a full house), **Razz** (lowest hand wins), **2-7 Triple Draw** and **Badugi** (three draws each, fixed limit with blinds). |
+| 9 | `09_poker.sql` | Multiplayer poker, 2 to 9 seats, one engine, first for five games: no-limit **Texas Hold'em**, pot-limit **Omaha** and **Omaha Hi-Lo** (8 or better), fixed-limit **Seven-Card Stud** (antes, bring-in, best hand showing acts first) and no-limit **Five-Card Draw**. Players bring chips from their wallet to the table (`table_seats.stack`) and can top up between hands. Blinds/antes, a moving dealer button, server-checked minimum raises, pot-limit maths and fixed-limit caps, short all-ins that don't reopen the betting, side pots, split pots (odd chip left of the button), showdowns with hand names and the winning five cards. Tables: `pk_hands`, `pk_players` (public to the table), **`pk_hole`** (each player can read only their own cards), and the **hidden** `pk_decks` and `pk_topups`. RPCs: `pk_state`, `pk_action`, `pk_draw`, `pk_bring_chips`, `pk_advance`, `pk_hand_history`. Opens all five games with four always-open house tables each. Stage 10 added four more to the same engine, each with its own hand ranking behind `private.pk_show`: **Short Deck** (36 cards, a flush beats a full house), **Razz** (lowest hand wins), **2-7 Triple Draw** and **Badugi** (three draws each, fixed limit with blinds). |
 | 10 | `10_slots.sql` | Six solo slot machines and one shared progressive jackpot. **Lucky Sevens** (3 reels, one line), **Pharaoh's Fortune** (5×3, 20 paylines, wilds, free spins with wins ×2), **Gem Cascade** (6×5 cluster pays, cascades with a rising multiplier), **Wild Frontier** (243 to 3,125 ways, free spins on full-height reels), **Dragon Pearls** (5×3, 10 paylines, hold-and-win respins) and **Grand Jackpot** (5×3, 10 paylines; 2% of each bet feeds the pot and every spin can win it, with a chance in proportion to the bet). One RPC, `slot_spin(game, bet)`, takes the bet, draws every symbol, plays any feature to the end and pays in a single transaction, then returns the whole sequence for the browser to replay; `slot_info(game)` returns the paytable, bets and live jackpot (never the reel weights). Table: `jackpots` (readable by signed-in players, live). Paytables are in hundredths of the bet and tuned to return about 95 to 97%; `private.slot_simulate(game, spins)` measures it. |
 | 11 | `11_solo_games.sql` | Eight solo games against the house. One call each: **Baccarat** (`baccarat_deal`: Player, Banker less 5%, Tie 8:1, pairs 11:1, eight-deck shoe), **Sic Bo** (`sicbo_roll`), **Keno** (`keno_draw`: 1 to 10 picks, 20 of 80 drawn, about 94 to 95% back) and the **Big Six wheel** (`wheel_spin`, 54 segments). Two calls each, with the decision in between: **Jacks or Better** and **Deuces Wild** video poker (`vp_deal`, `vp_draw`), **Three Card Poker** (`tcp_deal`, `tcp_act`: Ante, Play, Pair Plus, ante bonus) and **Pai Gow Poker** (`pgw_deal`, `pgw_set`: 53 cards with the joker, a computed house way for the dealer and for the "House way" button). `solo_info(game)` returns rules, paytables, stake levels and any round waiting. Tables: `solo_rounds` (a player's open round, own rows only) and the **hidden** `solo_secrets` (the undealt deck and the dealer's cards). |
 | 12 | `12_more_games.sql` | Nine more games (their catalogue rows are in file 3, so re-run that first). Against the house in one call: **Dragon Tiger** (`dragon_tiger_deal`), **Plinko** (`plinko_drop`: 8, 12 or 16 rows, three risk levels), **Scratch Cards** (`scratch_play`: three cards with different prize tables) and **Power Draw** (`power_draw_play`: 5 of 30 plus a power ball of 10). With decisions, using `solo_rounds` from file 11: **Casino War** (`war_deal`, `war_act`), **Ultimate Texas Hold'em** (`uth_deal`, `uth_act`; reuses the poker evaluator from file 9) and **Mines** (`mines_start`, `mines_pick`, `mines_collect`). Two live rooms shared by everyone: **Crash** (`crash_state`, `crash_bet`, `crash_collect`; tables `crash_rounds`, `crash_bets` and the **hidden** `crash_secrets`) and **Bingo** (`bingo_state`, `bingo_buy`; tables `bingo_rounds`, `bingo_cards` readable by their owner, and the **hidden** `bingo_secrets`). `more_info(game)` returns rules and paytables. |
@@ -32,7 +32,7 @@ When a later phase adds or changes a file, re-running everything from `01` is al
 ## Turn timers without a server process
 
 There is no background job. Each round stores its deadline (`phase_ends_at`). Every client at the table calls
-the game's advance function (`bj_advance`, `rl_advance`, `cr_advance`, `pk_advance`) when a countdown hits zero (the Crash and Bingo rooms do the same inside `crash_state` and `bingo_state`, which their screens poll); the **server** checks the deadline and, if it has passed, closes betting,
+the game's advance function (`bj_advance`, `rl_advance`, `cr_advance`, `pk_advance`, `tpt_advance`) when a countdown hits zero (the Crash, Bingo and horse racing rooms do the same inside `crash_state`, `bingo_state` and `race_state`, which their screens poll); the **server** checks the deadline and, if it has passed, closes betting,
 closes insurance, auto-stands the player who timed out, or (poker) checks or folds for them and sits them out (disconnected players are skipped straight away). The lobby
 (`list_tables`) also finishes any round whose timer ran out while nobody was watching, so bets can't get stuck.
 No Edge Functions or `pg_cron` are needed.
@@ -42,12 +42,14 @@ No Edge Functions or `pg_cron` are needed.
 Each game file plugs into shared helpers from `05_tables.sql` by naming convention, so shared code never
 has to change: `private.<game>_tick_stale()` (finish that game's expired rounds),
 `private.<game>_in_play(uuid)` (chips a player has riding on that game) and, optionally,
-`private.<game>_seat_left(table uuid, user uuid)` (called whenever a seat is freed; poker folds the hand).
+`private.<game>_seat_left(table uuid, user uuid)` (called whenever a seat is freed; poker and Teen Patti fold the hand).
+A new game's catalogue row goes in `03_games_and_stakes.sql`, and its achievements and cosmetics in `13_progression.sql`.
 Chips a player brought to the table (`table_seats.stack`) are returned to their wallet automatically by the
 `table_seats_removed` trigger, however the seat is freed: leaving, switching tables, or the reconnect hold running out.
 
 Solo games need none of that: there is no table or seat. The slots, baccarat, Sic Bo, keno and the wheel settle in
-the same call that places the bet, so chips are never left in play. Video poker, Three Card Poker and Pai Gow keep
+the same call that places the bet, so chips are never left in play. Games with a decision in the middle (video poker,
+the dealer poker games, the blackjack variants, Mines, Hi-Lo and others) keep
 one open round per player in `solo_rounds` while the player decides; it has no timer and simply waits, and
 `private.solo_in_play` counts its chips.
 
@@ -64,6 +66,11 @@ one open round per player in `solo_rounds` while the player decides; it has no t
   tables with RLS enabled and no policies and no privileges, so no client query can read them, and they are
   never added to the realtime publication. Poker hole cards (`pk_hole`) have a single policy: you can read
   your own rows and nobody else's. Other players' cards only become public (`pk_players.shown_cards`) at showdown.
+  At Teen Patti tables even your own cards are hidden (`tpt_cards`) until you choose to look.
+- **Sanctions and maintenance in one place.** `private.require_uid()`, which every game function calls first, runs
+  `private.sanction_check`: a banned or timed-out player, or anyone but the admin during site maintenance, is refused.
+- **Supabase's security advisor** flags every public `SECURITY DEFINER` function. That is this design, not a leak:
+  each one checks the caller. Only `check_username` and `site_status` can be called signed out.
 - **Errors are short codes** (`daily_already_claimed`, `insufficient_chips`, `refill_on_cooldown`, …)
   that the app maps to friendly messages.
 
@@ -85,5 +92,20 @@ update public.economy_config set refill_threshold = 2000, updated_at = now() whe
 `npm run test:sql` spins up a throwaway local Postgres (needs Postgres 15+ binaries installed),
 loads a small Supabase stand-in (`supabase/tests/00_supabase_stub.sql`), applies every file
 **twice** to prove re-runnability, then runs `supabase/tests/*_test.sql`
-(sign-up trigger, RLS, daily streaks, refill cooldowns, ledger integrity, permission denials).
+(18 files: the economy, every game's rules and payouts, RLS and permission denials, progression,
+tournaments, moderation, missions and seasons, clubs). It also checks that
+`supabase/maintenance/check_database.sql` matches the files; regenerate that with `bash scripts/gen-db-check.sh`
+after changing any SQL.
 The stub is for local tests only. Never run it on your Supabase project.
+
+## Scripts run by hand (`supabase/maintenance/`)
+
+These are not part of the numbered files and are never applied by the tests.
+
+- `check_database.sql` reads the database and compares it with everything the numbered files create (tables, columns,
+  row level security, policies, triggers, every function and whether its body is current, realtime tables, and the
+  game, stake level, achievement and cosmetic rows). It names the file to re-run for anything missing or out of date.
+  It is generated by `scripts/gen-db-check.sh`: do not edit it.
+- `cleanup.sql` deletes finished rounds, history and activity beyond what the screens show. It never touches
+  balances, progress, or anything still being played. Give any new table that piles up rows a step there.
+- `maintenance_off.sql` opens the site if the admin is locked out while maintenance is on.

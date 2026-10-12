@@ -112,33 +112,24 @@ race, Teen Patti both against the dealer and at player-against-player tables)
    fairness page, play reminders.
 Every part must come with its achievements, cosmetics and menu entries (standing request).
 
-### Stage 10: more games (the user's list, saved on 2026-10-11; not designed yet)
-- **Table poker against the dealer:** Caribbean Stud, Let It Ride, Mississippi Stud, Four Card Poker, Casino Hold'em.
-- **Blackjack variants:** Spanish 21, Blackjack Switch, Free Bet Blackjack, Pontoon.
-- **Player-against-player poker:** Short Deck (6+) Hold'em, Razz, 2-7 Triple Draw, Badugi.
-- **Video poker:** Joker Poker, Double Bonus, Bonus Poker (mostly new paytables on the Jacks or Better engine).
-- **Other:** Red Dog, Hi-Lo (is the next card higher or lower), Teen Patti, Andar Bahar, Chuck-a-Luck, virtual horse racing.
+### Where things stand (2026-10-12)
+Everything planned has been built: stages 1 to 10. Nothing is designed or agreed beyond this. The site has
+**56 games** (15 table, 20 poker, 7 slots, 14 specialty; all released), **81 achievements**, 21 numbered SQL files
+making 66 tables (32 in Realtime), 18 SQL test files and 15 browser suites.
 
-Where each would plug in: the dealer poker games follow Three Card Poker / Ultimate Hold'em (`solo_rounds`,
-`private.pk_best` or `private.cg_score5`); the video pokers are new entries in `private.solo_cfg` plus an
-evaluator branch in `private.vp_eval`; the player-against-player pokers are new `pk_config` families in
-`09_poker.sql` (Razz and 2-7 need low-hand ranking; Badugi needs its own evaluator); the blackjack variants
-need changes to `06_blackjack.sql`'s rules, which is multiplayer.
+Stage 10's 23 games, for reference: Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four Card Poker,
+Teen Patti against the dealer (19); Bonus, Double Bonus and Joker video poker (11); Spanish 21, Blackjack Switch,
+Free Bet Blackjack, Pontoon, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck (20); Short Deck, Razz, 2-7 Triple Draw,
+Badugi (09); horse racing and Teen Patti tables (21).
 
-### Stage 8 starting points
-Nothing has been designed or agreed with the user yet. The list from the original roadmap: sounds, animations,
-tutorials, accessibility, a mobile pass, and Sit & Go poker tournaments. See "Deferred items" below for
-things already promised for it.
-
-### Deferred items already promised
-- Tutorials, including craps (Phase 8).
-- Keyboard access for the thin roulette edge zones (Phase 8).
-- Hardening broadcast emotes so only seated players can send them (Phase 8).
-- Poker pre-action buttons (check/fold in turn) and showing cards voluntarily when everyone folds
-  would be nice later.
-- Solo games: auto-spin / auto-play, and a strategy hint for video poker, would be nice later.
-- Stage 7 leftovers that would be nice later: blocking a player, showing which solo game an online friend is
-  in (only table seats are known to the server), a weekly reward for the weekly board, and titles shown at tables.
+### Ideas mentioned but never built (only if the user asks)
+- Showing which solo game an online friend is in (only table seats are known to the server).
+- A weekly reward for the weekly leaderboard.
+- Auto-play for solo games other than the slots.
+- A side show in Teen Patti; a simulation to measure the house edge of the stage 10 games (their paytables are the
+  standard published ones).
+- From the stage 9 brainstorm, not asked for: lucky wheel, private tournaments, shareable wins, profile showcase,
+  fairness page, play reminders. **Not wanted:** music or sound options, installing as an app.
 
 ## 6. Repository map
 
@@ -148,42 +139,60 @@ public/                              favicon.svg (same ruby chip as ChipIcon), C
 index.html                           boot screen inside #root ("Shuffling up…", help text after 6 s)
 vite.config.ts                       VITE_BASE base path, spaFallback plugin (404.html), manualChunks, @ -> src
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
-scripts/test-sql.sh                  SQL test runner
+scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
-supabase/maintenance/                run by hand, not numbered: check_database.sql (is the live database up to date?),
-                                     cleanup.sql (frees space), maintenance_off.sql, season_bonus_2026_10.sql
-scripts/e2e/                         local end-to-end harness (see §9)
+scripts/e2e/                         local end-to-end harness: 15 suites (see §9)
 supabase/sql/01…21_*.sql             the database, applied in order (see §7)
+supabase/maintenance/                run by hand, not numbered, not applied by test:sql:
+                                     check_database.sql (is the live database up to date? generated),
+                                     cleanup.sql (frees space), maintenance_off.sql (opens a site closed for maintenance),
+                                     season_bonus_2026_10.sql, special_cosmetics.sql (the Developer items), email_logs.sql
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
-supabase/tests/0N_*_test.sql         tests: tests.ok / tests.throws helpers, run as role authenticated
+supabase/tests/NN_*_test.sql         18 test files: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
 src/App.tsx                          routes: / signup login verify forgot-password how-chips-work settings
                                      lounge lobby table/:id play/:gameKey join/:code
-                                     profile profile/:username locker friends leaderboards *
+                                     profile profile/:username locker friends leaderboards clubs clubs/:id
+                                     missions inbox tournaments tournaments/:id admin *
+                                     Wrapped in MaintenanceGate; connectors for progress, account and live data.
 src/lib/                             supabase client, errors (friendlyError), format, cards, sound (WebAudio),
                                      turnstile, validation, types, and per-game helpers: blackjack, roulette, craps, poker,
                                      slots (result types, symbol art, themes, and buildScenes: result -> playback),
                                      solo (useSoloGame, holdBalance/settleBalance, hand names, history lines),
-                                     games (the four lounge sections; gameMode: tables / live room / solo; gameHref),
-                                     progress (types, and what every cosmetic looks like: AVATAR_GLYPH, FRAMES, CARD_BACKS, FELTS)
+                                     games (the four lounge sections; gameMode: tables / live room / solo / tournament; gameHref),
+                                     progress (types, and what every cosmetic looks like: AVATAR_GLYPH, FRAMES, CARD_BACKS, FELTS),
+                                     chat (quick-chat phrases), live (inbox wording), clubs, tournaments,
+                                     quickstart (first-visit guides), vpHint (video poker hint)
 src/stores/                          zustand: auth, wallet (balance, ledger, displayBalance), presence, settings, toast, ui,
-                                     progress (own XP / achievements / loadout, the catalogues, other players' looks)
+                                     progress (own XP / achievements / loadout, the catalogues, other players' looks),
+                                     account (sanctions, admin flag, blocks), live (missions, season, inbox)
 src/hooks/useLiveTable.ts            shared live-table plumbing (see §8); useBlackjackTable / usePokerTable wrap it
 src/hooks/useLobby.ts                lobby table list + online presence
-src/hooks/useLiveRoom.ts             a shared room with no tables or seats (Crash, Bingo): polls its state RPC, listens to Realtime
+src/hooks/useLiveRoom.ts             a shared room with no tables or seats (Crash, Bingo, horse racing): polls its
+                                     state RPC, listens to Realtime
 src/components/table/                TableHeader, PlayerStrip, PhaseBar, TimerRing(+useSecondsLeft), ReactionBar,
-                                     ChipStack, InfoModal(+TabButtons), GameHistoryModal
-src/components/{blackjack,roulette,craps,poker}/   one folder per game; *Table.tsx is the entry
+                                     ChipStack, InfoModal(+TabButtons), GameHistoryModal, InviteModal, SeatAvatar (+SeatTitle)
+src/components/{blackjack,roulette,craps,poker}/   one folder per game; *Table.tsx is the entry (PokerTable plays all nine
+                                     poker games and every tournament table)
+src/components/teenpatti/            TeenPattiTable (its own engine; reuses PokerSeat and BringChipsModal)
 src/components/slots/                SlotMachine (the entry, all six machines), SlotReels, SlotSymbol, SlotRules, JackpotTicker
 src/components/solo/                 SoloShell (page frame, TierPicker, ChipRack, BetSpot, useSpotBets, BetStepper) and one
-                                     file per game: Baccarat, VideoPoker (both), ThreeCard, PaiGow, SicBo, Keno, Wheel
+                                     file per game: Baccarat, VideoPoker (all five machines), ThreeCard, PaiGow, SicBo, Keno, Wheel
 src/components/more/                 stage 6.5, one file per game: DragonTiger, CasinoWar, UltimateHoldem, Plinko, Mines,
                                      Scratch, PowerDraw, Crash, Bingo (they reuse SoloShell and its pieces)
+src/components/tablepoker/           TablePokerGame: the six dealer card games of file 19
+src/components/stage10/              BlackjackVariantGame (four variants), QuickGames (Red Dog, Hi-Lo, Andar Bahar,
+                                     Chuck-a-Luck), HorseRacingGame
+src/components/tournaments/          SngBar (the strip on a tournament table), TournamentRules
+src/components/account/              AccountGate (suspended / timeout / rename screens), ReportModal, MaintenanceGate
+src/components/onboarding/           the welcome tour and QuickStart (first-visit guide per game)
 src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
-src/components/progress/             ProgressCard (lounge), and bits: LevelBadge, XpBar, PlayerLine (avatar + name + title)
+src/components/progress/             ProgressCard (lounge), ProfileExtras, and bits: LevelBadge, XpBar, PlayerLine
+src/components/layout/               SiteHeader (top bar, inbox bell), SectionNav, footer, balance pill
 src/components/ui/Avatar.tsx         a player's picture and frame; src/components/table/SeatAvatar.tsx looks it up by user id
-src/pages/{Profile,Locker,Friends,Leaderboard}Page.tsx   the four stage 7 pages
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay; 52 = joker)
+src/pages/                           one file per route: Profile, Locker, Friends, Leaderboard, Clubs, Missions, Inbox,
+                                     Tournaments, Showdown (one slot showdown), Admin, and the auth and info pages
 src/pages/TablePage.tsx              loads game_tables.game_key and dispatches to the right *Table component
 src/pages/PlayPage.tsx               /play/:gameKey: dispatches every game that isn't played at a table
 src/pages/LobbyPage.tsx              a picker with every game (by section); table games show quick join, private
@@ -224,7 +233,7 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
    `rl_secrets`; pays 36 ÷ numbers covered.
 8. `08_craps.sql`: rotating shooter, pass/don't, come/don't, odds 3× (true odds), place, field, hardways,
    props; roll timer 20 s, minimum 3 s between rolls.
-9. `09_poker.sql`: one engine, five games (`pk_config(game)` → family board/stud/draw, limit nl/pl/fl).
+9. `09_poker.sql`: one engine, nine games (`pk_config(game)` → family board/stud/draw, limit nl/pl/fl).
    - Tables: `pk_hands`, `pk_players` (public), **`pk_hole` (RLS: own rows only)**, hidden `pk_decks`
      and `pk_topups`.
    - RPCs: `pk_state`, `pk_action(table, action, amount)` (`amount` = total "raise to" this street),
@@ -336,7 +345,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
    - Friends are mutual (`friend_request` / `friend_respond` / `friend_remove`; asking someone who already
      asked you accepts). `friends_list()` includes the **public** table a friend is seated at ("Join their
      table" is just a link to `/table/:id`); for a private table only the fact is shown, never the id.
-   - **One-of-a-kind cosmetics** exist only in the live database, not in this file: the user ran SQL that added
+   - **One-of-a-kind cosmetics** exist only in the live database, not in this file (the SQL is kept in
+     `supabase/maintenance/special_cosmetics.sql`): the user ran SQL that added
      `title_developer` ("Developer") and `avatar_developer` (the crown emoji) with no level and no achievement,
      and granted them to their own account (username Carter) in `player_cosmetics`. The locker hides such items
      from everyone who doesn't own them. `avatar_developer`'s emoji is in `AVATAR_GLYPH`; the level-15
@@ -545,13 +555,16 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
 - **Timers are deadlines, not jobs:** rows store `phase_ends_at`; any client calls `<game>_advance` when a
   countdown hits zero and the server decides. No cron or edge functions.
 - **Hidden tables:** RLS on, no policies, `revoke all … from anon, authenticated`, never published to realtime.
+  Today: `bj_shoes`, `bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`,
+  `bingo_secrets`, `tpt_cards`, `admins`, `player_reports`, `admin_log`, `player_activity`, `head_to_head`.
 - **Each file ends with** `revoke execute on all functions in schema private from public, anon, authenticated;
   grant execute on function private.can_view_table(uuid) to authenticated;`. `private` must NOT be added to
   the Data API's exposed schemas.
 - Seed persistent house tables with `insert … where not exists`; flip `games.released = true` in the
   game's own file.
 - Ledger reasons used so far: `signup_bonus`, `daily_bonus`, `refill`, `bet`, `payout`, `refund`, `push`,
-  `table_chips_in`, `table_chips_out`, `poker_pot`, `jackpot`, `level_up`, `achievement`. Solo games use `bet` and `payout` only (a returned
+  `table_chips_in`, `table_chips_out`, `poker_pot` (Teen Patti tables too), `jackpot`, `level_up`, `achievement`,
+  `mission`, `season_reward`, `tournament_entry`, `tournament_prize`, `admin_adjust`. Solo games use `bet` and `payout` only (a returned
   stake is part of the `payout`). Add labels in `src/components/economy/RecentActivity.tsx`.
 
 **Realtime publication** now has 32 tables (after the 20 listed: tournaments, tournament_entries, player_sanctions,
@@ -590,7 +603,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   `call(fn, args)` returns `[result, null]` or `[null, message]`: test `err !== null`, not `if (err)`, or
   TypeScript won't narrow the result. Rules text lives in each game file and reads its numbers from the config.
   A two-call game starts from `info.round` so a hand left open is picked up after a reload.
-- **Live rooms (Crash, Bingo)** use `useLiveRoom({ stateFn, tables, pollMs })`: the state RPC both reports and
+- **Live rooms (Crash, Bingo, horse racing)** use `useLiveRoom({ stateFn, tables, pollMs })`: the state RPC both reports and
   advances the round, so the screen polls it (400 ms while a Crash round flies, about 1 s otherwise) and also
   refetches on Realtime changes. Crash draws its multiplier locally from `started_at` and the server clock
   offset, so it can run a fraction of a second past the real crash point before the next poll corrects it.
@@ -623,7 +636,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
 - Stage 8 polish: `QuickStart` (first-visit guide per game, text in `src/lib/quickstart.ts`, mounted once in
   `TablePage`, `PlayPage` and `TournamentsPage`; switch and reset in Settings), `SectionNav` (Profile / Locker /
-  Friends / Leaderboards / Tournaments links), `SeatTitle` (equipped title under every seated player's name),
+  Friends / Clubs / Leaderboards links), `SeatTitle` (equipped title under every seated player's name),
   roulette's list of line and corner bets for keyboard users, emotes shown only from seated players, a page fade
   (`.page-in`, opacity only: a transform would trap the fixed control bars) and a rolling header balance.
   The site links to its public repo from the landing page and the footer (`GitHubLink`).
@@ -673,10 +686,10 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/solo.cjs /tmp/shots         # the eight Phase 6 games, a resumed hand, phone widths (29 checks)
    node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (44 checks)
    node scripts/e2e/social.cjs /tmp/shots       # stage 7: rewards, profile, locker, friends, join their table, leaderboards (24 checks)
-   node scripts/e2e/tournaments.cjs /tmp/shots  # stage 8: freeroll, showdown, heads-up Sit & Go, first-visit guide (30 checks)
-   node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban (18 checks)
+   node scripts/e2e/tournaments.cjs /tmp/shots  # stage 8: freeroll, showdown, heads-up Sit & Go, first-visit guide (29 checks)
+   node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban, site maintenance (22 checks)
    node scripts/e2e/live.cjs /tmp/shots         # stage 9 part 2: missions, season track, inbox, table invite (17 checks; season checks need a running season)
-   node scripts/e2e/clubs.cjs /tmp/shots        # stage 9 part 3: clubs, ticker, head-to-head, personal records (14 checks)
+   node scripts/e2e/clubs.cjs /tmp/shots        # stage 9 part 3: clubs, ticker, head-to-head, personal records (16 checks)
    node scripts/e2e/events.cjs /tmp/shots       # stage 9 part 4: favourites, VP hint, auto-spin, formats, a three-player Main Event, trophies (20 checks)
    node scripts/e2e/stage10.cjs /tmp/shots      # stage 10 part 1: the six dealer card games, a resumed hand, two video poker machines, phone widths (23 checks)
    node scripts/e2e/stage10b.cjs /tmp/shots     # stage 10 part 2: four blackjack variants, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, phone widths (23 checks)

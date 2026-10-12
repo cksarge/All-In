@@ -15,7 +15,7 @@ const REASONS: Record<string, string> = {
   push: 'Push',
   table_sit: 'Took a seat',
   table_leave: 'Left the table',
-  table_chips_in: 'Chips to the poker table',
+  table_chips_in: 'Chips to the table',
   table_chips_out: 'Chips back from the table',
   poker_pot: 'Poker pot',
   jackpot: 'Jackpot win',
