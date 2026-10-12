@@ -41,7 +41,8 @@ function groups(cards: number[]): number[][] {
 }
 
 export function suggestHolds(hand: number[], game: string, made: string | null): Hint {
-  return game === 'video_poker_deuces' ? deuces(hand, made) : jacks(hand, made);
+  // Bonus and Double Bonus are played very nearly like Jacks or Better.
+  return game === 'video_poker_deuces' ? deuces(hand, made) : jacks(hand, made === 'four_aces' || made === 'four_low' ? 'four_kind' : made);
 }
 
 function jacks(hand: number[], made: string | null): Hint {

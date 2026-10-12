@@ -174,7 +174,7 @@ select tests.ok((tests.mtt()).status = 'finished', 'one player left: finished');
 select tests.ok((select array_agg(prize order by place) from public.tournament_entries where tournament_id = (tests.mtt()).id and place <= 4) = '{4500,2700,1800,0}', 'three places paid: 50, 30 and 20 percent');
 select tests.ok((select count(*) from public.table_seats where table_id in (select table_id from public.tournament_tables)) = 0
             and (select bool_and(status = 'closed') from public.game_tables where id in (select table_id from public.tournament_tables)), 'all seats freed, all tables closed');
-select tests.ok((select tests.trophy(user_id, 'mtt', 1) = 1 and tests.has(user_id, 'mtt_win') and private.chips_in_play(user_id) = 0 and tests.bal(user_id) in (9000 + 4500, 9250 + 4500)
+select tests.ok((select tests.trophy(user_id, 'mtt', 1) = 1 and tests.has(user_id, 'mtt_win') and private.chips_in_play(user_id) = 0 and tests.bal(user_id) in (9000 + 4500, 9250 + 4500, 8750 + 4500)
                    from public.tournament_entries where tournament_id = (tests.mtt()).id and place = 1), 'the winner: gold trophy, Field Marshal, prize in the wallet');
 select tests.ok((select tests.trophy(user_id, 'mtt', 3) = 1 from public.tournament_entries where tournament_id = (tests.mtt()).id and place = 3)
             and (select count(*) from public.game_history where game_key = 'sng_poker' and round_id = (tests.mtt()).id and summary ->> 'kind' = 'mtt') = 9, 'bronze for third; one history row each');

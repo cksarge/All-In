@@ -3,7 +3,7 @@ import { cn } from './cn';
 type IconKind = 'cards' | 'spade' | 'wheel' | 'dice' | 'seven' | 'grid' | 'diamond' | 'chart' | 'pegs' | 'ticket';
 
 export function iconForGame(key: string): IconKind {
-  if (key.startsWith('poker_') || key === 'three_card_poker' || key === 'pai_gow_poker' || key === 'ultimate_holdem') return 'spade';
+  if (key.startsWith('poker_') || ['three_card_poker', 'pai_gow_poker', 'ultimate_holdem', 'caribbean_stud', 'casino_holdem', 'let_it_ride', 'mississippi_stud', 'four_card_poker', 'teen_patti', 'sng_poker'].includes(key)) return 'spade';
   if (['blackjack', 'baccarat', 'dragon_tiger', 'casino_war'].includes(key) || key.startsWith('video_poker')) return 'cards';
   if (key === 'roulette' || key === 'money_wheel') return 'wheel';
   if (key === 'craps' || key === 'sic_bo') return 'dice';

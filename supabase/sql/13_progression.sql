@@ -143,6 +143,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('avatar_medal',    'avatar', 'Gold Medal',     null, 150),
   ('avatar_clipboard', 'avatar', 'To-Do List',    null, 160),
   ('avatar_swords',   'avatar', 'Crossed Swords', null, 170),
+  ('avatar_jester',   'avatar', 'The Jester',     null, 175),
 
   ('frame_none',      'frame',  'No frame',       1,    10),
   ('frame_felt',      'frame',  'Felt Green',     3,    20),
@@ -172,6 +173,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_contender',    'title', 'Contender',      null, 140),
   ('title_taskmaster',   'title', 'Taskmaster',     null, 160),
   ('title_founder',      'title', 'Founder',        null, 165),
+  ('title_trail_blazer', 'title', 'Trail Blazer',   null, 168),
   ('title_field_marshal', 'title', 'Field Marshal', null, 167),
   ('title_season_veteran', 'title', 'Season Veteran', null, 170),
   ('title_tournament_champion', 'title', 'Tournament Champion', null, 150),
@@ -184,6 +186,7 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('back_diamond',    'card_back', 'Diamond',        35, 60),
   ('back_tournament', 'card_back', 'Tournament Gold', null, 70),
   ('back_planner',    'card_back', 'Day Planner',   null, 75),
+  ('back_aces',       'card_back', 'Four Aces',     null, 78),
 
   ('felt_classic',    'felt', 'Classic Green',  1,  10),
   ('felt_midnight',   'felt', 'Midnight Blue',  6,  20),
@@ -258,6 +261,10 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('season_done',     'Season Finale',     'Reach the end of a season track.',            'missions', 'seasons_done',  1,   5000,  1000, 'title_season_veteran', 770),
   ('invite_first',    'Good Host',         'Invite a friend to your table.',              'social',   'invites_sent',  1,   250,   50,   null,                805),
 
+  ('joker_wild',      'Joker''s Wild',     'Make a royal flush or five of a kind in Joker Poker.',  'feats', 'joker_big',  1, 5000, 500, 'avatar_jester',      581),
+  ('four_aces',       'Four Bullets',      'Hit four aces in Bonus or Double Bonus Poker.',         'feats', 'four_aces',  1, 2500, 300, 'back_aces',          582),
+  ('trail_blazer',    'Trail Blazer',      'Be dealt a trail (three of a kind) in Teen Patti.',     'feats', 'trails',     1, 2500, 300, 'title_trail_blazer', 583),
+  ('full_ride',       'Let It All Ride',   'Win at Let It Ride with all three bets still down.',    'feats', 'full_rides', 1, 1000, 150, null,                 584),
   ('headliner',       'Headliner',         'Land a win big enough for the lounge''s big-win ticker.', 'feats', 'big_wins', 1, 2500, 300, 'frame_spotlight', 590),
   ('nemesis',         'Nemesis',           'Beat the same player 10 times at poker.',     'feats',    'h2h_best',      10,  2500,  300,  'avatar_swords',     595),
   ('club_member',     'Clubbable',         'Join or start a club.',                       'social',   'clubs_joined',  1,   500,   100,  null,                806),
@@ -353,6 +360,11 @@ begin
   if r.game_key = 'crash' and (s ->> 'collected_at')::numeric >= 10 then v_bump := array_append(v_bump, 'crash_10x'); end if;
   if r.game_key = 'bingo' and (s ->> 'line_at')::integer <= 20 then v_bump := array_append(v_bump, 'bingo_fast'); end if;
   if r.game_key = 'keno' and (s ->> 'picks')::integer >= 5 and s ->> 'hits' = s ->> 'picks' then v_bump := array_append(v_bump, 'keno_perfect'); end if;
+  -- Stage 10 games.
+  if r.game_key = 'video_poker_joker' and s ->> 'made' in ('natural_royal', 'wild_royal', 'five_kind') then v_bump := array_append(v_bump, 'joker_big'); end if;
+  if r.game_key in ('video_poker_bonus', 'video_poker_double') and s ->> 'made' = 'four_aces' then v_bump := array_append(v_bump, 'four_aces'); end if;
+  if r.game_key = 'teen_patti' and s ->> 'made' = 'trail' then v_bump := array_append(v_bump, 'trails'); end if;
+  if r.game_key = 'let_it_ride' and s ->> 'outcome' = 'win' and (s #>> '{bets,bet}')::bigint = 3 * (s ->> 'main')::bigint then v_bump := array_append(v_bump, 'full_rides'); end if;
   -- Tournaments (14_tournaments.sql) record one round per player when they end.
   if r.game_key in ('sng_poker', 'slot_showdown') then
     v_bump := array_append(v_bump, 'tourney_played');

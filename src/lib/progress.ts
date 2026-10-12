@@ -107,6 +107,7 @@ export const AVATAR_GLYPH: Record<string, string | null> = {
   avatar_medal: '🥇',
   avatar_clipboard: '📋',
   avatar_swords: '⚔️',
+  avatar_jester: '🎭',
 };
 
 /** Ring around the avatar: a border colour, or a gradient for the fancy ones. */
@@ -134,6 +135,7 @@ export const CARD_BACKS: Record<string, { base: string; line: string }> = {
   back_diamond: { base: '#28506b', line: '232,244,255' },
   back_tournament: { base: '#5f4812', line: '255,244,207' },
   back_planner: { base: '#1f4a4a', line: '214,244,236' },
+  back_aces: { base: '#101014', line: '226,90,104' },
 };
 
 /** Table felts: base colour and the soft light in the middle. */

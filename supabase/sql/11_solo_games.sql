@@ -92,6 +92,21 @@ as $fn$
                 "four_kind": 4, "full_house": 4, "flush": 3, "straight": 2, "three_kind": 1},
     "rtp": 99.7
   },
+  "video_poker_bonus": {
+    "returns": {"royal_flush": 800, "straight_flush": 50, "four_aces": 80, "four_low": 40, "four_kind": 25, "full_house": 8,
+                "flush": 5, "straight": 4, "three_kind": 3, "two_pair": 2, "jacks_or_better": 1},
+    "rtp": 99.2
+  },
+  "video_poker_double": {
+    "returns": {"royal_flush": 800, "straight_flush": 50, "four_aces": 160, "four_low": 80, "four_kind": 50, "full_house": 9,
+                "flush": 7, "straight": 5, "three_kind": 3, "two_pair": 1, "jacks_or_better": 1},
+    "rtp": 99.1
+  },
+  "video_poker_joker": {
+    "returns": {"natural_royal": 800, "five_kind": 200, "wild_royal": 100, "straight_flush": 50, "four_kind": 18, "full_house": 7,
+                "flush": 5, "straight": 3, "three_kind": 2, "two_pair": 1, "kings_or_better": 1},
+    "rtp": 99.3, "joker": true
+  },
   "three_card_poker": {
     "pair_plus": {"straight_flush": 40, "three_kind": 30, "straight": 6, "flush": 4, "pair": 1},
     "ante_bonus": {"straight_flush": 5, "three_kind": 4, "straight": 1}
@@ -426,13 +441,42 @@ declare
   v_pairs integer;
   v_run boolean;
 begin
-  if p_game = 'video_poker_jacks' then
+  -- Joker Poker: 53 cards, the joker (52) is wild, and a pair of kings is the lowest paying hand.
+  if p_game = 'video_poker_joker' then
+    if 52 = any (p_hand) then
+      -- The joker becomes whichever card makes the best hand.
+      select max(private.cg_score5((select array_agg(private.cg_r(x)) from unnest(p_hand) x where x <> 52) || j.r,
+                                   (select array_agg(private.cg_s(x)) from unnest(p_hand) x where x <> 52) || j.s))
+        into v from (select r, s from generate_series(2, 14) r, generate_series(0, 3) s) j;
+    else
+      v := private.cg_score5((select array_agg(private.cg_r(x)) from unnest(p_hand) x),
+                             (select array_agg(private.cg_s(x)) from unnest(p_hand) x));
+    end if;
+    v_cat := v / 759375;
+    return case
+      when v_cat = 9 then 'five_kind'
+      when v_cat = 8 and (v / 50625) % 15 = 14 then case when 52 = any (p_hand) then 'wild_royal' else 'natural_royal' end
+      when v_cat = 8 then 'straight_flush'
+      when v_cat = 7 then 'four_kind'
+      when v_cat = 6 then 'full_house'
+      when v_cat = 5 then 'flush'
+      when v_cat = 4 then 'straight'
+      when v_cat = 3 then 'three_kind'
+      when v_cat = 2 then 'two_pair'
+      when v_cat = 1 and (v / 50625) % 15 >= 13 then 'kings_or_better'
+    end;
+  end if;
+
+  -- Jacks or Better and its two bonus paytables (which pay four of a kind by rank).
+  if p_game in ('video_poker_jacks', 'video_poker_bonus', 'video_poker_double') then
     v := private.cg_score5((select array_agg(private.cg_r(x)) from unnest(p_hand) x),
                            (select array_agg(private.cg_s(x)) from unnest(p_hand) x));
     v_cat := v / 759375;
     return case
       when v_cat = 8 and (v / 50625) % 15 = 14 then 'royal_flush'
       when v_cat = 8 then 'straight_flush'
+      when v_cat = 7 and p_game <> 'video_poker_jacks' and (v / 50625) % 15 = 14 then 'four_aces'
+      when v_cat = 7 and p_game <> 'video_poker_jacks' and (v / 50625) % 15 between 2 and 4 then 'four_low'
       when v_cat = 7 then 'four_kind'
       when v_cat = 6 then 'full_house'
       when v_cat = 5 then 'flush'
@@ -486,7 +530,7 @@ declare
   v_state jsonb;
   v_id   uuid;
 begin
-  if p_game not in ('video_poker_jacks', 'video_poker_deuces') then
+  if p_game not like 'video\_poker\_%' or private.solo_cfg(p_game) -> 'returns' is null then
     raise exception 'unknown_game';
   end if;
   if not exists (select 1 from public.games where key = p_game and released) then
@@ -501,7 +545,8 @@ begin
   v_tier := private.slot_tier(p_game, p_bet);
   perform private.assert_tier_access(v_uid, p_game, v_tier);
 
-  v_deck := private.shuffled_shoe(1);
+  -- Joker Poker is dealt from 53 cards.
+  v_deck := case when (private.solo_cfg(p_game) ->> 'joker')::boolean then private.pgw_deck() else private.shuffled_shoe(1) end;
   v_hand := v_deck[1:5];
   v_state := jsonb_build_object('hand', to_jsonb(v_hand), 'bet', p_bet, 'made', private.vp_eval(p_game, v_hand));
   v_id := private.solo_begin(v_uid, p_game, v_tier, p_bet, v_state, v_deck[6:10], null);
@@ -528,7 +573,7 @@ declare
   v_win  bigint;
   v_balance bigint;
 begin
-  if p_game not in ('video_poker_jacks', 'video_poker_deuces') then
+  if p_game not like 'video\_poker\_%' or private.solo_cfg(p_game) -> 'returns' is null then
     raise exception 'unknown_game';
   end if;
   if p_holds is null or cardinality(p_holds) <> 5 or array_position(p_holds, null) is not null then
@@ -1167,7 +1212,8 @@ grant select on public.solo_rounds to authenticated;
 -- -----------------------------------------------------------------------------
 update public.games set released = true
  where key in ('baccarat', 'video_poker_jacks', 'video_poker_deuces', 'three_card_poker',
-               'pai_gow_poker', 'sic_bo', 'keno', 'money_wheel');
+               'pai_gow_poker', 'sic_bo', 'keno', 'money_wheel',
+               'video_poker_bonus', 'video_poker_double', 'video_poker_joker');
 
 revoke execute on all functions in schema private from public, anon, authenticated;
 grant execute on function private.can_view_table(uuid) to authenticated;

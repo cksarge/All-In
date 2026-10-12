@@ -79,10 +79,19 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 7 | XP and levels, achievements, earned cosmetics + locker, leaderboards, profiles, friends with "join their table" | ✅ built on `main` |
 | 8 | Tournaments (Sit & Go poker, Slot Showdowns, Daily Freeroll) + polish: sounds, animations, first-visit guides, accessibility, mobile | ✅ built on `main` |
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
-| 10 | **More games (the user's list, below)** | **Next** |
+| 10 | **More games (the user's list, below), in four parts** | **Part 1 built on `main`; parts 2 to 4 next** |
 
-**User action pending for stage 9 part 4:** re-run `13_progression.sql`, `14_tournaments.sql` and
-`17_clubs_records.sql`, then run the new `18_tournaments_plus.sql`. No dashboard settings, no new realtime tables.
+**User action pending for stage 10 part 1:** re-run `03_games_and_stakes.sql`, `11_solo_games.sql` and
+`13_progression.sql`, then run the new `19_table_poker.sql`. No dashboard settings, no new realtime tables.
+(Also still to run if not done: `13_progression.sql` carries the Plinko XP change.)
+
+### Stage 10 plan (agreed 2026-10-11; the user's answers: blackjack variants solo, horse racing a shared live
+race, Teen Patti both against the dealer and at player-against-player tables)
+1. ✅ Video poker (Bonus, Double Bonus, Joker) and six dealer card games (`19_table_poker.sql`).
+2. Blackjack variants, all solo: Spanish 21, Blackjack Switch, Free Bet Blackjack, Pontoon. Quick games: Red Dog,
+   Hi-Lo, Andar Bahar, Chuck-a-Luck.
+3. Player-against-player poker in the 09 engine: Short Deck, Razz, 2-7 Triple Draw, Badugi.
+4. Horse racing as a live room (like Crash), and Teen Patti tables (player against player; a new betting engine).
 
 ### Stage 9: what the user asked for (2026-10-11), delivered in parts, each committed and tested
 1. ✅ **Admin and moderation** (`15_moderation.sql`): hidden `/admin` page for the account called Carter, reports,
@@ -432,6 +441,24 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      lounge (kept per device in the settings store; `QuickStart` notes each game opened), sixteen emotes
      (appended, because emotes travel as list positions).
 
+19. `19_table_poker.sql` (stage 10 part 1): Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four
+    Card Poker and Teen Patti (against the dealer), **on one engine**. Their `games` rows are in file 3.
+   - `tp_deal(game, tier, bets)` then `tp_act(game, action)` until the returned state has `final: true`. The open
+     hand is a `solo_rounds` row; **`state.actions` lists what the player may do next and what each costs**
+     (`private.tp_actions`), so the browser holds no rules. `game_info(game)` has the paytables (`private.tp_cfg`)
+     and any hand left open. One React component serves all six: `src/components/tablepoker/TablePokerGame.tsx`
+     (`LAYOUTS[game]` = card counts, spot labels and rules text; `useSoloGame(key, 'game_info')`).
+   - Evaluators: `private.tp_score5` (five cards, via `cg_score5`), `private.fc_best` (best four of five or six;
+     three of a kind beats a flush beats a straight), `private.tpt_score` (Teen Patti: trail, pure sequence,
+     sequence, colour, pair; A-K-Q then A-2-3 lead), and `private.pk_best` from file 9 for Casino Hold'em.
+   - Let It Ride takes three bets up front and returns a pulled-back bet at once with ledger reason `refund`; only
+     the bets left riding count as wagered. Elsewhere later bets are taken as they are made.
+   - Payouts are the standard published paytables; house edges were **not** measured by simulation here.
+   - Video poker's three new machines are in file 11: `private.vp_eval` gained Bonus / Double Bonus (four of a
+     kind paid by rank: `four_aces`, `four_low`) and Joker Poker (53 cards from `private.pgw_deck()`, joker = 52,
+     best of the 52 substitutions, kings or better). The Hint button uses the Jacks or Better list for the bonus
+     machines and is hidden on Joker Poker.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -570,6 +597,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/live.cjs /tmp/shots         # stage 9 part 2: missions, season track, inbox, table invite (17 checks; season checks need a running season)
    node scripts/e2e/clubs.cjs /tmp/shots        # stage 9 part 3: clubs, ticker, head-to-head, personal records (14 checks)
    node scripts/e2e/events.cjs /tmp/shots       # stage 9 part 4: favourites, VP hint, auto-spin, formats, a three-player Main Event, trophies (20 checks)
+   node scripts/e2e/stage10.cjs /tmp/shots      # stage 10 part 1: the six dealer card games, a resumed hand, two video poker machines, phone widths (23 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

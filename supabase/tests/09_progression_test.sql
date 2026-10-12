@@ -44,7 +44,7 @@ select tests.ok(not exists (select 1 from public.achievements a where not (priva
                               and a.metric not in ('jackpots', 'royals', 'straight_flushes', 'slot_features', 'crash_10x', 'mines_cleared',
                                                    'bingo_fast', 'keno_perfect', 'best_streak', 'max_multiple',
                                                    'tourney_played', 'tourney_wins', 'sng_wins', 'showdown_wins', 'freeroll_podiums',
-                                                   'missions_done', 'weeklies_done', 'daily_sweeps', 'season_tiers', 'seasons_done', 'invites_sent', 'big_wins', 'h2h_best', 'clubs_joined', 'clubs_founded', 'mtt_wins', 'trophies', 'cards_shown')), 'every achievement measures something that exists');
+                                                   'missions_done', 'weeklies_done', 'daily_sweeps', 'season_tiers', 'seasons_done', 'invites_sent', 'big_wins', 'h2h_best', 'clubs_joined', 'clubs_founded', 'mtt_wins', 'trophies', 'cards_shown', 'joker_big', 'four_aces', 'trails', 'full_rides')), 'every achievement measures something that exists');
 
 -- ----------------------------------------------------------------------------
 -- A new player

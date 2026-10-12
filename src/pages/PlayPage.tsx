@@ -17,6 +17,7 @@ import { SicBoGame } from '@/components/solo/SicBoGame';
 import { ThreeCardGame } from '@/components/solo/ThreeCardGame';
 import { VideoPokerGame } from '@/components/solo/VideoPokerGame';
 import { WheelGame } from '@/components/solo/WheelGame';
+import { TablePokerGame } from '@/components/tablepoker/TablePokerGame';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/States';
 
@@ -31,10 +32,13 @@ export default function PlayPage() {
   );
 }
 
+const TABLE_POKER = new Set(['caribbean_stud', 'casino_holdem', 'let_it_ride', 'mississippi_stud', 'four_card_poker', 'teen_patti']);
+
 function Game({ gameKey }: { gameKey: string }) {
   const navigate = useNavigate();
   if (gameKey.startsWith('slots_')) return <SlotMachine key={gameKey} gameKey={gameKey} />;
   if (gameKey.startsWith('video_poker_')) return <VideoPokerGame key={gameKey} gameKey={gameKey} />;
+  if (TABLE_POKER.has(gameKey)) return <TablePokerGame key={gameKey} gameKey={gameKey} />;
   if (gameKey === 'baccarat') return <BaccaratGame />;
   if (gameKey === 'three_card_poker') return <ThreeCardGame />;
   if (gameKey === 'pai_gow_poker') return <PaiGowGame />;

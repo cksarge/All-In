@@ -32,9 +32,10 @@ export const spotTotal = (bets: Spots) => Object.values(bets).reduce((n, v) => n
 
 /**
  * Loads a game's rules and any round in progress, and wraps its RPCs.
- * `infoFn`: 'solo_info' for the games in 11_solo_games.sql, 'more_info' for 12_more_games.sql.
+ * `infoFn`: 'solo_info' for the games in 11_solo_games.sql, 'more_info' for 12_more_games.sql,
+ * 'game_info' for the dealer card games in 19_table_poker.sql.
  */
-export function useSoloGame<C, R = Record<string, unknown>>(game: string, infoFn: 'solo_info' | 'more_info' = 'solo_info') {
+export function useSoloGame<C, R = Record<string, unknown>>(game: string, infoFn: 'solo_info' | 'more_info' | 'game_info' = 'solo_info') {
   const [info, setInfo] = useState<SoloInfo<C, R> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,6 +104,17 @@ export const HAND_NAMES: Record<string, string> = {
   four_deuces: 'Four deuces',
   wild_royal: 'Wild royal flush',
   five_kind: 'Five of a kind',
+  four_aces: 'Four aces',
+  four_low: 'Four 2s, 3s or 4s',
+  kings_or_better: 'Kings or better',
+  tens_or_better: 'Tens or better',
+  low_pair: 'A low pair',
+  mid_pair: 'Pair of sixes to tens',
+  pair_aces: 'Pair of aces',
+  trail: 'Trail',
+  pure_sequence: 'Pure sequence',
+  sequence: 'Sequence',
+  colour: 'Colour',
 };
 
 export const WHEEL_LABELS: Record<string, string> = {
@@ -123,6 +135,9 @@ export function historyLine(game: string, s: Record<string, unknown>): string {
       return `${s.outcome === 'tie' ? 'Tie' : s.outcome === 'banker' ? 'Banker' : 'Player'} · ${s.player_total} to ${s.banker_total}`;
     case 'video_poker_jacks':
     case 'video_poker_deuces':
+    case 'video_poker_bonus':
+    case 'video_poker_double':
+    case 'video_poker_joker':
       return made ?? 'No win';
     case 'three_card_poker':
       return `${made ?? 'Hand'} · ${
@@ -144,6 +159,13 @@ export function historyLine(game: string, s: Record<string, unknown>): string {
           String(s.outcome)
         ] ?? 'Hand'
       );
+    case 'caribbean_stud':
+    case 'casino_holdem':
+    case 'let_it_ride':
+    case 'mississippi_stud':
+    case 'four_card_poker':
+    case 'teen_patti':
+      return `${made ?? 'Hand'} · ${{ win: 'won', lose: 'lost', tie: 'tied', push: 'bets returned', fold: 'folded', no_qualify: 'dealer did not qualify' }[String(s.outcome)] ?? ''}`;
     case 'ultimate_holdem':
       return `${made ?? 'Hand'} · ${{ win: 'won', lose: 'lost', tie: 'tied', fold: 'folded' }[String(s.outcome)] ?? ''}`;
     case 'plinko':

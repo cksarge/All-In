@@ -31,6 +31,9 @@ interface Final extends Round {
 const ORDER: Record<string, string[]> = {
   video_poker_jacks: ['royal_flush', 'straight_flush', 'four_kind', 'full_house', 'flush', 'straight', 'three_kind', 'two_pair', 'jacks_or_better'],
   video_poker_deuces: ['natural_royal', 'four_deuces', 'wild_royal', 'five_kind', 'straight_flush', 'four_kind', 'full_house', 'flush', 'straight', 'three_kind'],
+  video_poker_bonus: ['royal_flush', 'straight_flush', 'four_aces', 'four_low', 'four_kind', 'full_house', 'flush', 'straight', 'three_kind', 'two_pair', 'jacks_or_better'],
+  video_poker_double: ['royal_flush', 'straight_flush', 'four_aces', 'four_low', 'four_kind', 'full_house', 'flush', 'straight', 'three_kind', 'two_pair', 'jacks_or_better'],
+  video_poker_joker: ['natural_royal', 'five_kind', 'wild_royal', 'straight_flush', 'four_kind', 'full_house', 'flush', 'straight', 'three_kind', 'two_pair', 'kings_or_better'],
 };
 
 export function VideoPokerGame({ gameKey }: { gameKey: string }) {
@@ -42,6 +45,8 @@ export function VideoPokerGame({ gameKey }: { gameKey: string }) {
 function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType<typeof useSoloGame>['call'] }) {
   const game = info.game;
   const deuces = game === 'video_poker_deuces';
+  const joker = game === 'video_poker_joker';
+  const isWild = (card: number | undefined) => card !== undefined && (joker ? card === 52 : deuces && card % 13 === 1);
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const big = useMediaQuery('(min-width: 640px)');
   // A hand left open (page closed before the draw) is picked up where it was.
@@ -128,7 +133,7 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
       controls={
         <>
           <BetStepper bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy || Boolean(round)} tiers={info.tiers} />
-          {round && (
+          {round && !joker && (
             <Button variant="outline" disabled={busy} onClick={showHint}>
               Hint
             </Button>
@@ -151,13 +156,25 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
                 <li>Because wilds make hands easier, the lowest paying hand is three of a kind. A pair or two pair pays nothing.</li>
                 <li>A &quot;natural&quot; royal flush has no deuces. Four deuces is the second best hand.</li>
               </>
+            ) : joker ? (
+              <>
+                <li>The deck has 53 cards: the <strong className="text-ivory">joker is wild</strong> and becomes whatever card makes your hand best.</li>
+                <li>The lowest paying hand is a pair of kings or aces. Smaller pairs pay nothing.</li>
+                <li>A &quot;natural&quot; royal flush has no joker. Five of a kind needs the joker.</li>
+              </>
             ) : (
               <>
+                {game !== 'video_poker_jacks' && (
+                  <li>
+                    Four of a kind pays by rank: <strong className="text-ivory">four aces</strong> most, then four 2s, 3s or 4s, then the rest.
+                    {game === 'video_poker_double' && ' Two pair only returns your bet, which is what pays for the bigger fours.'}
+                  </li>
+                )}
                 <li>The lowest paying hand is a pair of jacks, queens, kings or aces, which returns your bet.</li>
                 <li>Smaller pairs pay nothing, but they are still worth keeping to draw to three of a kind.</li>
               </>
             )}
-            <li>Each hand uses a fresh 52-card deck. If you leave before drawing, the hand waits for you.</li>
+            <li>Each hand uses a fresh {joker ? '53' : '52'}-card deck. If you leave before drawing, the hand waits for you.</li>
           </ul>
           <p className="rounded-xl border border-white/10 p-3 text-xs text-muted">
             Played perfectly, this paytable returns about {info.config.rtp}%. Mistakes in which cards to keep lower that. Play chips
@@ -197,8 +214,8 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
               <span aria-hidden={!held} className={cn('h-4 text-[0.65rem] font-bold uppercase tracking-wider', held ? 'text-gold-300' : 'text-transparent')}>Held</span>
               <PlayingCard key={`${id}-${i}-${card ?? 'x'}`} card={card ?? null} size={big ? 'lg' : 'md'} index={i} highlight={held} />
               <span
-                aria-hidden={!(deuces && card !== undefined && card % 13 === 1)}
-                className={cn('h-3 text-[0.6rem] font-bold uppercase tracking-wider', deuces && card !== undefined && card % 13 === 1 ? 'text-sapphire-300' : 'text-transparent')}
+                aria-hidden={!isWild(card)}
+                className={cn('h-3 text-[0.6rem] font-bold uppercase tracking-wider', isWild(card) ? 'text-sapphire-300' : 'text-transparent')}
               >
                 Wild
               </span>

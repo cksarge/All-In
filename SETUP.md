@@ -30,6 +30,7 @@ look for the same setting name under **Authentication**.
 16. `16_missions_seasons.sql`
 17. `17_clubs_records.sql`
 18. `18_tournaments_plus.sql`
+19. `19_table_poker.sql`
 
 Every file is safe to re-run. See `supabase/sql/README.md` for what each one does.
 
