@@ -5,7 +5,7 @@ export type MotionPreference = 'system' | 'reduce' | 'full';
 
 interface SettingsState {
   soundOn: boolean;
-  /** Background music (separate from the sound effects), and how loud: 0 to 100. */
+  /** The lounge's background music (separate from the sound effects), and how loud: 0 to 100. */
   musicOn: boolean;
   musicVolume: number;
   setMusicOn: (on: boolean) => void;

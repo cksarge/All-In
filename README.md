@@ -34,7 +34,7 @@ It builds to a static site.
 - **Social:** friends, clubs, leaderboards, profiles with records, and chat: typed (filtered, with a reputation that
   good and bad behaviour moves) and quick preset phrases.
 - **Moderation:** reports, blocks, an admin page, and a site maintenance switch.
-- **Music:** drop audio files into `src/assets/music/` (see the README there) and they play in a random order.
+- **Music:** one track looped in the lounge (`src/assets/music/`, with its licence in `CREDITS.txt`).
 - **Terms of Service and Privacy Policy** at `/terms` and `/privacy`, agreed to at sign-up (their shared facts,
   such as the contact address and effective date, are in `src/lib/legal.ts`).
 
@@ -53,7 +53,7 @@ It builds to a static site.
 │   └── e2e/                 local two-browser end-to-end tests (see CLAUDE.md)
 ├── src/
 │   ├── App.tsx, main.tsx, index.css (design tokens)
-│   ├── assets/music/        background music: add tracks here, and their licences in CREDITS.txt
+│   ├── assets/music/        the lounge's music track, and its licence in CREDITS.txt
 │   ├── components/
 │   │   ├── ui/, layout/, auth/, economy/, onboarding/, settings/, account/
 │   │   ├── table/           what every live table shares (header, timers, quick chat, seats)
