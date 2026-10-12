@@ -30,6 +30,13 @@ for pass in 1 2; do
   echo "pass $pass: all migration files applied"
 done
 
+# The hand-run "is the database up to date?" check must agree with the files (before the tests replace functions).
+"${PSQL[@]}" -At -f "$ROOT/supabase/maintenance/check_database.sql" >"$WORK/check.txt"
+if grep -qE '^(MISSING|OUT OF DATE|NOT UP TO DATE)' "$WORK/check.txt"; then
+  echo "FAIL supabase/maintenance/check_database.sql is stale: run bash scripts/gen-db-check.sh"; head -20 "$WORK/check.txt"; exit 1
+fi
+echo "ok   check_database.sql ($(head -1 "$WORK/check.txt" | cut -d'|' -f3))"
+
 status=0
 for t in "$ROOT"/supabase/tests/*_test.sql; do
   if "${PSQL[@]}" -f "$t" >"$WORK/out.txt"; then echo "ok   $(basename "$t")"; else echo "FAIL $(basename "$t")"; tail -40 "$WORK/out.txt"; status=1; fi

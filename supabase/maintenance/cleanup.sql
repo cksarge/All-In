@@ -4,8 +4,26 @@
 -- Safe to run at any time, including while people are playing, and safe to re-run.
 --
 -- NEVER touched: accounts, profiles, wallets (balances), player stats, XP and levels,
--- achievements, cosmetics and loadouts, friends, the jackpot, the game catalogue,
--- seats, and anything still being played (open rounds, hands in progress, chips on a table).
+-- achievements, cosmetics and loadouts, friends, clubs, trophies, head-to-head records,
+-- season points, bans and blocks, the jackpot, the game catalogue, seats, and anything still
+-- being played (open rounds, hands in progress, chips on a table).
+--
+-- Every game is covered, by what it stores:
+--   * Table games keep rounds per table, trimmed below:
+--       blackjack; roulette; craps;
+--       all nine poker games (Hold'em, Omaha, Omaha Hi-Lo, Stud, Draw, Short Deck, Razz,
+--       2-7 Triple Draw, Badugi) and every tournament table, which share one set of tables.
+--   * Live rooms keep rounds, trimmed below: Crash, Bingo.
+--   * Everything else stores nothing but the player's History and chip activity, both trimmed
+--     below for every game at once: the six slots, the six video pokers, baccarat, Three Card
+--     Poker, Pai Gow, Sic Bo, keno, the wheel, Dragon Tiger, Casino War, Ultimate Hold'em,
+--     Plinko, Mines, scratch cards, Power Draw, Caribbean Stud, Casino Hold'em, Let It Ride,
+--     Mississippi Stud, Four Card Poker, Teen Patti against the dealer, Spanish 21, Blackjack
+--     Switch, Free Bet Blackjack, Pontoon, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, and the
+--     tournaments. (A hand left open in one of these is one small row and is never deleted:
+--     its chips are still in play.)
+--   * Not built yet (stage 10 part 4): horse racing and Teen Patti tables. Their steps are at
+--     the end and do nothing until those tables exist.
 --
 -- What goes (finished things only; every number is a setting below):
 --   * old rounds at each table: the last few stay because the screens show them
@@ -17,6 +35,8 @@
 --   * each player's History beyond their newest 25 rounds per game
 --   * each player's chip activity beyond their newest 100 entries
 --   * weekly leaderboard rows older than 8 weeks
+--   * missions older than 60 days, and old notifications
+--   * player reports settled more than 90 days ago, and admin log entries older than a year
 --
 -- One thing to know: after this, a player's chip activity no longer adds up to their
 -- balance from zero, because the oldest entries are gone. The balance itself is in
@@ -36,12 +56,16 @@ create temp table cleanup_keep as select
   50  as poker_hands,           -- per table (hand history goes back up to 50)
   30  as crash_rounds,          -- the room shows the last 20
   10  as bingo_rounds,
+  30  as race_rounds,           -- horse racing (stage 10 part 4)
+  50  as teen_patti_hands,      -- per Teen Patti table (stage 10 part 4)
   25  as history_per_game,      -- per player, per game (the History popups show 20 to 25)
   100 as ledger_rows,           -- per player (Recent activity shows 25)
   interval '1 day'   as closed_table_age,
   interval '1 day'   as settled_bet_age,
   interval '30 days' as tournament_age,
-  interval '8 weeks' as weekly_age;
+  interval '8 weeks' as weekly_age,
+  interval '90 days' as report_age,
+  interval '1 year'  as admin_log_age;
 
 -- ---- Closed tables (their rounds, hands and bets go with them) ---------------
 with d as (
@@ -163,6 +187,43 @@ with d as (
   delete from public.notifications where read_at < now() - interval '30 days' or created_at < now() - interval '90 days'
   returning 1)
 insert into cleanup_report (what, rows_deleted) select 'old notifications', count(*) from d;
+
+-- ---- Moderation: reports dealt with long ago, and the old end of the admin log ----
+-- (Open reports, bans, timeouts and blocks are never touched.)
+with d as (
+  delete from public.player_reports
+   where status <> 'open' and coalesce(resolved_at, created_at) < now() - (select report_age from cleanup_keep)
+  returning 1)
+insert into cleanup_report (what, rows_deleted) select 'settled reports', count(*) from d;
+
+with d as (
+  delete from public.admin_log where created_at < now() - (select admin_log_age from cleanup_keep)
+  returning 1)
+insert into cleanup_report (what, rows_deleted) select 'admin log entries', count(*) from d;
+
+-- ---- Stage 10 part 4, once it exists: horse racing and Teen Patti tables -----------
+-- Old finished races (bets and secrets go with them) and old finished Teen Patti hands
+-- (players, cards and decks go with them). Skipped while the tables are not there.
+do $$
+declare n bigint;
+begin
+  if to_regclass('public.race_rounds') is not null then
+    execute $q$
+      with ranked as (select id, phase, row_number() over (order by round_no desc) as n from public.race_rounds),
+      d as (delete from public.race_rounds r using ranked x
+             where x.id = r.id and x.phase = 'done' and x.n > (select race_rounds from cleanup_keep) returning 1)
+      select count(*) from d $q$ into n;
+    insert into cleanup_report (what, rows_deleted) values ('horse races', n);
+  end if;
+  if to_regclass('public.tpt_hands') is not null then
+    execute $q$
+      with ranked as (select id, phase, row_number() over (partition by table_id order by hand_no desc) as n from public.tpt_hands),
+      d as (delete from public.tpt_hands h using ranked x
+             where x.id = h.id and x.phase = 'settled' and x.n > (select teen_patti_hands from cleanup_keep) returning 1)
+      select count(*) from d $q$ into n;
+    insert into cleanup_report (what, rows_deleted) values ('teen patti hands', n);
+  end if;
+end $$;
 
 -- ---- Report --------------------------------------------------------------------
 select what, rows_deleted from cleanup_report

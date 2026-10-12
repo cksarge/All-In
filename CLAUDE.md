@@ -92,6 +92,9 @@ race, Teen Patti both against the dealer and at player-against-player tables)
    Hi-Lo, Andar Bahar, Chuck-a-Luck.
 3. ✅ (in `09_poker.sql`) Player-against-player poker in the 09 engine: Short Deck, Razz, 2-7 Triple Draw, Badugi.
 4. Horse racing as a live room (like Crash), and Teen Patti tables (player against player; a new betting engine).
+   **Table names are already promised** to `supabase/maintenance/cleanup.sql`, which trims them once they exist:
+   `race_rounds` (`round_no`, `phase` ending in `'done'`; bets and secrets cascade from it) and `tpt_hands`
+   (`table_id`, `hand_no`, `phase` ending in `'settled'`; players, cards and decks cascade from it).
 
 ### Stage 9: what the user asked for (2026-10-11), delivered in parts, each committed and tested
 1. ✅ **Admin and moderation** (`15_moderation.sql`): hidden `/admin` page for the account called Carter, reports,
@@ -147,6 +150,9 @@ index.html                           boot screen inside #root ("Shuffling up…"
 vite.config.ts                       VITE_BASE base path, spaFallback plugin (404.html), manualChunks, @ -> src
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner
+scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
+supabase/maintenance/                run by hand, not numbered: check_database.sql (is the live database up to date?),
+                                     cleanup.sql (frees space), maintenance_off.sql, season_bonus_2026_10.sql
 scripts/e2e/                         local end-to-end harness (see §9)
 supabase/sql/01…13_*.sql             the database, applied in order (see §7)
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
@@ -620,7 +626,11 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
 
 ## 9. Testing
 
-1. `npm run check` and `npm run test:sql` before every commit. SQL tests:
+1. `npm run check` and `npm run test:sql` before every commit. **After changing any SQL file run
+   `bash scripts/gen-db-check.sh`**: it rewrites `supabase/maintenance/check_database.sql`, the list (with a
+   fingerprint of every function body, and the file that last defined each thing) that the user runs on the live
+   database to see which files need re-running. `test:sql` fails while that file is stale. New tables that pile
+   up rows also need a step in `supabase/maintenance/cleanup.sql`. SQL tests:
    - impersonate users with `tests.as_user(uuid)` + `set role authenticated`;
    - use security-definer helpers to peek at hidden state;
    - stack decks by overriding `private.shuffled_shoe` / `private.random_int` in the test file.
