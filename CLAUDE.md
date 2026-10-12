@@ -287,7 +287,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
 13. `13_progression.sql`: XP, achievements, cosmetics, leaderboards, profiles, friends. **No game file knows
     about it.** It hangs off `private.record_round` (file 5) with two triggers:
    - `game_history` insert → `private.on_round_recorded`: XP (`private.round_xp`: 2 + sqrt(wager), ×1.5 for a
-     win), the counters in `player_progress.counters` (`private.round_counters` reads the round's `summary`
+     win; **Plinko alone earns sqrt(wager) / 4 with no flat 2**, because ten-ball drops at a 99% return made XP
+     nearly free: the user's fix, and the Plinko page says so), the counters in `player_progress.counters` (`private.round_counters` reads the round's `summary`
      for feats such as a jackpot, a royal flush or a cleared Mines field), and `weekly_stats`.
    - `player_game_stats` insert/update → `private.check_achievements`. It has to be this second trigger:
      `record_round` writes the history row **before** the stats, and most achievements read the stats.

@@ -33,6 +33,9 @@ select tests.ok((select bool_and(private.level_for_xp(private.xp_for_level(l)) =
                    from generate_series(2, 100) l), 'the two agree at every level');
 select tests.ok(private.round_xp(0, 0) = 2 and private.round_xp(100, 0) = 12 and private.round_xp(100, 200) = 18
             and private.round_xp(10000, 0) = 102 and private.round_xp(900000000, 0) = 1002, 'XP per round: 2 + sqrt(wager), half again for a win, capped');
+select tests.ok(private.round_xp(10, 0, 'plinko') = 0 and private.round_xp(10, 20, 'plinko') = 1 and private.round_xp(100, 0, 'plinko') = 2
+            and private.round_xp(100, 500, 'plinko') = 3 and private.round_xp(10000, 0, 'plinko') = 25 and private.round_xp(100, 0, 'keno') = 12,
+                'Plinko earns a quarter of the square root of the bet and no flat bonus; other games are unchanged');
 select tests.ok(not exists (select 1 from public.cosmetics c where c.unlock_level is null
                               and not exists (select 1 from public.achievements a where a.cosmetic_key = c.key)), 'every cosmetic can be earned');
 select tests.ok((select count(*) from public.cosmetics where unlock_level = 1) = 5

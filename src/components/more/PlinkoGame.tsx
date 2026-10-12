@@ -195,6 +195,11 @@ function Board({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
             <li><strong className="text-ivory">Risk</strong>: low risk pays a little almost every time. High risk pays very little in the middle and a lot at the edges.</li>
             <li><strong className="text-ivory">Balls</strong>: drop 1, 3, 5 or 10 at once. Each ball is its own bet at the amount shown, and you can press Drop again while others are still bouncing.</li>
             <li>The numbers under the board are multiples of your bet. Anything under ×1 gives back less than you bet.</li>
+            <li>
+              <strong className="text-ivory">Plinko earns less XP than other games.</strong> Balls drop fast and nearly all of the bet comes
+              back, so each ball earns a quarter of the square root of its bet, with no flat bonus: nothing for a 10-chip ball, 2 XP for a
+              100-chip ball, 7 for a 1,000-chip ball (half again if the ball pays more than it cost).
+            </li>
           </ul>
           <p className="rounded-xl border border-white/10 p-3 text-xs text-muted">
             Every combination of rows and risk returns about 99% over a very long run. The server decides each bounce. Play
@@ -246,6 +251,9 @@ function Board({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
         </div>
       </div>
       {!busy && tally.balls > 0 && <Outcome staked={tally.staked} win={tally.win} />}
+      <p className="mt-3 text-center text-xs text-muted">
+        Plinko earns less XP than other games: {Math.floor(Math.sqrt(bet) / 4)} XP per ball at this bet. See Rules.
+      </p>
     </SoloShell>
   );
 }

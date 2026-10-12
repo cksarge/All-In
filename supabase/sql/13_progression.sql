@@ -288,10 +288,16 @@ returns bigint language sql immutable set search_path = '' as $$
   select 100::bigint * (p_level - 1) * (p_level - 1)
 $$;
 
-create or replace function private.round_xp(p_wagered bigint, p_returned bigint)
+-- Plinko is the exception: a press drops up to ten balls, each its own round at about a 99% return,
+-- which made XP almost free. A ball earns a quarter of the square root of its bet and no flat 2
+-- (so a 10-chip ball earns nothing). The Plinko page says so.
+drop function if exists private.round_xp(bigint, bigint);
+create or replace function private.round_xp(p_wagered bigint, p_returned bigint, p_game text default null)
 returns integer language sql immutable set search_path = '' as $$
-  select ((2 + floor(sqrt(least(greatest(p_wagered, 0), 1000000)::numeric)))
-          * case when p_returned > p_wagered then 1.5 else 1 end)::integer
+  select floor(case when p_game = 'plinko'
+                    then sqrt(least(greatest(p_wagered, 0), 1000000)::numeric) / 4
+                    else 2 + floor(sqrt(least(greatest(p_wagered, 0), 1000000)::numeric)) end
+               * case when p_returned > p_wagered then 1.5 else 1 end)::integer
 $$;
 
 -- Chips for reaching a level.
@@ -471,7 +477,7 @@ begin
   update public.player_progress
      set counters = private.round_counters(counters, new)
    where user_id = new.user_id;
-  perform private.add_xp(new.user_id, private.round_xp(new.wagered, new.returned));
+  perform private.add_xp(new.user_id, private.round_xp(new.wagered, new.returned, new.game_key));
 
   insert into public.weekly_stats as w (user_id, week_start, rounds, wagered, returned)
   values (new.user_id, date_trunc('week', now() at time zone 'utc')::date, 1, new.wagered, new.returned)
