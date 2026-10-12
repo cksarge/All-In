@@ -81,24 +81,26 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
 | 10 | **More games (the user's list, below), in four parts** | ✅ all four parts built on `main` |
 | 11 | **Reputation and typed chat** (`22_reputation_chat.sql`), Terms of Service and Privacy Policy | ✅ built on `main` |
-| 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | **Part 1 built on `main`; part 2 next** |
+| 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | **Parts 1 and 2 built on `main`; part 3 next** |
 
-**User action pending for phase 11:** re-run `13_progression.sql` and `15_moderation.sql`, then run the new
-`22_reputation_chat.sql`, then run `supabase/maintenance/special_cosmetics.sql` again (it gives Carter the five
-reputation cosmetics for good). No dashboard settings (the file adds `player_reputation` to Realtime: 33 in all).
-Afterwards `supabase/maintenance/check_database.sql` should say OK. Stage 10 part 4's SQL (`03`, `17`, `21`) too, if
-not run yet.
+**User action pending for stage 12 part 2:** re-run `05_tables.sql`, `06_blackjack.sql`, `07_roulette.sql`,
+`08_craps.sql`, `09_poker.sql`, `21_racing_teen_patti.sql` and `22_reputation_chat.sql`, then run the new
+`23_social.sql`. No dashboard settings. Afterwards `supabase/maintenance/check_database.sql` should say OK.
+(Phase 11's SQL first, if not run yet: re-run `13` and `15`, run `22`, then `maintenance/special_cosmetics.sql`.)
 
 ### Stage 12 plan (the user's list of 2026-10-12, split into four parts like stages 9 and 10)
 1. ✅ **Quality of life, no SQL:** the music control in the top bar, bets and choices remembered per game, Rebet that
    survives a reload, auto-play for the one-step games, lounge search and filters, "Sit out next hand" and auto
    top-up, a confirmation before leaving with chips in play, a Stats button on every game, a size setting.
-2. **Social:** direct messages between friends, private tables with a waiting room, watching a friend's game.
+2. ✅ **Social:** direct messages between friends (in `22`), private tables with a waiting room (in `05`), watching a
+   friend's game (`23_social.sql`).
 3. **Events and practice:** private tournaments, club events, practice modes ("as many as possible"), and a seasonal
    game variant with **season-long missions worth up to 300 season points** tied to that season's game.
 4. **Admin:** a site stats page, chat log search, scheduled site notices and maintenance, an appeal form.
-Open questions to settle with the user before parts 2 to 4 (ask, don't guess): how long direct messages are kept;
-which game the seasonal variant is; what "practice" should cover first; who can watch a friend's table.
+**The user's answers (2026-10-12):** direct messages are friends only and kept at most 3 days. Watching a friend
+works for tables and solo games, with a way to join when the game is live. The seasonal game is a **different game
+each month**; it may be a slot machine, but then it must be special: its own effects and interesting gameplay, not a
+reskin (October 2026 is a slot). Practice modes: as many as possible: blackjack, video poker, poker, craps and more.
 
 ### Stage 10 plan (agreed 2026-10-11; the user's answers: blackjack variants solo, horse racing a shared live
 race, Teen Patti both against the dealer and at player-against-player tables)
@@ -129,8 +131,8 @@ Every part must come with its achievements, cosmetics and menu entries (standing
 
 ### Where things stand (2026-10-12)
 Everything planned has been built: stages 1 to 11. Nothing is designed or agreed beyond this. The site has
-**56 games** (15 table, 20 poker, 7 slots, 14 specialty; all released), **83 achievements**, 22 numbered SQL files
-making 70 tables (33 in Realtime), 19 SQL test files and 16 browser suites.
+**56 games** (15 table, 20 poker, 7 slots, 14 specialty; all released), **83 achievements**, 23 numbered SQL files
+making 71 tables (33 in Realtime), 20 SQL test files and 18 browser suites.
 
 Stage 10's 23 games, for reference: Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four Card Poker,
 Teen Patti against the dealer (19); Bonus, Double Bonus and Joker video poker (11); Spanish 21, Blackjack Switch,
@@ -157,14 +159,14 @@ vite.config.ts                       VITE_BASE base path, spaFallback plugin (40
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
-scripts/e2e/                         local end-to-end harness: 17 suites (see §9)
-supabase/sql/01…22_*.sql             the database, applied in order (see §7)
+scripts/e2e/                         local end-to-end harness: 18 suites (see §9)
+supabase/sql/01…23_*.sql             the database, applied in order (see §7)
 supabase/maintenance/                run by hand, not numbered, not applied by test:sql:
                                      check_database.sql (is the live database up to date? generated),
                                      cleanup.sql (frees space), maintenance_off.sql (opens a site closed for maintenance),
                                      season_bonus_2026_10.sql, special_cosmetics.sql (the Developer items), email_logs.sql
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
-supabase/tests/NN_*_test.sql         19 test files: tests.ok / tests.throws helpers, run as role authenticated
+supabase/tests/NN_*_test.sql         20 test files: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
 src/App.tsx                          routes: / signup login verify forgot-password how-chips-work terms privacy settings
                                      lounge lobby table/:id play/:gameKey join/:code
@@ -612,6 +614,29 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      the locker's "Reputation N+" tag, and "Reputation and chat" in the admin's player panel plus "Warn" and
      "False report" on each report.
 
+23. `23_social.sql` (stage 12 part 2), with the other two thirds of that part in 05 and 22.
+   - **Waiting rooms (in 05):** `game_tables.waiting`. `create_table(game, tier, private, variant, hosted)`: a private
+     table opened with `hosted` waits. While it does, `private.assert_table_started(table)` (called first thing by
+     `bj_place_bet`, `rl_place_bet`, `cr_place_bet`) raises `table_waiting`, and `pk_start_hand` / `tpt_start_hand`
+     deal nothing. `table_start(table)`: the host (`created_by`), or anyone seated once the host has left; it then
+     ticks poker or Teen Patti so the first hand is dealt at once. **A new table game must add one of these gates.**
+     Frontend: `WaitingRoom` (a banner above the table in `TablePage`, reading `game_tables` directly) and a
+     checkbox in the lobby's private-table popup (on by default).
+   - **Direct messages (in 22):** friends only, same table, filter, reputation rules and 3 days as all chat.
+     The browser names a conversation `dm:<the friend's id>`; `private.chat_channel` stores it under one name for
+     both sides (`dm:` + md5 of the two ids). `chat_allowed` requires an accepted friendship and no block either way.
+     `chat_fetch` on a `dm:` channel marks it read (hidden `dm_reads`); `dm_threads()` lists conversations with unread
+     counts. Clean direct messages do **not** earn reputation. The moderator can read them like any chat (the
+     Privacy Policy says so). Frontend: `useDm` (unread count, a toast for a new message), `DmModal` on the
+     Friends page (`/friends?dm=<id>` opens one), and `useChat` pairs the two browsers on a shared ping channel.
+   - **What friends are playing, and watching (23):** `PlayPage` reports the open game with `set_activity(game)`
+     (on open, every 45 s, and null on close) into the hidden `player_activity`. `friends_activity()` gives the
+     games friends have open (within 100 s); `friend_watch(user)` gives that friend's rounds at the game they
+     have open (last 15 minutes, 15 at most) and any **public** table they sit at. `set_watchable(false)` hides
+     all of it. Watching a table is just visiting it: anyone who can see a table can watch, and sit if there is
+     a seat. Frontend: `WatchModal` (polls every 3 s; "Play it too" / "Join the room" / "Watch the table" /
+     "Join their table") and the switch on the Friends page.
+
 **Conventions every game follows** (shared code in 05 never needs editing):
 - `private.<game>_tick_stale()`: finish expired rounds when nobody is watching (called from `list_tables`).
 - `private.<game>_in_play(uuid)`: chips riding on unfinished rounds; summed into
@@ -625,8 +650,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
   countdown hits zero and the server decides. No cron or edge functions.
 - **Hidden tables:** RLS on, no policies, `revoke all … from anon, authenticated`, never published to realtime.
   Today: `bj_shoes`, `bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`,
-  `bingo_secrets`, `tpt_cards`, `chat_messages`, `admins`, `player_reports`, `admin_log`, `player_activity`,
-  `player_notes`, `head_to_head`.
+  `bingo_secrets`, `tpt_cards`, `chat_messages`, `dm_reads`, `admins`, `player_reports`, `admin_log`,
+  `player_activity`, `player_notes`, `head_to_head`.
 - **Each file ends with** `revoke execute on all functions in schema private from public, anon, authenticated;
   grant execute on function private.can_view_table(uuid) to authenticated;`. `private` must NOT be added to
   the Data API's exposed schemas.
@@ -757,8 +782,9 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   - **Auto-play:** `SpotControls` takes `auto` (Baccarat, Sic Bo, the wheel, Dragon Tiger, Andar Bahar, Chuck-a-Luck:
     the games with no decision after the bet). It puts the last bets back and presses the game's own button for 10,
     25 or 50 rounds; it stops when chips run out or on "Stop auto". Like the slots, it does not stop for a win.
-  - **Lounge:** a search box (every word must be in the name or tagline) and kind filters (Live / Solo / Tournaments /
-    Favourites) in `GameGrid`, alongside the section tabs.
+  - **Lounge:** one toolbar in `GameGrid`: a search box (every word must be in the name or tagline), a menu for the
+    kind of game (live, solo, tournaments, favourites) and the section tabs. The user found two rows of pill
+    buttons looked like two sets of filters, hence the menu.
   - **Tables:** `TableHeader` takes `atStake` (a sentence saying what happens to the chips in play: leaving then asks
     first, and `useLeaveWarning` makes the browser ask before the tab closes) and `game` (adds a Stats button).
     Poker and Teen Patti have "Sit out next hand"; poker has "Auto top-up" (back to what you first brought, between
@@ -808,6 +834,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage10d.cjs /tmp/shots     # stage 10 part 4: a horse race with two players, a Teen Patti hand with a show, phone widths (23 checks)
    node scripts/e2e/stage11.cjs /tmp/shots      # phase 11: room and table chat, the filter, reputation, a reported message, admin controls and reasons, notes, cosmetics (24 checks)
    node scripts/e2e/stage12a.cjs /tmp/shots     # stage 12 part 1: lounge search, music control, auto-play, remembered bets, stats, size, leave confirmation, sit out next hand, auto top-up (22 checks)
+   node scripts/e2e/stage12b.cjs /tmp/shots     # stage 12 part 2: direct messages, a waiting-room table, watching a friend alone and at a table (16 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

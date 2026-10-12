@@ -126,7 +126,8 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>
-          You can talk to other players with typed chat and with quick chat (preset phrases and emotes) at tables, in live rooms and in clubs.
+          You can talk to other players with typed chat and with quick chat (preset phrases and emotes) at tables, in live rooms and in clubs,
+          and send direct messages to your friends. The same rules, filter and reputation apply to direct messages.
           What you type is seen by the other players there and is stored for a short time so that it can be shown, reported and reviewed. Do not
           share personal or contact details in chat, yours or anyone else&apos;s.
         </p>

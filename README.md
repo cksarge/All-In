@@ -66,10 +66,10 @@ It builds to a static site.
 │   ├── routes/              auth guards
 │   └── stores/              auth, wallet, progress, account, live data, settings, toasts
 └── supabase/
-    ├── sql/                 22 numbered, re-runnable SQL files and their README
+    ├── sql/                 23 numbered, re-runnable SQL files and their README
     ├── maintenance/         scripts run by hand: database check, cleanup, maintenance off
     ├── email-templates/     confirm-signup.html, reset-password.html (+ subjects)
-    └── tests/               local-only Supabase stub and 19 SQL test files
+    └── tests/               local-only Supabase stub and 20 SQL test files
 ```
 
 ## Local setup

@@ -101,6 +101,18 @@ create table if not exists public.chat_messages (
   hidden      boolean not null default false,
   created_at  timestamptz not null default now()
 );
+-- Direct messages between friends use the same table: channel "dm:" plus a fingerprint of the two players.
+alter table public.chat_messages drop constraint if exists chat_messages_channel_check;
+alter table public.chat_messages add constraint chat_messages_channel_check check (channel ~ '^(table|club|room|dm):[a-z0-9_-]{1,40}$');
+
+-- HIDDEN: how far each player has read in each direct conversation (for the unread count).
+create table if not exists public.dm_reads (
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  other_id      uuid not null references auth.users (id) on delete cascade,
+  last_read_id  bigint not null default 0,
+  primary key (user_id, other_id)
+);
+
 create index if not exists chat_messages_channel_idx on public.chat_messages (channel, id desc);
 create index if not exists chat_messages_user_idx on public.chat_messages (user_id, id desc);
 create index if not exists chat_messages_age_idx on public.chat_messages (created_at);
@@ -352,7 +364,21 @@ end $$;
 -- Channels
 -- -----------------------------------------------------------------------------
 
+-- A browser names a direct conversation by the other player ("dm:<their id>"). It is stored under one
+-- name that is the same for both of them. Every other channel is stored under its own name.
+create or replace function private.chat_channel(p_user uuid, p_channel text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case when p_channel like 'dm:%'
+              then 'dm:' || md5(least(p_user::text, split_part(p_channel, ':', 2)) || greatest(p_user::text, split_part(p_channel, ':', 2)))
+              else p_channel end
+$$;
+
 -- May this player read ('read') or write ('write') in this channel?
+--   dm:<uuid>      the two players must be friends, and neither has blocked the other.
 --   table:<uuid>   read: anyone who can see the table. write: players seated at it.
 --   club:<uuid>    members only.
 --   room:<game>    the three live rooms: any signed-in player.
@@ -367,7 +393,13 @@ declare
   v_kind text := split_part(coalesce(p_channel, ''), ':', 1);
   v_id text := split_part(coalesce(p_channel, ''), ':', 2);
 begin
-  if v_kind = 'room' then
+  if v_kind = 'dm' then
+    return v_id ~ '^[0-9a-f-]{36}$' and v_id <> p_user::text
+       and exists (select 1 from public.friendships f
+                    where f.status = 'accepted' and p_user in (f.requester, f.addressee) and v_id in (f.requester::text, f.addressee::text))
+       and not exists (select 1 from public.player_blocks b
+                        where (b.blocker = p_user and b.blocked::text = v_id) or (b.blocked = p_user and b.blocker::text = v_id));
+  elsif v_kind = 'room' then
     return v_id in ('crash', 'bingo', 'horse_racing');
   elsif v_kind = 'club' then
     return exists (select 1 from public.club_members m where m.club_id::text = v_id and m.user_id = p_user);
@@ -404,10 +436,14 @@ declare
   v_penalty integer := 0;
   v_msg public.chat_messages;
   v_hidden boolean;
+  v_dm boolean;
 begin
   if not private.chat_allowed(v_uid, p_channel, 'write') then
-    raise exception 'action_not_allowed' using hint = 'You can''t chat here. At a table you need a seat.';
+    raise exception 'action_not_allowed' using hint = case when p_channel like 'dm:%'
+      then 'You can only message your friends.' else 'You can''t chat here. At a table you need a seat.' end;
   end if;
+  v_dm := p_channel like 'dm:%';
+  p_channel := private.chat_channel(v_uid, p_channel);
   r := private.rep_row(v_uid);
   if not private.rep_can(v_uid, 'chat') then
     raise exception 'chat_banned' using hint = 'Typed chat is switched off for you at the moment. See your profile for why.';
@@ -449,8 +485,9 @@ begin
       v_penalty := (c ->> 'filter_penalty')::integer;
       perform private.rep_change(v_uid, -v_penalty, 'chat_' || v_reason);
     end if;
-  elsif length(v_text) >= 3 and lower(v_text) is distinct from v_prev then
-    -- A clean message that isn't a repeat counts towards the next point.
+  elsif length(v_text) >= 3 and lower(v_text) is distinct from v_prev and not v_dm then
+    -- A clean message that isn't a repeat counts towards the next point. (Not direct messages:
+    -- two friends could trade them all day.)
     if r.clean_count + 1 >= (c ->> 'gain_every')::integer then
       update public.player_reputation
          set clean_count = 0, gain_day = v_today,
@@ -478,8 +515,45 @@ begin
 end $$;
 
 -- The newest messages in a channel (after p_after, if given), oldest first.
--- Tables and rooms show the last two hours; clubs everything that is kept.
+-- Tables and rooms show the last two hours; clubs and direct messages everything that is kept.
+-- Reading a direct conversation marks it as read.
 create or replace function public.chat_fetch(p_channel text, p_after bigint default 0)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := private.require_uid();
+  v_store text := private.chat_channel(v_uid, p_channel);
+  v_all boolean := p_channel like 'club:%' or p_channel like 'dm:%';
+  v_out jsonb;
+begin
+  if not private.chat_allowed(v_uid, p_channel, 'read') then
+    raise exception 'action_not_allowed' using hint = 'You can''t read this chat.';
+  end if;
+  v_out := jsonb_build_object(
+    'can_write', private.chat_allowed(v_uid, p_channel, 'write'),
+    'can_chat', private.rep_can(v_uid, 'chat'),
+    'messages', (select coalesce(jsonb_agg(jsonb_build_object(
+                   'id', x.id, 'user_id', x.user_id, 'username', x.username, 'body', x.body, 'at', x.created_at) order by x.id), '[]'::jsonb)
+                   from (select m.* from public.chat_messages m
+                          where m.channel = v_store and m.id > coalesce(p_after, 0) and not m.hidden
+                            and m.created_at > now() - case when v_all
+                                                            then make_interval(days => (private.rep_cfg() ->> 'keep_days')::integer)
+                                                            else interval '2 hours' end
+                            and not exists (select 1 from public.player_blocks b where b.blocker = v_uid and b.blocked = m.user_id)
+                          order by m.id desc limit 50) x));
+  if p_channel like 'dm:%' then
+    insert into public.dm_reads as d (user_id, other_id, last_read_id)
+    values (v_uid, split_part(p_channel, ':', 2)::uuid, coalesce((select max(id) from public.chat_messages where channel = v_store), 0))
+    on conflict (user_id, other_id) do update set last_read_id = greatest(d.last_read_id, excluded.last_read_id);
+  end if;
+  return v_out;
+end $$;
+
+-- Your direct conversations: each friend you have messages with, the newest first, and how many you have not read.
+create or replace function public.dm_threads()
 returns jsonb
 language plpgsql
 stable
@@ -487,23 +561,29 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_uid uuid := private.require_uid();
+  v_uid uuid := auth.uid();
+  v jsonb;
 begin
-  if not private.chat_allowed(v_uid, p_channel, 'read') then
-    raise exception 'action_not_allowed' using hint = 'You can''t read this chat.';
+  if v_uid is null then
+    raise exception 'not_authenticated' using errcode = '28000';
   end if;
-  return jsonb_build_object(
-    'can_write', private.chat_allowed(v_uid, p_channel, 'write'),
-    'can_chat', private.rep_can(v_uid, 'chat'),
-    'messages', (select coalesce(jsonb_agg(jsonb_build_object(
-                   'id', x.id, 'user_id', x.user_id, 'username', x.username, 'body', x.body, 'at', x.created_at) order by x.id), '[]'::jsonb)
-                   from (select m.* from public.chat_messages m
-                          where m.channel = p_channel and m.id > coalesce(p_after, 0) and not m.hidden
-                            and m.created_at > now() - case when p_channel like 'club:%'
-                                                            then make_interval(days => (private.rep_cfg() ->> 'keep_days')::integer)
-                                                            else interval '2 hours' end
-                            and not exists (select 1 from public.player_blocks b where b.blocker = v_uid and b.blocked = m.user_id)
-                          order by m.id desc limit 50) x));
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'user_id', x.other, 'username', x.username, 'last', x.body, 'mine', x.last_from = v_uid, 'at', x.at, 'unread', x.unread)
+           order by x.last_id desc), '[]'::jsonb) into v
+    from (
+      select f.other, pr.username, l.id as last_id, l.body, l.user_id as last_from, l.created_at as at,
+             (select count(*) from public.chat_messages m
+               where m.channel = f.ch and m.user_id = f.other and not m.hidden
+                 and m.id > coalesce((select last_read_id from public.dm_reads d where d.user_id = v_uid and d.other_id = f.other), 0)) as unread
+        from (select case when fr.requester = v_uid then fr.addressee else fr.requester end as other,
+                     private.chat_channel(v_uid, 'dm:' || case when fr.requester = v_uid then fr.addressee else fr.requester end) as ch
+                from public.friendships fr
+               where fr.status = 'accepted' and v_uid in (fr.requester, fr.addressee)) f
+        join public.profiles pr on pr.id = f.other
+        join lateral (select m.* from public.chat_messages m where m.channel = f.ch and not m.hidden order by m.id desc limit 1) l on true
+       where not exists (select 1 from public.player_blocks b where b.blocker = v_uid and b.blocked = f.other)
+    ) x;
+  return jsonb_build_object('threads', v, 'unread', (select coalesce(sum((t ->> 'unread')::integer), 0) from jsonb_array_elements(v) t));
 end $$;
 
 -- Report a message. What was written is copied into the report, so it outlives the 3 days.
@@ -518,7 +598,10 @@ declare
   m public.chat_messages;
 begin
   select * into m from public.chat_messages where id = p_message and not hidden;
-  if not found or m.user_id = v_uid or not private.chat_allowed(v_uid, m.channel, 'read') then
+  -- (A direct message is stored under the pair's shared name: check it is this player's conversation.)
+  if not found or m.user_id = v_uid
+     or not private.chat_allowed(v_uid, case when m.channel like 'dm:%' then 'dm:' || m.user_id else m.channel end, 'read')
+     or (m.channel like 'dm:%' and m.channel <> private.chat_channel(v_uid, 'dm:' || m.user_id)) then
     raise exception 'action_not_allowed' using hint = 'That message can no longer be reported.';
   end if;
   if exists (select 1 from public.player_reports where reporter = v_uid and (context ->> 'message_id')::bigint = p_message) then
@@ -708,6 +791,7 @@ declare
 begin
   foreach f in array array[
     'public.chat_send(text, text)', 'public.chat_fetch(text, bigint)', 'public.chat_report(bigint)', 'public.my_reputation()',
+    'public.dm_threads()',
     'public.admin_reputation_view(uuid)', 'public.admin_reputation(uuid, text, integer, text)',
     'public.admin_chat_ban(uuid, text, integer, text)', 'public.admin_warn(uuid, text, bigint)', 'public.admin_report_false(bigint)'
   ]
@@ -723,6 +807,7 @@ end $$;
 alter table public.player_reputation enable row level security;
 alter table public.reputation_log    enable row level security;
 alter table public.chat_messages     enable row level security;
+alter table public.dm_reads          enable row level security;
 
 drop policy if exists "player_reputation: own row" on public.player_reputation;
 create policy "player_reputation: own row" on public.player_reputation for select to authenticated using (user_id = (select auth.uid()));
@@ -731,7 +816,7 @@ drop policy if exists "reputation_log: own rows" on public.reputation_log;
 create policy "reputation_log: own rows" on public.reputation_log for select to authenticated using (user_id = (select auth.uid()));
 
 -- chat_messages: RLS on, NO policies, NO privileges. Clients read chat only through chat_fetch.
-revoke all on public.chat_messages from anon, authenticated;
+revoke all on public.chat_messages, public.dm_reads from anon, authenticated;
 revoke insert, update, delete, truncate on public.player_reputation, public.reputation_log from anon, authenticated;
 revoke all on public.player_reputation, public.reputation_log from anon;
 grant select on public.player_reputation, public.reputation_log to authenticated;

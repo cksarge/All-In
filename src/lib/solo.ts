@@ -201,6 +201,12 @@ export function historyLine(game: string, s: Record<string, unknown>): string {
     case 'bingo':
       return `${s.cards} card${s.cards === 1 ? '' : 's'} · ${s.line_at ? `line on call ${s.line_at}` : 'no line'}`;
     default:
+      // The slots: what the spin paid, as a multiple of the bet, and any feature it set off.
+      if (game.startsWith('slots_')) {
+        const units = Number(s.units ?? 0);
+        const feature = { free: 'free spins', hold: 'hold and win', jackpot: 'the jackpot', cascade: 'a cascade' }[String(s.feature)];
+        return `Spin${feature ? ` with ${feature}` : ''} · ${units > 0 ? `×${units / 100}` : 'no win'}`;
+      }
       return 'Round';
   }
 }

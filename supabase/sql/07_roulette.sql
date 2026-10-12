@@ -487,6 +487,7 @@ declare
   t public.game_tables;
   r public.rl_rounds;
 begin
+  perform private.assert_table_started(p_table);
   t := private.rl_lock_table(p_table);
   perform private.rl_tick(p_table);
   perform private.rl_require_seat(p_table, v_uid);

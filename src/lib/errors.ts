@@ -57,6 +57,7 @@ const RPC_MESSAGES: Record<string, string> = {
   // Blackjack
   betting_closed: 'Betting is closed for this round.',
   chat_banned: 'Typed chat is switched off for you at the moment.',
+  table_waiting: 'The host has not started this table yet.',
   not_enough_chips: "You don't have enough chips at the table for that.",
   next_round_pending: 'The next round opens in a moment.',
   not_your_turn: "It's not your turn.",
@@ -90,7 +91,7 @@ const RPC_MESSAGES: Record<string, string> = {
 };
 
 /** Errors whose server hint is already player-friendly. */
-const USE_HINT = new Set(['action_not_allowed', 'slow_down', 'betting_closed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack', 'invalid_hand', 'insufficient_chips', 'not_enough_chips', 'chat_banned']);
+const USE_HINT = new Set(['action_not_allowed', 'slow_down', 'betting_closed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack', 'invalid_hand', 'insufficient_chips', 'not_enough_chips', 'chat_banned', 'table_waiting']);
 
 /**
  * Turns any Supabase/auth/RPC/network error into a short, friendly sentence.

@@ -5,6 +5,7 @@ import { BlackjackTable } from '@/components/blackjack/BlackjackTable';
 import { CrapsTable } from '@/components/craps/CrapsTable';
 import { PokerTable } from '@/components/poker/PokerTable';
 import { RouletteTable } from '@/components/roulette/RouletteTable';
+import { WaitingRoom } from '@/components/table/WaitingRoom';
 import { TeenPattiTable } from '@/components/teenpatti/TeenPattiTable';
 import { Button } from '@/components/ui/Button';
 import { ErrorState, FullPageLoader } from '@/components/ui/States';
@@ -57,6 +58,7 @@ export default function TablePage() {
   if (table) {
     return (
       <>
+        <WaitingRoom tableId={id} />
         {table}
         <QuickStart key={game} guide={game} />
       </>

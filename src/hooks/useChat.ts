@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/stores/authStore';
+import { pingDmInbox, useDm } from '@/stores/dmStore';
 import { CHAT_GAP_MS, useReputation } from '@/stores/reputationStore';
 
 export interface ChatMessage {
@@ -25,7 +27,7 @@ export interface ChatSent {
 }
 
 /**
- * Typed chat for one channel ("table:<id>", "club:<id>", "room:<game>").
+ * Typed chat for one channel ("table:<id>", "club:<id>", "room:<game>", or "dm:<a friend's id>").
  * Every message comes from the server (chat_fetch): it decides who may read what, stars out
  * swear words and leaves out players you blocked. Realtime only carries a content-free
  * "something new" ping between browsers, and a slow poll covers a missed ping.
@@ -42,6 +44,11 @@ export function useChat(channel: string | null, active: boolean) {
   const activeRef = useRef(active);
   activeRef.current = active;
   const first = useRef(true);
+  const myId = useAuth((s) => s.user?.id);
+  // A direct conversation is named by the other player, so each side names it differently:
+  // the two browsers meet on a ping channel made from both ids.
+  const dmWith = channel?.startsWith('dm:') ? channel.slice(3) : null;
+  const pingName = dmWith && myId ? `chat:dm:${[myId, dmWith].sort().join('_')}` : `chat:${channel}`;
 
   const add = useCallback((list: ChatMessage[], countUnread: boolean) => {
     const fresh = list.filter((m) => m.id > lastId.current);
@@ -64,6 +71,8 @@ export function useChat(channel: string | null, active: boolean) {
     // What was said before you arrived is history, not unread.
     add(d.messages, !first.current);
     first.current = false;
+    // Reading a direct conversation clears its unread count on the server: show that at once.
+    if (channel.startsWith('dm:')) void useDm.getState().fetch();
   }, [channel, add]);
 
   useEffect(() => {
@@ -75,7 +84,7 @@ export function useChat(channel: string | null, active: boolean) {
     if (!channel) return;
     void fetch();
     const ch = supabase
-      .channel(`chat:${channel}`)
+      .channel(pingName)
       .on('broadcast', { event: 'new' }, () => void fetch())
       .subscribe();
     ping.current = ch;
@@ -86,7 +95,7 @@ export function useChat(channel: string | null, active: boolean) {
       void supabase.removeChannel(ch);
       ping.current = null;
     };
-  }, [channel, fetch]);
+  }, [channel, fetch, pingName]);
 
   useEffect(() => {
     if (!channel) return;
@@ -114,9 +123,11 @@ export function useChat(channel: string | null, active: boolean) {
       if (res.caught) void useReputation.getState().fetch();
       // Tell the other browsers to look. The ping carries nothing: they ask the server.
       void ping.current?.send({ type: 'broadcast', event: 'new', payload: {} });
+      // A friend who does not have the conversation open still hears about it.
+      if (dmWith && res.message) pingDmInbox(dmWith);
       return [res, null];
     },
-    [channel, add],
+    [channel, add, dmWith],
   );
 
   const report = useCallback(async (id: number): Promise<string | null> => {

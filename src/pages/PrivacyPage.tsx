@@ -39,7 +39,8 @@ const sections: LegalSection[] = [
             <strong>Username</strong>, and a club name and tag if you start a club.
           </li>
           <li>
-            <strong>Chat messages.</strong> What you type in chat at a table, in a live room or in a club, with the time and place. If the
+            <strong>Chat messages.</strong> What you type in chat at a table, in a live room or in a club, and in direct messages to
+            friends, with the time and place. If the
             filter changed or stopped a message, what you originally typed is kept too, for the moderator.
           </li>
           <li>
@@ -59,7 +60,7 @@ const sections: LegalSection[] = [
           <li>The rounds, hands and tournaments you played and their results, and statistics worked out from them.</li>
           <li>Your level, achievements, cosmetics, missions, season progress and trophies.</li>
           <li>Your friends, friend requests, players you blocked, your club, and invitations and notifications sent to you.</li>
-          <li>Which table you are sitting at, whether you are online, and when you were last active.</li>
+          <li>Which table you are sitting at, which game you have open, whether you are online, and when you were last active.</li>
           <li>Any limit placed on your account by a moderator (a warning, a timeout, a ban, a chat ban or a forced change of name) and the reason.</li>
           <li>
             Your <strong>reputation</strong>: a number from 0 to 100 worked out from how you use chat and from moderators&apos; decisions, with a
@@ -163,12 +164,17 @@ const sections: LegalSection[] = [
             what you say in chat: the players at that table, in that room or in that club see your typed messages (with swear words starred
             out) under your username, and your quick chat. Whether your chat has been switched off may be apparent to them;
           </li>
-          <li>to your friends: whether you are online and which public table you are at.</li>
+          <li>
+            to your friends: whether you are online, which public table you are at, and, unless you switch it off on the Friends page,
+            which game you have open on your own and how your last few rounds there went;
+          </li>
+          <li>to a friend you exchange direct messages with: those messages.</li>
         </ul>
         <p>
           <strong>Your email address is never shown to other players.</strong> Neither are your password, the cards you hold that are meant to be
           hidden, your reputation number, reports you make, or who you have blocked. The moderator can read chat messages, including what
-          the filter stopped, in order to review reports and enforce the rules. Choose a username that does not identify you in real life if you would rather not be
+          the filter stopped, in order to review reports and enforce the rules. That includes direct messages: they are private from other
+          players, not from the moderator. Choose a username that does not identify you in real life if you would rather not be
           recognised.
         </p>
       </>
@@ -236,7 +242,7 @@ const sections: LegalSection[] = [
           entries. Totals and statistics remain.
         </li>
         <li>
-          <strong>Chat messages</strong> are deleted after 3 days. A message that was reported is kept with the report until the matter is
+          <strong>Chat messages</strong>, including direct messages, are deleted after 3 days. A message that was reported is kept with the report until the matter is
           settled and for up to 90 days afterwards.
         </li>
         <li>

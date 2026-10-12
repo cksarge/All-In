@@ -490,6 +490,7 @@ declare
   v_existing public.cr_bets;
   v_number smallint;
 begin
+  perform private.assert_table_started(p_table);
   t := private.cr_lock_table(p_table);
   perform private.cr_tick(p_table);
   update public.table_seats set last_seen_at = now(), status = 'active'

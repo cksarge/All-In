@@ -29,3 +29,6 @@ delete from public.chat_messages;
 delete from public.player_reputation;
 delete from public.reputation_log;
 delete from public.player_notes;
+delete from public.dm_reads;
+update public.player_activity set game_key = null, game_at = null, watchable = true;
+delete from public.game_tables where is_private;

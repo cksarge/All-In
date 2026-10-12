@@ -384,6 +384,7 @@ function CreatePrivateModal({
   const [variant, setVariant] = useState<'european' | 'american'>('european');
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ id: string; code: string } | null>(null);
+  const [hosted, setHosted] = useState(true);
 
   useEffect(() => {
     if (!open) setCreated(null);
@@ -396,6 +397,7 @@ function CreatePrivateModal({
       p_tier: tier,
       p_private: true,
       p_variant: game === 'roulette' ? variant : null,
+      p_hosted: hosted,
     });
     setBusy(false);
     if (error) {
@@ -421,7 +423,10 @@ function CreatePrivateModal({
       {created ? (
         <div className="text-center">
           <h2 className="font-display text-2xl font-bold text-ivory">Your table is ready</h2>
-          <p className="mt-2 text-sm text-muted">Share this code with friends. They enter it in the lobby, or open the link.</p>
+          <p className="mt-2 text-sm text-muted">
+            Share this code with friends. They enter it in the lobby, or open the link.
+            {hosted && ' Nothing is dealt until you press Start at the table.'}
+          </p>
           <p className="mt-5 font-display text-4xl font-bold tracking-[0.3em] text-gold-300" aria-label={`Invite code ${created.code.split('').join(' ')}`}>
             {created.code}
           </p>
@@ -472,6 +477,13 @@ function CreatePrivateModal({
               })}
             </div>
           </fieldset>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-3">
+            <input type="checkbox" checked={hosted} onChange={(e) => setHosted(e.target.checked)} className="mt-0.5 h-4 w-4 accent-gold-500" />
+            <span className="text-sm text-cream/90">
+              Open with a waiting room
+              <span className="block text-xs text-muted">Friends can sit down, but the game only begins when you press Start.</span>
+            </span>
+          </label>
           {game === 'roulette' && (
             <fieldset className="mt-5">
               <legend className="text-sm font-medium text-cream/90">Wheel</legend>

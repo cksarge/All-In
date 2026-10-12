@@ -8,6 +8,7 @@ import { SettingsButton } from '@/components/settings/SettingsModal';
 import { useAuth } from '@/stores/authStore';
 import { seasonReady } from '@/lib/live';
 import { useLive } from '@/stores/liveStore';
+import { useDm } from '@/stores/dmStore';
 import { useProgress } from '@/stores/progressStore';
 import { useUi } from '@/stores/uiStore';
 import { BalancePill } from './BalancePill';
@@ -46,7 +47,8 @@ function UserMenu() {
   // A dot on the avatar when something is waiting: rewards to collect or a friend request.
   const unread = useLive((s) => s.unread);
   const rewards = useLive((s) => (s.missions ? s.missions.to_collect + seasonReady(s.missions.season) : 0));
-  const waiting = Boolean(me && (me.unclaimed_chips > 0 || me.friend_requests > 0)) || unread > 0 || rewards > 0;
+  const messages = useDm((s) => s.unread);
+  const waiting = Boolean(me && (me.unclaimed_chips > 0 || me.friend_requests > 0)) || unread > 0 || rewards > 0 || messages > 0;
 
   return (
     <div className="relative" ref={ref}>
@@ -99,7 +101,7 @@ function UserMenu() {
           </Link>
           <Link role="menuitem" to="/friends" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Friends
-            {me && me.friend_requests > 0 && <span className="ml-2 rounded-full bg-gold-500 px-1.5 text-xs font-bold text-ink-950">{me.friend_requests}</span>}
+            {me && me.friend_requests + messages > 0 && <span className="ml-2 rounded-full bg-gold-500 px-1.5 text-xs font-bold text-ink-950">{me.friend_requests + messages}</span>}
           </Link>
           <Link role="menuitem" to="/clubs" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Clubs

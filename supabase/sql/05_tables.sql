@@ -115,6 +115,33 @@ alter table public.game_tables add column if not exists variant text;
 alter table public.game_tables add column if not exists play_money boolean not null default false;
 alter table public.game_tables add column if not exists stakes jsonb;
 
+-- A private table with a waiting room: nothing is dealt and no bet is taken until the host starts it.
+alter table public.game_tables add column if not exists waiting boolean not null default false;
+
+create or replace function private.table_waiting(p_table uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((select waiting from public.game_tables where id = p_table), false)
+$$;
+
+-- Every game calls this before taking a bet (poker and Teen Patti check table_waiting before dealing).
+create or replace function private.assert_table_started(p_table uuid)
+returns void
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if private.table_waiting(p_table) then
+    raise exception 'table_waiting' using hint = 'The host has not started this table yet.';
+  end if;
+end $$;
+
 create or replace function private.default_variant(p_game text)
 returns text
 language sql
@@ -488,7 +515,10 @@ end $$;
 
 -- Create a table and sit down at it. Private tables get a 6-character invite code.
 drop function if exists public.create_table(text, text, boolean);
-create or replace function public.create_table(p_game text, p_tier text, p_private boolean default false, p_variant text default null)
+-- p_hosted (private tables only): open with a waiting room; the game starts when the host calls table_start.
+drop function if exists public.create_table(text, text, boolean, text);
+create or replace function public.create_table(p_game text, p_tier text, p_private boolean default false, p_variant text default null,
+                                               p_hosted boolean default false)
 returns jsonb
 language plpgsql
 security definer
@@ -524,12 +554,48 @@ begin
     v_name := private.public_table_name();
   end if;
 
-  insert into public.game_tables (game_key, tier, name, is_private, invite_code, max_seats, created_by, variant)
-  values (p_game, p_tier, v_name, coalesce(p_private, false), v_code, g.max_seats, v_uid, private.valid_variant(p_game, p_variant))
+  insert into public.game_tables (game_key, tier, name, is_private, invite_code, max_seats, created_by, variant, waiting)
+  values (p_game, p_tier, v_name, coalesce(p_private, false), v_code, g.max_seats, v_uid, private.valid_variant(p_game, p_variant),
+          coalesce(p_private, false) and coalesce(p_hosted, false))
   returning id into v_id;
 
   v_seat := private.take_seat(v_uid, v_id, null);
   return jsonb_build_object('table_id', v_id, 'invite_code', v_code, 'seat_no', v_seat);
+end $$;
+
+-- Starts a table that is in its waiting room. The host does it; if the host has left, anyone seated may.
+create or replace function public.table_start(p_table uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := private.require_uid();
+  t public.game_tables;
+begin
+  select * into t from public.game_tables where id = p_table for update;
+  if not found or t.status <> 'open' then
+    raise exception 'table_not_found';
+  end if;
+  if not t.waiting then
+    return;
+  end if;
+  if not exists (select 1 from public.table_seats where table_id = p_table and user_id = v_uid) then
+    raise exception 'not_seated';
+  end if;
+  if t.created_by is distinct from v_uid
+     and exists (select 1 from public.table_seats where table_id = p_table and user_id = t.created_by) then
+    raise exception 'action_not_allowed' using hint = 'Only the host can start the table.';
+  end if;
+  update public.game_tables set waiting = false, last_activity_at = now() where id = p_table;
+  -- Card games deal as soon as they can; the others begin with the first bet. (The game files come
+  -- after this one, so their functions are looked up by name.)
+  if t.game_key like 'poker\_%' and to_regprocedure('private.pk_tick(uuid)') is not null then
+    execute 'select private.pk_tick($1)' using p_table;
+  elsif t.game_key = 'teen_patti_live' and to_regprocedure('private.tpt_tick(uuid)') is not null then
+    execute 'select private.tpt_tick($1)' using p_table;
+  end if;
 end $$;
 
 -- Quick join: the busiest public table at this stake with a free seat, or a new one.
@@ -685,7 +751,7 @@ declare
   f text;
 begin
   foreach f in array array[
-    'public.list_tables(text)', 'public.create_table(text, text, boolean, text)', 'public.quick_join(text, text)',
+    'public.list_tables(text)', 'public.create_table(text, text, boolean, text, boolean)', 'public.table_start(uuid)', 'public.quick_join(text, text)',
     'public.join_table(uuid, integer)', 'public.join_by_code(text)', 'public.leave_table(uuid)',
     'public.table_heartbeat(uuid)', 'public.set_sitting_out(uuid, boolean)', 'public.my_table()'
   ]

@@ -147,7 +147,8 @@ async function say(page, text) {
   await ben.getByRole('heading', { name: 'Locker' }).waitFor();
   await ben.getByRole('tab', { name: /Titles/ }).click();
   await ben.getByRole('button', { name: /Well-Mannered/ }).click();
-  await ben.getByText('Equipped').first().waitFor();
+  // (Another title already says Equipped: wait for this one.)
+  await ben.getByRole('button', { name: /Well-Mannered.*Equipped/s }).waitFor();
   const benId = (await q(`select id from auth.users where email = 'ben@allin.test'`)).id;
   ok((await q(`select title from public.player_loadouts where user_id = $1`, [benId])).title === 'title_well_mannered', 'at 75 or more the reputation title can be worn');
   ok((await ben.getByText(/Reputation 100 or more/).count()) >= 1, 'the locker shows what 100 would bring');

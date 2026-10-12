@@ -37,8 +37,8 @@
 --   * weekly leaderboard rows older than 8 weeks
 --   * missions older than 60 days, and old notifications
 --   * player reports settled more than 90 days ago, and admin log entries older than a year
---   * typed chat messages older than 3 days (the game deletes these itself whenever someone
---     chats; this catches them when nobody has)
+--   * typed chat and direct messages older than 3 days (the game deletes these itself whenever
+--     someone chats; this catches them when nobody has)
 --
 -- One thing to know: after this, a player's chip activity no longer adds up to their
 -- balance from zero, because the oldest entries are gone. The balance itself is in

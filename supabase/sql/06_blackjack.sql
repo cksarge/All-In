@@ -637,6 +637,7 @@ declare
   v_seat integer;
   v_old bigint;
 begin
+  perform private.assert_table_started(p_table);
   t := private.bj_lock_table(p_table);
   perform private.bj_tick(p_table);
 

@@ -36,6 +36,7 @@ import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import { GuestOnly, RequireAuth } from '@/routes/guards';
 import { useOnlinePresence } from '@/hooks/useLobby';
 import { useAccount } from '@/stores/accountStore';
+import { useDm } from '@/stores/dmStore';
 import { useReputation } from '@/stores/reputationStore';
 import { useAuth } from '@/stores/authStore';
 import { useLive } from '@/stores/liveStore';
@@ -138,6 +139,21 @@ function ReputationConnector() {
   const userId = useAuth((s) => s.user?.id);
   const connect = useReputation((s) => s.connect);
   const reset = useReputation((s) => s.reset);
+  useEffect(() => {
+    if (!userId) {
+      reset();
+      return;
+    }
+    return connect(userId);
+  }, [userId, connect, reset]);
+  return null;
+}
+
+/** Keeps your direct messages (the unread count) loaded while signed in. */
+function DmConnector() {
+  const userId = useAuth((s) => s.user?.id);
+  const connect = useDm((s) => s.connect);
+  const reset = useDm((s) => s.reset);
   useEffect(() => {
     if (!userId) {
       reset();
@@ -255,6 +271,7 @@ export default function App() {
           <TournamentConnector />
           <AccountConnector />
           <ReputationConnector />
+          <DmConnector />
           <LiveConnector />
           <Routes>
             <Route element={<AppLayout />}>

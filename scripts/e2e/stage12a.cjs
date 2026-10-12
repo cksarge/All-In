@@ -52,10 +52,10 @@ async function bring(page) {
   await ann.getByLabel('Search the games').fill('zzzz');
   await ann.getByText('No games match').waitFor();
   await ann.getByRole('button', { name: 'Clear', exact: true }).click();
-  await ann.getByRole('button', { name: 'Tournaments', exact: true }).last().click();
+  await ann.getByLabel('Kind of game').selectOption('tournament');
   const tourneys = await ann.locator('section[aria-labelledby="games-title"] li h4').allInnerTexts();
   ok(tourneys.length === 2 && tourneys.every((t) => /Sit & Go|Showdown/.test(t)), `the Tournaments filter shows the two tournament games (${tourneys.join(', ')})`);
-  await ann.getByRole('button', { name: 'Live', exact: true }).click();
+  await ann.getByLabel('Kind of game').selectOption('live');
   const live = await ann.locator('section[aria-labelledby="games-title"] li h4').allInnerTexts();
   ok(live.includes('Crash') && live.includes('Blackjack') && !live.includes('Baccarat'), 'the Live filter keeps tables and rooms and drops solo games');
   await ann.screenshot({ path: `${SHOTS}/n-lounge-filter.png` });

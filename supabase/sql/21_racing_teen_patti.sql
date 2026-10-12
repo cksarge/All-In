@@ -693,7 +693,7 @@ declare
   i integer := 0;
 begin
   select * into t from public.game_tables where id = p_table;
-  if t.status <> 'open' then
+  if t.status <> 'open' or t.waiting then
     return false;
   end if;
   select array_agg(seat_no order by seat_no) into v_seats

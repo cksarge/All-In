@@ -1,6 +1,9 @@
 import { useAccount } from '@/stores/accountStore';
 import { SectionNav } from '@/components/layout/SectionNav';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DmModal, WatchModal } from '@/components/progress/FriendPanels';
+import { useDm } from '@/stores/dmStore';
 import { PlayerLine } from '@/components/progress/bits';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
@@ -34,6 +37,14 @@ export default function FriendsPage() {
   const [found, setFound] = useState<Found[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const isOnline = (id: string) => online.some((o) => o.user_id === id);
+  // What friends have open away from the tables, and whether you let them see the same about you.
+  const [playing, setPlaying] = useState<Record<string, { game_key: string; game: string }>>({});
+  const [watchable, setWatchable] = useState<boolean | null>(null);
+  const [dm, setDm] = useState<{ user_id: string; username: string } | null>(null);
+  const [watch, setWatch] = useState<{ user_id: string; username: string } | null>(null);
+  const threads = useDm((s) => s.threads);
+  const unreadFrom = (id: string) => threads.find((t) => t.user_id === id)?.unread ?? 0;
+  const [params, setParams] = useSearchParams();
 
   const load = useCallback(async () => {
     const { data, error: err } = await supabase.rpc('friends_list');
@@ -42,7 +53,33 @@ export default function FriendsPage() {
       setError(null);
       setList(data as List);
     }
+    const act = await supabase.rpc('friends_activity');
+    if (!act.error) {
+      const d = act.data as { watchable: boolean; playing: Record<string, { game_key: string; game: string }> };
+      setPlaying(d.playing);
+      setWatchable(d.watchable);
+    }
   }, []);
+
+  // A "new message" toast links here with ?dm=<their id>: open that conversation.
+  const openDm = params.get('dm');
+  useEffect(() => {
+    if (!openDm || !list) return;
+    const f = list.friends.find((x) => x.user_id === openDm);
+    if (f) setDm({ user_id: f.user_id, username: f.username });
+    setParams({}, { replace: true });
+  }, [openDm, list, setParams]);
+
+  const toggleWatchable = async () => {
+    const next = !watchable;
+    setWatchable(next);
+    const { error: err } = await supabase.rpc('set_watchable', { p_on: next });
+    if (err) {
+      setWatchable(!next);
+      return toast.error(friendlyError(err));
+    }
+    toast.success(next ? 'Friends can see what you are playing' : 'Friends can no longer see what you play on your own');
+  };
 
   // Refresh when a request arrives, and every so often to follow friends between tables.
   useEffect(() => {
@@ -79,6 +116,8 @@ export default function FriendsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:py-10">
       <SectionNav />
+      <DmModal friend={dm} onClose={() => setDm(null)} />
+      <WatchModal friend={watch} onClose={() => setWatch(null)} />
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">Play together</p>
       <h1 className="font-display text-4xl font-bold text-ivory">Friends</h1>
 
@@ -181,9 +220,20 @@ export default function FriendsPage() {
                             )}
                           </>
                         )
+                      ) : playing[f.user_id] ? (
+                        <span className="text-xs text-cream/75">Playing {playing[f.user_id].game}</span>
                       ) : (
-                        <span className="text-xs text-muted">{isOnline(f.user_id) ? 'Online, not at a table' : 'Offline'}</span>
+                        <span className="text-xs text-muted">{isOnline(f.user_id) ? 'Online, not in a game' : 'Offline'}</span>
                       )}
+                      {(playing[f.user_id] || (f.table && !f.table.private)) && (
+                        <Button size="sm" variant="outline" aria-label={`Watch ${f.username}`} onClick={() => setWatch({ user_id: f.user_id, username: f.username })}>
+                          Watch
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" aria-label={`Message ${f.username}${unreadFrom(f.user_id) ? `, ${unreadFrom(f.user_id)} new` : ''}`} onClick={() => setDm({ user_id: f.user_id, username: f.username })}>
+                        Message
+                        {unreadFrom(f.user_id) > 0 && <span className="ml-1.5 rounded-full bg-ruby-500 px-1.5 text-[0.65rem] font-bold text-ivory">{unreadFrom(f.user_id)}</span>}
+                      </Button>
                       <Button size="sm" variant="ghost" disabled={busy !== null} aria-label={`Remove ${f.username} from your friends`} onClick={() => void act(f.user_id, 'friend_remove', { p_user: f.user_id }, 'Removed from your friends')}>
                         Remove
                       </Button>
@@ -191,6 +241,17 @@ export default function FriendsPage() {
                   </li>
                 ))}
               </ul>
+            )}
+            {watchable !== null && (
+              <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-white/[0.06] pt-4">
+                <input type="checkbox" checked={watchable} onChange={() => void toggleWatchable()} className="mt-0.5 h-4 w-4 accent-gold-500" />
+                <span className="text-sm text-cream/90">
+                  Let my friends see what I&apos;m playing and watch
+                  <span className="block text-xs text-muted">
+                    Friends see which game you have open and how your last few rounds there went. At a public table anyone can watch anyway.
+                  </span>
+                </span>
+              </label>
             )}
           </section>
 

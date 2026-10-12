@@ -1433,7 +1433,8 @@ declare
   v_cards smallint[];
 begin
   select * into t from public.game_tables where id = p_table;
-  if t.status <> 'open' then
+  -- (A table in its waiting room deals nothing until the host starts it.)
+  if t.status <> 'open' or t.waiting then
     return false;
   end if;
   cfg := private.pk_config(t.game_key);

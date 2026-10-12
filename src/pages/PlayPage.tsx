@@ -1,5 +1,7 @@
 import { QuickStart } from '@/components/onboarding/QuickStart';
+import { useEffect } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 import { BingoGame } from '@/components/more/BingoGame';
 import { CasinoWarGame } from '@/components/more/CasinoWarGame';
 import { CrashGame } from '@/components/more/CrashGame';
@@ -27,6 +29,17 @@ import { ErrorState } from '@/components/ui/States';
 /** /play/:gameKey: solo games (no table to join). */
 export default function PlayPage() {
   const { gameKey = '' } = useParams();
+  // Friends can see what you have open (and watch, unless you switched that off): 23_social.sql.
+  useEffect(() => {
+    if (!gameKey) return;
+    const tell = (g: string | null) => void supabase.rpc('set_activity', { p_game: g }).then(() => undefined);
+    tell(gameKey);
+    const id = window.setInterval(() => !document.hidden && tell(gameKey), 45_000);
+    return () => {
+      window.clearInterval(id);
+      tell(null);
+    };
+  }, [gameKey]);
   return (
     <>
       <Game gameKey={gameKey} />

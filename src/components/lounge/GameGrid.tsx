@@ -14,11 +14,11 @@ import { useSettings } from '@/stores/settingsStore';
 type Filter = 'all' | CategoryKey;
 type Kind = 'any' | 'live' | 'solo' | 'tournament' | 'favourites';
 const KINDS: { key: Kind; label: string }[] = [
-  { key: 'any', label: 'Any kind' },
-  { key: 'live', label: 'Live' },
-  { key: 'solo', label: 'Solo' },
+  { key: 'any', label: 'Live and solo' },
+  { key: 'live', label: 'Live only' },
+  { key: 'solo', label: 'Solo only' },
   { key: 'tournament', label: 'Tournaments' },
-  { key: 'favourites', label: '★ Favourites' },
+  { key: 'favourites', label: 'My favourites' },
 ];
 
 const MODE_TAG = {
@@ -145,7 +145,59 @@ export function GameGrid() {
             <span className="font-semibold text-cream/80">Solo</span> games are just you and the house.
           </p>
         </div>
-        <div role="tablist" aria-label="Filter games" className="flex flex-wrap gap-1.5">
+      </div>
+
+      {/* One toolbar: search, what kind of game, then the sections. */}
+      <div className="surface mt-4 flex flex-wrap items-center gap-2 p-2.5">
+        <label className="sr-only" htmlFor="game-search">
+          Search the games
+        </label>
+        <div className="relative min-w-0 flex-1 basis-48 sm:max-w-xs">
+          <input
+            id="game-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search the games…"
+            autoComplete="off"
+            className="h-9 w-full rounded-lg border border-white/10 bg-ink-950/60 pl-9 pr-3 text-sm text-ivory placeholder:text-subtle"
+          />
+          <svg viewBox="0 0 20 20" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="9" cy="9" r="5.5" />
+            <path d="M13.5 13.5L17 17" />
+          </svg>
+        </div>
+        <label className="sr-only" htmlFor="game-kind">
+          Kind of game
+        </label>
+        <select
+          id="game-kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as Kind)}
+          className={cn(
+            'h-9 rounded-lg border bg-ink-950/60 px-2.5 text-sm',
+            kind === 'any' ? 'border-white/10 text-cream/80' : 'border-gold-500/60 text-gold-200',
+          )}
+        >
+          {KINDS.map((k) => (
+            <option key={k.key} value={k.key}>
+              {k.label}
+            </option>
+          ))}
+        </select>
+        {narrowed && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('');
+              setKind('any');
+            }}
+            className="px-1 text-xs font-semibold text-gold-300 hover:underline"
+          >
+            Clear
+          </button>
+        )}
+        <div role="tablist" aria-label="Section" className="flex flex-wrap gap-1.5 lg:ml-auto">
           {[{ key: 'all' as const, label: 'All games' }, ...CATEGORIES].map((f) => (
             <button
               key={f.key}
@@ -164,48 +216,6 @@ export function GameGrid() {
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <label className="sr-only" htmlFor="game-search">
-          Search the games
-        </label>
-        <div className="relative min-w-0 flex-1 sm:max-w-xs">
-          <input
-            id="game-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search the games…"
-            autoComplete="off"
-            className="h-10 w-full rounded-xl border border-white/15 bg-ink-950/60 pl-9 pr-3 text-sm text-ivory placeholder:text-subtle"
-          />
-          <svg viewBox="0 0 20 20" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="9" cy="9" r="5.5" />
-            <path d="M13.5 13.5L17 17" />
-          </svg>
-        </div>
-        <div role="group" aria-label="Kind of game" className="flex flex-wrap gap-1.5">
-          {KINDS.map((k) => (
-            <button
-              key={k.key}
-              type="button"
-              aria-pressed={kind === k.key}
-              onClick={() => setKind(k.key)}
-              className={cn(
-                'rounded-full border px-3 py-1.5 text-xs font-medium transition',
-                kind === k.key ? 'border-felt-300/60 bg-felt-600/30 text-felt-300' : 'border-white/10 text-cream/75 hover:border-white/20 hover:text-ivory',
-              )}
-            >
-              {k.label}
-            </button>
-          ))}
-        </div>
-        {narrowed && (
-          <button type="button" onClick={() => { setQuery(''); setKind('any'); }} className="text-xs font-semibold text-gold-300 hover:underline">
-            Clear
-          </button>
-        )}
       </div>
 
       {games && !narrowed && (shelf(recent).length > 0 || shelf(favourites).length > 0) && (
