@@ -150,7 +150,7 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
       };
       return {
         title: delta === 0 ? 'A warning about your chat' : `Your reputation ${delta > 0 ? 'went up' : 'went down'} by ${Math.abs(delta)}`,
-        body: `${why[String(d.reason)] ?? 'After a moderator’s decision.'} It is now ${String(d.score)} out of 100.`,
+        body: `${why[String(d.reason)] ?? 'After a moderator’s decision.'}${typeof d.note === 'string' ? ` Reason: ${d.note}.` : ''} It is now ${String(d.score)} out of 100.`,
         to: '/profile',
         action: 'See your reputation',
       };
@@ -158,7 +158,7 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
     case 'chat_ban':
       return {
         title: `A moderator switched off ${d.kind === 'quick' ? 'quick chat' : 'typed chat'} for you`,
-        body: typeof d.until === 'string' ? `Until ${new Date(d.until).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}.` : 'Until a moderator lifts it.',
+        body: `${typeof d.until === 'string' ? `Until ${new Date(d.until).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}.` : 'Until a moderator lifts it.'}${typeof d.reason === 'string' ? ` Reason: ${d.reason}.` : ''}`,
         to: '/profile',
         action: 'See your reputation',
       };

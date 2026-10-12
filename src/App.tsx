@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { MaintenanceGate } from '@/components/account/MaintenanceGate';
+import { MusicPlayer } from '@/components/layout/MusicPlayer';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Toaster } from '@/components/ui/Toaster';
 import { playSound } from '@/lib/sound';
@@ -230,6 +231,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={motionPref === 'system' ? 'user' : reduced ? 'always' : 'never'}>
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <MusicPlayer />
         {/* Nothing below is shown until the server says the site is open (or that this is the admin). */}
         <MaintenanceGate>
           <RouteEffects />

@@ -94,12 +94,27 @@ select tests.throws($$select public.get_economy_status()$$, 'rename_required');
 select tests.throws($$select public.slot_spin('slots_classic', 10)$$, 'rename_required');
 select tests.throws($$select public.change_username('ModBen')$$, 'action_not_allowed');
 select tests.throws($$select public.change_username('no')$$, 'action_not_allowed');
+select tests.throws($$select public.change_username('ModCat')$$, 'action_not_allowed');
+select tests.throws($$select public.change_username('modcat')$$, 'action_not_allowed');
+select tests.ok(tests.name(:C) like 'Player\_%', 'the name that was taken away cannot be chosen again, in any capitals');
 select tests.ok(public.change_username('NiceCat') ->> 'username' = 'NiceCat' and tests.name(:C) = 'NiceCat', 'renamed');
 select tests.ok((public.slot_spin('slots_classic', 10) ->> 'bet')::int = 10, 'and can play again');
 select tests.throws($$select public.change_username('OtherCat')$$, 'action_not_allowed');
 select tests.as_user(:A);
 select tests.ok(public.admin_rename(:C, 'ModCat') ->> 'username' = 'ModCat' and not (tests.sanction(:C)).must_rename, 'the admin can also set a name directly');
 select tests.throws($$select public.admin_rename('00000000-0000-0000-0000-00000000a0c3', 'ModBen')$$, 'action_not_allowed');
+-- Notes on a player's file: the admin's own, never the player's to see.
+select public.admin_file_note_add(:C, '  Second time the name was a problem.  ');
+select public.admin_file_note_add(:C, 'Was polite about it.');
+select tests.throws($$select public.admin_file_note_add('00000000-0000-0000-0000-00000000a0c3', '   ')$$, 'action_not_allowed');
+select tests.ok(jsonb_array_length(public.admin_player(:C) -> 'notes') = 2 and public.admin_player(:C) #>> '{notes,0,note}' = 'Was polite about it.'
+            and public.admin_player(:C) #>> '{notes,1,note}' = 'Second time the name was a problem.', 'notes are kept on the file, newest first');
+select public.admin_file_note_delete((public.admin_player(:C) #>> '{notes,0,id}')::bigint);
+select tests.ok(jsonb_array_length(public.admin_player(:C) -> 'notes') = 1, 'a note can be deleted');
+select tests.as_user(:C);
+select tests.throws($$select public.admin_file_note_add('00000000-0000-0000-0000-00000000a0c3', 'hi')$$, 'not_admin');
+select tests.throws($$select * from public.player_notes$$, 'permission denied');
+select tests.as_user(:A);
 
 -- ----------------------------------------------------------------------------
 -- Timeout and ban

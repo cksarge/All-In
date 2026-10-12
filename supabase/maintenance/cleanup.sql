@@ -5,7 +5,7 @@
 --
 -- NEVER touched: accounts, profiles, wallets (balances), player stats, XP and levels,
 -- achievements, cosmetics and loadouts, friends, clubs, trophies, head-to-head records,
--- season points, reputation, bans and blocks, the jackpot, the game catalogue, seats, and anything still
+-- season points, reputation, your notes on players, bans and blocks, the jackpot, the game catalogue, seats, and anything still
 -- being played (open rounds, hands in progress, chips on a table).
 --
 -- Every game is covered, by what it stores:

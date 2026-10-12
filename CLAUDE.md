@@ -118,7 +118,7 @@ Every part must come with its achievements, cosmetics and menu entries (standing
 ### Where things stand (2026-10-12)
 Everything planned has been built: stages 1 to 11. Nothing is designed or agreed beyond this. The site has
 **56 games** (15 table, 20 poker, 7 slots, 14 specialty; all released), **83 achievements**, 22 numbered SQL files
-making 69 tables (33 in Realtime), 19 SQL test files and 16 browser suites.
+making 70 tables (33 in Realtime), 19 SQL test files and 16 browser suites.
 
 Stage 10's 23 games, for reference: Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four Card Poker,
 Teen Patti against the dealer (19); Bonus, Double Bonus and Joker video poker (11); Spanish 21, Blackjack Switch,
@@ -132,7 +132,8 @@ Badugi (09); horse racing and Teen Patti tables (21).
 - A side show in Teen Patti; a simulation to measure the house edge of the stage 10 games (their paytables are the
   standard published ones).
 - From the stage 9 brainstorm, not asked for: lucky wheel, private tournaments, shareable wins, profile showcase,
-  fairness page, play reminders. **Not wanted:** music or sound options, installing as an app.
+  fairness page, play reminders. **Not wanted:** installing as an app. (Music was not wanted at first; the user
+  asked for it on 2026-10-12 and it is built: see §8.)
 
 ## 6. Repository map
 
@@ -194,7 +195,8 @@ src/components/account/              AccountGate (suspended / timeout / rename s
 src/components/onboarding/           the welcome tour and QuickStart (first-visit guide per game)
 src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
 src/components/progress/             ProgressCard (lounge), ProfileExtras, ReputationCard (own profile), and bits: LevelBadge, XpBar, PlayerLine
-src/components/layout/               SiteHeader (top bar, inbox bell), SectionNav, footer, balance pill
+src/components/layout/               SiteHeader (top bar, inbox bell), SectionNav, footer, balance pill, MusicPlayer
+src/assets/music/                    the user's music tracks, README and CREDITS.txt (see §8)
 src/components/ui/Avatar.tsx         a player's picture and frame; src/components/table/SeatAvatar.tsx looks it up by user id
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay; 52 = joker)
 src/pages/                           one file per route: Profile, Locker, Friends, Leaderboard, Clubs, Missions, Inbox,
@@ -397,6 +399,10 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      (null = replace the name with `Player_xxxxxx` and set `must_rename`), `admin_chips(user, 'add'|'set', amount)`
      (through `apply_chips`, ledger reason `admin_adjust`), `admin_kick`, `admin_set_notice`. A ban or timeout also
      takes the player off their table. All actions go to `admin_log`.
+   - **A removed name can't be chosen again:** a forced `admin_rename` remembers it in `player_sanctions.removed_name`
+     and `change_username` refuses it in any capitals. **Notes on a player's file:** the hidden `player_notes`,
+     `admin_file_note_add(user, note)` / `admin_file_note_delete(id)`, returned by `admin_player` as `notes`; only the
+     admin ever sees them (the name `admin_note` was taken by the log writer in `private`).
    - **Site maintenance:** `site_status` (one row, readable by anyone, in realtime), `site_status()` (callable signed
      out) and `admin_set_maintenance(on, message)`. While on, `private.sanction_check` refuses every game call from
      anyone but the admin (`site_maintenance`), and `MaintenanceGate` (wrapping everything in `App.tsx`) shows only
@@ -561,7 +567,10 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
        file 15 is untouched: rename 50, timeout under a day 50, under a week 75, a week or more or a ban: to 0.
      - **30 or less: no typed chat. 20 or less: no quick chat either** (the user first said 40 and agreed to 30, since
        one penalty from 50 lands on 25). `admin_chat_ban(user, 'chat'|'quick', minutes | null = until lifted | 0)`
-       switches either off whatever the reputation; `admin_reputation(user, 'add'|'set', amount, note)`.
+       switches either off whatever the reputation, with a `reason` the player is shown (`chat_ban_reason` /
+       `quick_ban_reason`); `admin_reputation(user, 'add'|'set', amount, note)`. **Which notes a player sees:** the
+       reason of an `admin_warn` (on their reputation card and in the inbox) and of a chat ban. The note on a
+       points change is the admin's own. The admin's reputation panel has its own reason box for all three.
      - Only the player (`my_reputation()`, the card on their own profile) and the admin (`admin_reputation_view`) see it.
    - **Reputation cosmetics** (catalogue in 13): `cosmetics.min_reputation` (75: Well-Mannered, Good Standing; 100:
      Pillar of the Lounge, Dove, Exemplary). `private.owns_cosmetic` counts them as owned only **while**
@@ -605,7 +614,7 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
 - **Hidden tables:** RLS on, no policies, `revoke all … from anon, authenticated`, never published to realtime.
   Today: `bj_shoes`, `bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`,
   `bingo_secrets`, `tpt_cards`, `chat_messages`, `admins`, `player_reports`, `admin_log`, `player_activity`,
-  `head_to_head`.
+  `player_notes`, `head_to_head`.
 - **Each file ends with** `revoke execute on all functions in schema private from public, anon, authenticated;
   grant execute on function private.can_view_table(uuid) to authenticated;`. `private` must NOT be added to
   the Data API's exposed schemas.
@@ -720,6 +729,13 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   and say so.** When either document changes, change `LEGAL.version` and `LEGAL.effective` (now October 12, 2026). If the game starts collecting
   something new or uses a new outside service, the Privacy Policy must say so. The copy guard applies to these
   pages too: the banned words only pass on a line that also contains a disclaimer such as "no purchases".
+- **Music** (asked for 2026-10-12): the user drops audio files into `src/assets/music/` (README there) and writes
+  their licences in `CREDITS.txt` beside them. `src/lib/music.ts` finds the files at build time with
+  `import.meta.glob` (no list to maintain) and reads the credits, minus `#` lines. `MusicPlayer` is mounted once in
+  `App.tsx` above the routes, so music carries on between screens: it plays every track in a random order, then
+  reshuffles without repeating the last one, starts on the first click or key press (browsers require that),
+  and pauses while the tab is hidden. Settings has a Music switch, a volume slider (`musicOn`, `musicVolume` in the
+  settings store; on at 30% by default) and the credits. With no files there is no player at all.
 - Styling: Tailwind with custom colours (`ink`, `felt`, `ruby`, `gold`, `cream`, `ivory`), the `.felt` and
   `.surface` classes, Playfair Display headings and Inter body text. Sounds come from `playSound(...)` in
   `src/lib/sound.ts`.
@@ -750,7 +766,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (44 checks)
    node scripts/e2e/social.cjs /tmp/shots       # stage 7: rewards, profile, locker, friends, join their table, leaderboards (24 checks)
    node scripts/e2e/tournaments.cjs /tmp/shots  # stage 8: freeroll, showdown, heads-up Sit & Go, first-visit guide (29 checks)
-   node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban, site maintenance (22 checks)
+   node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban, site maintenance (23 checks)
    node scripts/e2e/live.cjs /tmp/shots         # stage 9 part 2: missions, season track, inbox, table invite (17 checks; season checks need a running season)
    node scripts/e2e/clubs.cjs /tmp/shots        # stage 9 part 3: clubs, ticker, head-to-head, personal records (16 checks)
    node scripts/e2e/events.cjs /tmp/shots       # stage 9 part 4: favourites, VP hint, auto-spin, formats, a three-player Main Event, trophies (20 checks)
@@ -758,7 +774,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage10b.cjs /tmp/shots     # stage 10 part 2: four blackjack variants, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck, phone widths (23 checks)
    node scripts/e2e/stage10c.cjs /tmp/shots     # stage 10 part 3: a full Badugi hand with three draws, lobby entries, Grandmaster, seasonal tag (12 checks)
    node scripts/e2e/stage10d.cjs /tmp/shots     # stage 10 part 4: a horse race with two players, a Teen Patti hand with a show, phone widths (23 checks)
-   node scripts/e2e/stage11.cjs /tmp/shots      # phase 11: room and table chat, the filter, reputation, a reported message, admin controls, cosmetics (22 checks)
+   node scripts/e2e/stage11.cjs /tmp/shots      # phase 11: room and table chat, the filter, reputation, a reported message, admin controls and reasons, notes, cosmetics (24 checks)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

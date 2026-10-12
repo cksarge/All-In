@@ -75,6 +75,8 @@ interface Player extends PlayerRow {
   reports: { id: number; reason: string; note: string | null; status: string; at: string; reporter: string | null }[];
   reports_made: number;
   log: { action: string; at: string; details: Record<string, unknown> }[];
+  /** The admin's own notes on this player. */
+  notes?: { id: number; note: string; at: string }[];
 }
 
 const REASON: Record<string, string> = { name: 'Offensive username', cheating: 'Cheating', harassment: 'Harassment', other: 'Other' };
@@ -179,8 +181,9 @@ function Reports({ onOpen }: { onOpen: (userId: string) => void }) {
     if (await run('admin_resolve_report', { p_report: r.id, p_status: to, p_resolution: null }, to === 'open' ? 'Report reopened' : `Report marked ${to}`)) void load();
   };
   const warn = async (r: Report) => {
-    if (!window.confirm(`Warn ${r.reported ?? 'this player'}? They lose 25 reputation and the report is marked actioned.`)) return;
-    if (await run('admin_warn', { p_user: r.reported_id, p_reason: null, p_report: r.id }, 'Warning given')) void load();
+    const why = window.prompt(`Warn ${r.reported ?? 'this player'}? They lose 25 reputation and the report is marked actioned.\n\nReason (the player sees this):`, '');
+    if (why === null) return;
+    if (await run('admin_warn', { p_user: r.reported_id, p_reason: why.trim() || null, p_report: r.id }, 'Warning given')) void load();
   };
   const falseReport = async (r: Report) => {
     if (!window.confirm(`Dismiss this as a false report? ${r.reporter ?? 'The reporter'} loses 10 reputation.`)) return;
@@ -443,7 +446,8 @@ function PlayerPanel({ userId }: { userId: string }) {
         </div>
       )}
 
-      <ReputationPanel userId={userId} username={p.username} reason={reason} />
+      <ReputationPanel userId={userId} username={p.username} />
+      <NotesPanel userId={userId} notes={p.notes ?? []} onChange={load} />
 
       <div className="surface p-5">
         <h3 className="font-display text-lg font-bold text-ivory">Chips</h3>
@@ -520,6 +524,8 @@ interface RepView {
   can_quick: boolean;
   chat_banned_until: string | null;
   quick_banned_until: string | null;
+  chat_ban_reason?: string | null;
+  quick_ban_reason?: string | null;
   log: { delta: number; score: number; reason: string; note: string | null; at: string }[];
   messages: { id: number; channel: string; text: string; flagged: string | null; hidden: boolean; at: string }[];
 }
@@ -531,10 +537,11 @@ const BAN_TIMES: { label: string; minutes: number | null }[] = [
 ];
 const banLabel = (iso: string | null) => (!iso ? null : new Date(iso).getFullYear() > 9000 ? 'until lifted' : `until ${when(iso)}`);
 
-/** A player's reputation, their chat bans and what they typed lately. `reason` is the note box above. */
-function ReputationPanel({ userId, username, reason }: { userId: string; username: string; reason: string }) {
+/** A player's reputation, their chat bans and what they typed lately, with its own reason box. */
+function ReputationPanel({ userId, username }: { userId: string; username: string }) {
   const { data: r, load } = useRpc<RepView>('admin_reputation_view', { p_user: userId });
   const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
   if (!r) return null;
   const n = Number(amount.replace(/[^0-9]/g, ''));
   const ok = amount.trim() !== '' && Number.isFinite(n) && n <= 100;
@@ -542,6 +549,7 @@ function ReputationPanel({ userId, username, reason }: { userId: string; usernam
     if (confirmText && !window.confirm(confirmText)) return;
     if (await run(fn, { p_user: userId, ...args }, done)) {
       setAmount('');
+      setReason('');
       void load();
     }
   };
@@ -552,6 +560,12 @@ function ReputationPanel({ userId, username, reason }: { userId: string; usernam
         <p className="text-sm text-cream/85">
           <strong className="font-display text-2xl text-ivory">{r.score}</strong> / 100 <span className="text-muted">(best {r.best})</span>
         </p>
+      </div>
+      <div>
+        <label className="text-xs text-muted" htmlFor="admin-rep-reason">
+          Reason (the player sees this with a warning or a chat ban; with a points change it is only a note for you)
+        </label>
+        <input id="admin-rep-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className={cn(input, 'mt-1 w-full')} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="sr-only" htmlFor="admin-rep">
@@ -567,7 +581,7 @@ function ReputationPanel({ userId, username, reason }: { userId: string; usernam
         <Button size="sm" variant="ghost" disabled={!ok} onClick={() => void act('admin_reputation', { p_mode: 'set', p_amount: n, p_note: reason || null }, `Reputation set to ${n}`, `Set ${username}'s reputation to exactly ${n}?`)}>
           Set to this
         </Button>
-        <Button size="sm" variant="outline" onClick={() => void act('admin_warn', { p_reason: reason || null, p_report: null }, 'Warning given', `Warn ${username}? They lose 25 reputation and see the reason above.`)}>
+        <Button size="sm" variant="outline" onClick={() => void act('admin_warn', { p_reason: reason || null, p_report: null }, 'Warning given', `Warn ${username}? They lose 25 reputation${reason.trim() ? ` and are told: "${reason.trim()}"` : '. No reason is written: they will only be told it was a warning'}.`)}>
           Warn (−25)
         </Button>
       </div>
@@ -581,14 +595,15 @@ function ReputationPanel({ userId, username, reason }: { userId: string; usernam
           <p className="w-full text-sm text-cream/85 sm:w-56">
             {label}: <strong className={can ? 'text-felt-300' : 'text-ruby-300'}>{can ? 'on' : 'off'}</strong>
             {banned ? ` (banned ${banLabel(banned)})` : !can ? ' (reputation too low)' : ''}
+            {banned && (kind === 'chat' ? r.chat_ban_reason : r.quick_ban_reason) && <span className="block text-xs text-muted">Reason given: {kind === 'chat' ? r.chat_ban_reason : r.quick_ban_reason}</span>}
           </p>
           {banned ? (
-            <Button size="sm" variant="felt" onClick={() => void act('admin_chat_ban', { p_kind: kind, p_minutes: 0 }, `${label} ban lifted`)}>
+            <Button size="sm" variant="felt" onClick={() => void act('admin_chat_ban', { p_kind: kind, p_minutes: 0, p_reason: null }, `${label} ban lifted`)}>
               Lift ban
             </Button>
           ) : (
             BAN_TIMES.map((t) => (
-              <Button key={t.label} size="sm" variant="outline" onClick={() => void act('admin_chat_ban', { p_kind: kind, p_minutes: t.minutes }, `${label} banned: ${t.label.toLowerCase()}`)}>
+              <Button key={t.label} size="sm" variant="outline" onClick={() => void act('admin_chat_ban', { p_kind: kind, p_minutes: t.minutes, p_reason: reason.trim() || null }, `${label} banned: ${t.label.toLowerCase()}`)}>
                 {t.label}
               </Button>
             ))
@@ -635,6 +650,55 @@ function ReputationPanel({ userId, username, reason }: { userId: string; usernam
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** The admin's own notes on a player: a file only the admin can read. */
+function NotesPanel({ userId, notes, onChange }: { userId: string; notes: { id: number; note: string; at: string }[]; onChange: () => unknown }) {
+  const [text, setText] = useState('');
+  const add = async () => {
+    if (await run('admin_file_note_add', { p_user: userId, p_note: text }, 'Note added')) {
+      setText('');
+      void onChange();
+    }
+  };
+  const remove = async (id: number) => {
+    if (!window.confirm('Delete this note?')) return;
+    if (await run('admin_file_note_delete', { p_note: id }, 'Note deleted')) void onChange();
+  };
+  return (
+    <div className="surface space-y-3 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-display text-lg font-bold text-ivory">Notes on this player ({notes.length})</h3>
+        <p className="text-xs text-muted">Only you can see these. The player never does.</p>
+      </div>
+      <div className="flex flex-wrap items-start gap-2">
+        <label className="sr-only" htmlFor="admin-note">
+          New note
+        </label>
+        <textarea id="admin-note" value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} rows={2} placeholder="Write a note for the file…" className={cn(input, 'min-w-0 flex-1')} />
+        <Button size="sm" variant="felt" disabled={!text.trim()} onClick={() => void add()}>
+          Add note
+        </Button>
+      </div>
+      {notes.length === 0 ? (
+        <p className="text-sm text-muted">No notes yet.</p>
+      ) : (
+        <ul className="divide-y divide-white/[0.06]">
+          {notes.map((n) => (
+            <li key={n.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+              <p className="min-w-0 whitespace-pre-wrap text-cream/90 [overflow-wrap:anywhere]">
+                {n.note}
+                <span className="block text-xs text-muted">{when(n.at)}</span>
+              </p>
+              <button type="button" onClick={() => void remove(n.id)} className="shrink-0 text-xs text-subtle hover:text-ruby-300" aria-label="Delete this note">
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -212,7 +212,9 @@ select tests.ok(tests.rep(:D) = 43 and tests.last_reason(:D) = 'false_report', '
 select tests.throws(format('select public.admin_report_false(%s)', tests.report_of(:D)), 'action_not_allowed');
 -- A warning with nothing else: 25.
 select tests.ok(public.admin_warn(:D, 'Keep it friendly') = 18 and tests.last_reason(:D) = 'warning', 'a warning costs 25');
+select public.admin_reputation(:D, 'add', 0, 'this note is for the admin only');
 select tests.as_user(:D);
+select tests.ok(public.my_reputation() #>> '{log,0,reason}' = 'warning' and public.my_reputation() #>> '{log,0,note}' = 'Keep it friendly', 'the player reads the reason for the warning');
 select tests.ok(public.my_reputation() @> '{"score":18,"can_chat":false,"can_quick":false}', 'at 20 or less quick chat goes too');
 select tests.ok((public.loadouts_for(array[:D]::uuid[]) -> (:D)::text ->> 'quick_muted')::boolean and not (public.loadouts_for(array[:B]::uuid[]) -> (:B)::text ->> 'quick_muted')::boolean,
                 'other browsers are told to drop a muted player''s quick chat');
@@ -247,15 +249,15 @@ select public.admin_reputation(:D, 'set', 60);
 select tests.ok(tests.title(:D) = 'title_pillar' and (select avatar from public.player_loadouts where user_id = :D) = 'avatar_initial', 'a cosmetic given by hand stays on; the earned one comes off');
 
 -- Chat bans whatever the reputation.
-select public.admin_chat_ban(:D, 'chat', 60);
+select public.admin_chat_ban(:D, 'chat', 60, 'Cool off for a bit');
 select tests.as_user(:D);
-select tests.ok(public.my_reputation() @> '{"score":60,"can_chat":false,"can_quick":true}' and public.my_reputation() ->> 'chat_banned_until' is not null, 'a typed-chat ban for an hour');
+select tests.ok(public.my_reputation() @> '{"score":60,"can_chat":false,"can_quick":true,"chat_ban_reason":"Cool off for a bit"}' and public.my_reputation() ->> 'chat_banned_until' is not null, 'a typed-chat ban for an hour, with its reason');
 select tests.throws($$select public.chat_send('room:crash', 'hello?')$$, 'chat_banned');
 select tests.as_user(:A);
 select public.admin_chat_ban(:D, 'chat', 0);
 select public.admin_chat_ban(:D, 'quick');
 select tests.as_user(:D);
-select tests.ok(public.my_reputation() @> '{"can_chat":true,"can_quick":false}', 'lifted; and a quick-chat ban until further notice');
+select tests.ok(public.my_reputation() @> '{"can_chat":true,"can_quick":false}' and public.my_reputation() -> 'chat_ban_reason' = 'null'::jsonb, 'lifted (and the reason with it); and a quick-chat ban until further notice');
 select tests.as_user(:A);
 select public.admin_chat_ban(:D, 'quick', 0);
 

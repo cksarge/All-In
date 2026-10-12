@@ -1,0 +1,14 @@
+# Music credits and licences.
+#
+# Players can read this file in Settings, under "Music credits".
+# Lines that start with # (like these) are notes for you and are NOT shown.
+# Everything else is shown exactly as you write it, so plain text works best.
+#
+# Add an entry for every track in this folder. What each licence asks for differs, but this covers most:
+#
+#   "Track title" by Artist Name
+#   Source: https://example.com/where-you-got-it
+#   Licence: Creative Commons Attribution 4.0 (https://creativecommons.org/licenses/by/4.0/)
+#   Changes: none (or say what you changed, e.g. "shortened and looped")
+#
+# Leave a blank line between tracks. Delete an entry when you delete its file.

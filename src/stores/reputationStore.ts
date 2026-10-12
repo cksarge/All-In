@@ -10,6 +10,9 @@ export interface Reputation {
   can_quick: boolean;
   chat_banned_until: string | null;
   quick_banned_until: string | null;
+  /** Why a moderator switched it off, if they said. */
+  chat_ban_reason?: string | null;
+  quick_ban_reason?: string | null;
   /** Clean messages since the last point earned. */
   clean_count: number;
   gained_today: number;

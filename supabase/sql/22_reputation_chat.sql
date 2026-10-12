@@ -71,6 +71,9 @@ create table if not exists public.player_reputation (
   last_message_at     timestamptz,
   updated_at          timestamptz not null default now()
 );
+-- Why a moderator switched chat off (the player is shown this).
+alter table public.player_reputation add column if not exists chat_ban_reason text;
+alter table public.player_reputation add column if not exists quick_ban_reason text;
 
 -- What changed a player's reputation (their own rows are readable).
 create table if not exists public.reputation_log (
@@ -226,7 +229,10 @@ begin
     perform private.check_achievements(p_user);
   end if;
   if p_reason not in ('chat_clean', 'recovery') then
-    perform private.notify(p_user, 'reputation', jsonb_build_object('delta', v_new - r.score, 'score', v_new, 'reason', p_reason));
+    -- (A moderator's note is passed on only for a warning: it is the reason the player should read.)
+    perform private.notify(p_user, 'reputation', jsonb_strip_nulls(jsonb_build_object(
+      'delta', v_new - r.score, 'score', v_new, 'reason', p_reason,
+      'note', case when p_reason = 'warning' then nullif(left(btrim(coalesce(p_note, '')), 200), '') end)));
   end if;
   return v_new;
 end $$;
@@ -550,10 +556,14 @@ begin
     'can_chat', private.rep_can(v_uid, 'chat'), 'can_quick', private.rep_can(v_uid, 'quick'),
     'chat_banned_until', case when r.chat_banned_until > now() then r.chat_banned_until end,
     'quick_banned_until', case when r.quick_banned_until > now() then r.quick_banned_until end,
+    'chat_ban_reason', case when r.chat_banned_until > now() then r.chat_ban_reason end,
+    'quick_ban_reason', case when r.quick_banned_until > now() then r.quick_ban_reason end,
     'clean_count', coalesce(r.clean_count, 0),
     'gained_today', case when r.gain_day = v_today then r.gain_today else 0 end,
     'config', c,
-    'log', (select coalesce(jsonb_agg(jsonb_build_object('delta', l.delta, 'score', l.score, 'reason', l.reason, 'note', l.note, 'at', l.created_at)
+    -- A note is shown to the player only where it is meant for them: a moderator's warning, and what the filter caught.
+    'log', (select coalesce(jsonb_agg(jsonb_build_object('delta', l.delta, 'score', l.score, 'reason', l.reason,
+                                                         'note', case when l.reason in ('warning', 'chat_warning') then l.note end, 'at', l.created_at)
                                       order by l.id desc), '[]'::jsonb)
               from (select * from public.reputation_log where user_id = v_uid order by id desc limit 20) l));
 end $$;
@@ -580,6 +590,8 @@ begin
     'can_chat', private.rep_can(p_user, 'chat'), 'can_quick', private.rep_can(p_user, 'quick'),
     'chat_banned_until', case when r.chat_banned_until > now() then r.chat_banned_until end,
     'quick_banned_until', case when r.quick_banned_until > now() then r.quick_banned_until end,
+    'chat_ban_reason', case when r.chat_banned_until > now() then r.chat_ban_reason end,
+    'quick_ban_reason', case when r.quick_banned_until > now() then r.quick_ban_reason end,
     'log', (select coalesce(jsonb_agg(jsonb_build_object('delta', l.delta, 'score', l.score, 'reason', l.reason, 'note', l.note, 'at', l.created_at)
                                       order by l.id desc), '[]'::jsonb)
               from (select * from public.reputation_log where user_id = p_user order by id desc limit 30) l),
@@ -612,8 +624,9 @@ begin
 end $$;
 
 -- Switch typed chat ('chat') or quick chat ('quick') off for a player, whatever their reputation.
--- p_minutes: how long; null = until lifted; 0 = lift it now.
-create or replace function public.admin_chat_ban(p_user uuid, p_kind text, p_minutes integer default null)
+-- p_minutes: how long; null = until lifted; 0 = lift it now. p_reason is shown to the player.
+drop function if exists public.admin_chat_ban(uuid, text, integer);
+create or replace function public.admin_chat_ban(p_user uuid, p_kind text, p_minutes integer default null, p_reason text default null)
 returns void
 language plpgsql
 security definer
@@ -622,6 +635,7 @@ as $$
 declare
   v_until timestamptz := case when p_minutes is null then 'infinity'::timestamptz when p_minutes = 0 then null
                               else now() + make_interval(mins => p_minutes) end;
+  v_reason text := case when p_minutes is distinct from 0 then nullif(left(btrim(coalesce(p_reason, '')), 200), '') end;
 begin
   perform private.require_admin();
   if not exists (select 1 from public.profiles where id = p_user) then
@@ -632,14 +646,15 @@ begin
   end if;
   perform private.rep_row(p_user);
   if p_kind = 'chat' then
-    update public.player_reputation set chat_banned_until = v_until, updated_at = now() where user_id = p_user;
+    update public.player_reputation set chat_banned_until = v_until, chat_ban_reason = v_reason, updated_at = now() where user_id = p_user;
   else
-    update public.player_reputation set quick_banned_until = v_until, updated_at = now() where user_id = p_user;
+    update public.player_reputation set quick_banned_until = v_until, quick_ban_reason = v_reason, updated_at = now() where user_id = p_user;
   end if;
   perform private.admin_note(case when p_minutes = 0 then 'chat_unban' else 'chat_ban' end, p_user,
-                             jsonb_build_object('kind', p_kind, 'ban_minutes', p_minutes));
+                             jsonb_build_object('kind', p_kind, 'ban_minutes', p_minutes, 'reason', v_reason));
   if p_minutes is distinct from 0 then
-    perform private.notify(p_user, 'chat_ban', jsonb_build_object('kind', p_kind, 'until', case when p_minutes is not null then v_until end));
+    perform private.notify(p_user, 'chat_ban', jsonb_strip_nulls(jsonb_build_object(
+      'kind', p_kind, 'until', case when p_minutes is not null then v_until end, 'reason', v_reason)));
   end if;
 end $$;
 
@@ -694,7 +709,7 @@ begin
   foreach f in array array[
     'public.chat_send(text, text)', 'public.chat_fetch(text, bigint)', 'public.chat_report(bigint)', 'public.my_reputation()',
     'public.admin_reputation_view(uuid)', 'public.admin_reputation(uuid, text, integer, text)',
-    'public.admin_chat_ban(uuid, text, integer)', 'public.admin_warn(uuid, text, bigint)', 'public.admin_report_false(bigint)'
+    'public.admin_chat_ban(uuid, text, integer, text)', 'public.admin_warn(uuid, text, bigint)', 'public.admin_report_false(bigint)'
   ]
   loop
     execute format('revoke all on function %s from public, anon', f);

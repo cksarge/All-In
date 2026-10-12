@@ -5,6 +5,11 @@ export type MotionPreference = 'system' | 'reduce' | 'full';
 
 interface SettingsState {
   soundOn: boolean;
+  /** Background music (separate from the sound effects), and how loud: 0 to 100. */
+  musicOn: boolean;
+  musicVolume: number;
+  setMusicOn: (on: boolean) => void;
+  setMusicVolume: (v: number) => void;
   motion: MotionPreference;
   tourSeen: boolean;
   /** First-visit game guides: on or off, and which have been shown. */
@@ -28,6 +33,10 @@ export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
       soundOn: true,
+      musicOn: true,
+      musicVolume: 30,
+      setMusicOn: (musicOn) => set({ musicOn }),
+      setMusicVolume: (musicVolume) => set({ musicVolume: Math.min(100, Math.max(0, Math.round(musicVolume))) }),
       motion: 'system',
       tourSeen: false,
       tipsOn: true,

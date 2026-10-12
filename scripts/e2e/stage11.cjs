@@ -152,6 +152,7 @@ async function say(page, text) {
   ok((await q(`select title from public.player_loadouts where user_id = $1`, [benId])).title === 'title_well_mannered', 'at 75 or more the reputation title can be worn');
   ok((await ben.getByText(/Reputation 100 or more/).count()) >= 1, 'the locker shows what 100 would bring');
   await ben.screenshot({ path: `${SHOTS}/l-locker-reputation-phone.png`, fullPage: true });
+  await cat.getByLabel(/^Reason \(the player sees this with a warning/).fill('Cool off for a bit');
   await cat.getByRole('button', { name: '1 hour', exact: true }).first().click();
   await cat.getByText(/Typed chat banned: 1 hour/).waitFor();
   await cat.getByLabel('Reputation points').fill('10');
@@ -160,7 +161,27 @@ async function say(page, text) {
   ok((await q(`select title from public.player_loadouts where user_id = $1`, [benId])).title === 'title_newcomer', 'dropping below 75 takes the title off at once');
   await ben.goto(`${BASE}/profile`);
   await ben.getByText(/Switched off by a moderator until/).waitFor();
-  ok(true, 'a chat ban from the admin shows on the profile, with when it ends');
+  await ben.getByText('Reason: Cool off for a bit').waitFor();
+  ok(true, 'a chat ban from the admin shows on the profile, with when it ends and why');
+
+  // A warning with a reason, and a note on the player's file.
+  await cat.getByLabel(/^Reason \(the player sees this with a warning/).fill('Please keep the chat friendly');
+  cat.once('dialog', (d) => d.accept());
+  await cat.getByRole('button', { name: 'Warn (−25)' }).click();
+  await cat.getByText('Warning given').waitFor();
+  await ben.goto(`${BASE}/profile`);
+  await ben.getByText('Reason from the moderator:').first().waitFor();
+  await ben.getByText('Please keep the chat friendly').first().waitFor();
+  ok(true, 'the player reads the reason for a warning in their reputation section');
+  await ben.getByRole('heading', { name: 'Reputation' }).scrollIntoViewIfNeeded();
+  await ben.screenshot({ path: `${SHOTS}/l-reputation-warning-phone.png`, fullPage: true });
+  await cat.getByLabel('New note').fill('Warned once for chat. Was fine afterwards.');
+  await cat.getByRole('button', { name: 'Add note' }).click();
+  await cat.getByText('Note added').waitFor();
+  await cat.getByText('Warned once for chat. Was fine afterwards.').waitFor();
+  ok((await q(`select count(*)::int as n from public.player_notes where user_id = $1`, [benId])).n === 1, 'the admin can keep notes on a player');
+  await cat.getByRole('heading', { name: /Notes on this player/ }).scrollIntoViewIfNeeded();
+  await cat.screenshot({ path: `${SHOTS}/l-admin-notes.png` });
 
   ok(ann.errors.length === 0 && ben.errors.length === 0 && cat.errors.length === 0, `no page errors ${JSON.stringify([...ann.errors, ...ben.errors, ...cat.errors])}`);
   await browser.close();

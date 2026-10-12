@@ -141,7 +141,7 @@ The SQL files add `wallets`, `chip_ledger`, `game_tables`, `table_seats`, `bj_ro
 `rl_bets`, `cr_state`, `cr_rolls`, `cr_bets`, `pk_hands`, `pk_players`, `jackpots`, `crash_rounds`, `crash_bets`, `bingo_rounds`,
 `player_progress`, `player_achievements`, `friendships`, `tournaments`, `tournament_entries`, `player_sanctions`, `notifications`, `player_missions`, `big_wins`, `club_members`, `site_status`, `race_rounds`, `race_bets`, `tpt_hands`, `tpt_players` and `player_reputation` to the `supabase_realtime` publication. Check
 **Database → Publications → supabase_realtime**: all thirty-three should be listed. The hidden tables (`bj_shoes`,
-`bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`, `bingo_secrets`, `tpt_cards`, `chat_messages`, `admins`,
+`bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`, `bingo_secrets`, `tpt_cards`, `chat_messages`, `player_notes`, `admins`,
 `player_reports`, `admin_log`, `player_activity`, `head_to_head`), poker hole cards (`pk_hole`) and bingo cards (`bingo_cards`)
 must **not** be in the publication.
 

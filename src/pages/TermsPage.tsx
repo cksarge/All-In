@@ -231,6 +231,9 @@ const sections: LegalSection[] = [
             You keep whatever rights you have in a username or club name you choose and in what you write in chat, and you allow us to store,
             show and review them as part of running and moderating the game.
           </li>
+          <li>
+            The music in the game belongs to its creators and is used under their licences, which are listed under Music credits in Settings.
+          </li>
           <li>If you send us ideas or feedback, we may use them without owing you anything.</li>
         </ul>
       </>

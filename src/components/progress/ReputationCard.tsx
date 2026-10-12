@@ -41,12 +41,14 @@ export function ReputationCard() {
           <p className="mt-0.5 text-xs text-muted">
             {rep.chat_banned_until ? `Switched off by a moderator ${until(rep.chat_banned_until)}.` : `Needs a reputation above ${c.chat_off}.`}
           </p>
+          {rep.chat_banned_until && rep.chat_ban_reason && <p className="mt-1 text-xs text-cream/85">Reason: {rep.chat_ban_reason}</p>}
         </li>
         <li className={cn('rounded-xl border p-3', rep.can_quick ? 'border-white/[0.07]' : 'border-ruby-500/40 bg-ruby-900/15')}>
           <p className="font-semibold text-ivory">Quick chat and emotes: {rep.can_quick ? 'on' : 'off'}</p>
           <p className="mt-0.5 text-xs text-muted">
             {rep.quick_banned_until ? `Switched off by a moderator ${until(rep.quick_banned_until)}.` : `Needs a reputation above ${c.quick_off}.`}
           </p>
+          {rep.quick_banned_until && rep.quick_ban_reason && <p className="mt-1 text-xs text-cream/85">Reason: {rep.quick_ban_reason}</p>}
         </li>
       </ul>
 
@@ -85,10 +87,14 @@ export function ReputationCard() {
         <ul className="mt-1.5 divide-y divide-white/[0.06] text-sm">
           {rep.log.slice(0, 8).map((l, i) => (
             <li key={i} className="flex items-center justify-between gap-3 py-1.5">
-              <span className="min-w-0 truncate text-cream/85">
+              <span className="min-w-0 text-cream/85">
                 {REPUTATION_REASONS[l.reason] ?? 'Changed'}
-                {l.reason === 'warning' && l.note ? `: ${l.note}` : ''}
                 <span className="ml-2 text-xs text-muted">{formatRelativeTime(l.at)}</span>
+                {l.reason === 'warning' && (
+                  <span className="mt-0.5 block rounded-lg border border-gold-500/30 bg-gold-500/[0.07] px-2 py-1 text-xs text-cream/90 [overflow-wrap:anywhere]">
+                    <span className="font-semibold text-gold-200">Reason from the moderator:</span> {l.note ?? 'none given'}
+                  </span>
+                )}
               </span>
               <span className={cn('shrink-0 font-semibold tabular-nums', l.delta > 0 ? 'text-felt-300' : l.delta < 0 ? 'text-ruby-300' : 'text-muted')}>
                 {l.delta > 0 ? `+${l.delta}` : l.delta === 0 ? 'warning' : l.delta} → {l.score}

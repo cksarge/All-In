@@ -33,6 +33,19 @@ create table if not exists public.player_sanctions (
   updated_at      timestamptz not null default now()
 );
 
+-- The name a moderator took away, so the player cannot simply choose it again.
+alter table public.player_sanctions add column if not exists removed_name text;
+
+-- HIDDEN: the admin's own notes on a player's file. The player never sees them.
+create table if not exists public.player_notes (
+  id          bigint generated always as identity primary key,
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  admin_id    uuid references auth.users (id) on delete set null,
+  note        text not null check (char_length(note) between 1 and 1000),
+  created_at  timestamptz not null default now()
+);
+create index if not exists player_notes_user_idx on public.player_notes (user_id, id desc);
+
 -- When each player was last on the site with a working session (hidden; the admin page shows it).
 -- auth.users.last_sign_in_at only moves on a password sign-in, not when a saved session is reused.
 create table if not exists public.player_activity (
@@ -277,6 +290,10 @@ begin
   select * into s from public.player_sanctions where user_id = v_uid for update;
   if not found or not s.must_rename or s.banned_at is not null then
     raise exception 'action_not_allowed' using hint = 'Usernames can only be changed when a moderator asks for it.';
+  end if;
+  -- Not the name that was just taken away (in any mix of capitals).
+  if lower(btrim(coalesce(p_username, ''))) = lower(s.removed_name) then
+    raise exception 'action_not_allowed' using hint = 'That is the name a moderator removed. Choose a different one.';
   end if;
   v_check := public.check_username(p_username);
   if v_check <> 'ok' then
@@ -535,8 +552,41 @@ begin
                   from public.player_reports r where r.reported = p.id),
     'reports_made', (select count(*) from public.player_reports r where r.reporter = p.id),
     'log', (select coalesce(jsonb_agg(jsonb_build_object('action', l.action, 'at', l.created_at, 'details', l.details) order by l.id desc), '[]'::jsonb)
-              from public.admin_log l where l.target = p.id)
+              from public.admin_log l where l.target = p.id),
+    'notes', (select coalesce(jsonb_agg(jsonb_build_object('id', n.id, 'note', n.note, 'at', n.created_at) order by n.id desc), '[]'::jsonb)
+                from public.player_notes n where n.user_id = p.id)
   );
+end $$;
+
+-- The admin's notes on a player's file: add one, or delete one. Only the admin ever sees them.
+create or replace function public.admin_file_note_add(p_user uuid, p_note text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_note text := left(btrim(coalesce(p_note, '')), 1000);
+begin
+  perform private.require_admin();
+  if not exists (select 1 from public.profiles where id = p_user) then
+    raise exception 'player_not_found';
+  end if;
+  if v_note = '' then
+    raise exception 'action_not_allowed' using hint = 'Write the note first.';
+  end if;
+  insert into public.player_notes (user_id, admin_id, note) values (p_user, auth.uid(), v_note);
+end $$;
+
+create or replace function public.admin_file_note_delete(p_note bigint)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.require_admin();
+  delete from public.player_notes where id = p_note;
 end $$;
 
 create or replace function public.admin_ban(p_user uuid, p_reason text default null)
@@ -616,7 +666,7 @@ begin
       exit when not exists (select 1 from public.profiles where lower(username) = lower(v_new));
     end loop;
     perform private.sanction_row(p_user);
-    update public.player_sanctions set must_rename = true, updated_at = now() where user_id = p_user;
+    update public.player_sanctions set must_rename = true, removed_name = v_old, updated_at = now() where user_id = p_user;
   else
     v_check := public.check_username(v_new);
     if v_check <> 'ok' then
@@ -718,7 +768,7 @@ begin
     'public.admin_overview()', 'public.admin_reports(text)', 'public.admin_resolve_report(bigint, text, text)',
     'public.admin_find_players(text)', 'public.admin_player(uuid)', 'public.admin_ban(uuid, text)', 'public.admin_unban(uuid)',
     'public.admin_timeout(uuid, integer, text)', 'public.admin_rename(uuid, text)', 'public.admin_chips(uuid, text, bigint, text)',
-    'public.admin_kick(uuid)', 'public.admin_set_notice(text)', 'public.admin_set_maintenance(boolean, text)'
+    'public.admin_kick(uuid)', 'public.admin_set_notice(text)', 'public.admin_file_note_add(uuid, text)', 'public.admin_file_note_delete(bigint)', 'public.admin_set_maintenance(boolean, text)'
   ]
   loop
     execute format('revoke all on function %s from public, anon', f);
@@ -737,6 +787,7 @@ alter table public.player_sanctions  enable row level security;
 alter table public.player_blocks     enable row level security;
 alter table public.player_reports    enable row level security;
 alter table public.admin_log         enable row level security;
+alter table public.player_notes      enable row level security;
 alter table public.site_notice       enable row level security;
 
 drop policy if exists "player_sanctions: own row" on public.player_sanctions;
@@ -746,7 +797,14 @@ create policy "player_blocks: own rows" on public.player_blocks for select to au
 drop policy if exists "site_notice: signed-in players can read" on public.site_notice;
 create policy "site_notice: signed-in players can read" on public.site_notice for select to authenticated using (true);
 
-revoke all on public.admins, public.player_reports, public.admin_log, public.player_activity from anon, authenticated;
+revoke all on public.admins, public.player_reports, public.admin_log, public.player_activity, public.player_notes from anon, authenticated;
+
+-- Players asked to rename before the removed name was remembered: take it from the admin log.
+update public.player_sanctions s
+   set removed_name = (select l.details ->> 'from' from public.admin_log l
+                        where l.target = s.user_id and l.action = 'rename' and (l.details ->> 'forced')::boolean
+                        order by l.id desc limit 1)
+ where s.must_rename and s.removed_name is null;
 revoke all on public.player_sanctions, public.player_blocks, public.site_notice from anon;
 revoke insert, update, delete, truncate on public.player_sanctions, public.player_blocks, public.site_notice from authenticated;
 grant select on public.player_sanctions, public.player_blocks, public.site_notice to authenticated;

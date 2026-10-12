@@ -28,3 +28,4 @@ update public.site_status set maintenance = false, message = null;
 delete from public.chat_messages;
 delete from public.player_reputation;
 delete from public.reputation_log;
+delete from public.player_notes;

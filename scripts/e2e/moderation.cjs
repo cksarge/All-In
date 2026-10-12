@@ -79,7 +79,7 @@ async function login(browser, email, vp) {
   await ann.screenshot({ path: `${SHOTS}/a-player.png`, fullPage: true });
 
   // Timeout
-  await ann.getByLabel(/Reason/).fill('Cool off');
+  await ann.getByLabel('Reason (the player sees this)', { exact: true }).fill('Cool off');
   await ann.getByRole('button', { name: 'Timeout 1 hour' }).click();
   await ann.getByText(/In a timeout until/).waitFor();
   await nudge(cat);
@@ -102,6 +102,10 @@ async function login(browser, email, vp) {
   await cat.getByRole('button', { name: 'Save username' }).click();
   await cat.getByText('That username is taken.').waitFor();
   await cat.screenshot({ path: `${SHOTS}/a-rename-phone.png` });
+  await cat.getByLabel('New username').fill('cat');
+  await cat.getByRole('button', { name: 'Save username' }).click();
+  await cat.getByText('That is the name a moderator removed. Choose a different one.').waitFor();
+  ok(true, 'the name that was taken away cannot be chosen again');
   await cat.getByLabel('New username').fill('Kitty');
   await cat.getByRole('button', { name: 'Save username' }).click();
   await cat.getByRole('heading', { name: 'Kitty', exact: true }).waitFor();
@@ -119,7 +123,7 @@ async function login(browser, email, vp) {
   ok((await bal('cat@allin.test')) === 777, 'balance set');
 
   // Ban and unban
-  await ann.getByLabel(/Reason/).fill('Testing the ban');
+  await ann.getByLabel('Reason (the player sees this)', { exact: true }).fill('Testing the ban');
   await ann.getByRole('button', { name: 'Ban', exact: true }).click();
   await ann.getByRole('button', { name: 'Unban' }).waitFor();
   await nudge(cat);
