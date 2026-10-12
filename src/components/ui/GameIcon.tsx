@@ -1,6 +1,6 @@
 import { cn } from './cn';
 
-type IconKind = 'cards' | 'spade' | 'wheel' | 'dice' | 'seven' | 'grid' | 'diamond' | 'chart' | 'pegs' | 'ticket';
+type IconKind = 'cards' | 'spade' | 'wheel' | 'dice' | 'seven' | 'grid' | 'diamond' | 'chart' | 'pegs' | 'ticket' | 'horse';
 
 export function iconForGame(key: string): IconKind {
   if (key.startsWith('poker_') || ['three_card_poker', 'pai_gow_poker', 'ultimate_holdem', 'caribbean_stud', 'casino_holdem', 'let_it_ride', 'mississippi_stud', 'four_card_poker', 'teen_patti', 'teen_patti_live', 'sng_poker'].includes(key)) return 'spade';
@@ -9,7 +9,8 @@ export function iconForGame(key: string): IconKind {
   if (key === 'craps' || key === 'sic_bo' || key === 'chuck_a_luck') return 'dice';
   if (key === 'keno' || key === 'bingo' || key === 'power_draw') return 'grid';
   if (key === 'slots_cascade' || key === 'slots_holdwin' || key === 'mines') return 'diamond';
-  if (key === 'crash' || key === 'horse_racing') return 'chart';
+  if (key === 'crash') return 'chart';
+  if (key === 'horse_racing') return 'horse';
   if (key === 'plinko') return 'pegs';
   if (key === 'scratch_cards') return 'ticket';
   return 'seven';
@@ -84,6 +85,21 @@ export function GameIcon({ gameKey, className }: { gameKey: string; className?: 
             )),
           )}
           <circle cx="24" cy="6" r="3.4" fill="#d4af37" />
+        </>
+      )}
+      {kind === 'horse' && (
+        <>
+          {/* A horse's head in profile, facing left, on a plinth like a trophy. */}
+          <path
+            d="M17 37c0-6 4-8 5-12l-6 5c-3 1.5-6-.5-5-4l9-13 1-7 5 4c7 3 9.5 13 8 27z"
+            fill="#f4ead2"
+            stroke="#d4af37"
+            strokeWidth="1.4"
+            strokeLinejoin="round"
+          />
+          <path d="M26 10c4 3 5.5 9 5 16" stroke="#ad872b" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="20.5" cy="17" r="1.5" fill="#0b0d0c" />
+          <rect x="12" y="37" width="24" height="4.5" rx="1.5" fill="#a81c2c" stroke="#d4af37" strokeWidth="1.2" />
         </>
       )}
       {kind === 'ticket' && (
