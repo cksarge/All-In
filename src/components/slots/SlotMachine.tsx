@@ -55,7 +55,6 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
   // Auto-spin: how many spins are left to play by themselves (0 = off).
   const [autoLeft, setAutoLeft] = useState(0);
   const spinRef = useRef<(() => Promise<void>) | null>(null);
-  const lastWin = useRef(0);
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const reduced = prefersReducedMotion(useSettings((s) => s.motion));
 
@@ -95,7 +94,8 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
     };
   }, [load]);
 
-  // Each time a spin ends, play the next one. Stops for a big win, a feature, or too few chips.
+  // Each time a spin ends (features and wins play out in full first), play the next one.
+  // It only stops when the count runs out, the chips do, or Stop is pressed.
   useEffect(() => {
     if (autoLeft <= 0 || phase !== 'idle') return;
     const id = window.setTimeout(() => {
@@ -182,9 +182,6 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
     }
     const res = data as SpinResponse;
     const scenes = buildScenes(res, cfg);
-    lastWin.current = res.win;
-    // A feature or a win of 20 times the bet is worth watching: auto-spin stops there.
-    if (res.win >= bet * 20 || res.jackpot_won > 0 || scenes.length > 1) setAutoLeft(0);
     await sleep(Math.max(0, 650 * speed - (performance.now() - t0)));
     setPhase('playing');
 

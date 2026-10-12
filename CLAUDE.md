@@ -425,7 +425,8 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      `tournaments` board (tournaments won).
    - **`pk_show(table)`:** a dealt-in player may reveal their cards for a few seconds after a hand ends.
    - Client-only quality of play: poker "Check / fold" and "Check" decided in advance (`PokerTable`), slot
-     auto-spin for 10 / 25 / 50 spins that stops on a feature or a 20× win (`SlotMachine`), a video poker Hint
+     auto-spin for 10 / 25 / 50 spins (`SlotMachine`; it never stops for a win, the user's choice: only when the
+     count or the chips run out, or Stop is pressed), a video poker Hint
      (`src/lib/vpHint.ts`: a priority list, close to but not perfect play), favourites and "Jump back in" on the
      lounge (kept per device in the settings store; `QuickStart` notes each game opened), sixteen emotes
      (appended, because emotes travel as list positions).
