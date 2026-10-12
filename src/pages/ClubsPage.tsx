@@ -8,6 +8,7 @@ import { ErrorState, FullPageLoader } from '@/components/ui/States';
 import { TextField } from '@/components/ui/TextField';
 import { cn } from '@/components/ui/cn';
 import { QUICK_PHRASES } from '@/lib/blackjack';
+import { phraseGroups } from '@/lib/chat';
 import { EMBLEMS, type ClubMember, type ClubState, type ClubSummary } from '@/lib/clubs';
 import { friendlyError } from '@/lib/errors';
 import { formatChips } from '@/lib/format';
@@ -409,6 +410,8 @@ function ClubChat({ clubId, members }: { clubId: string; members: ClubMember[] }
   const [lines, setLines] = useState<{ id: number; user_id: string; index: number }[]>([]);
   const channel = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastSent = useRef(0);
+  const groups = phraseGroups('club');
+  const [tab, setTab] = useState(groups[0].key);
   const names = useRef(new Map<string, string>());
   names.current = new Map(members.map((m) => [m.user_id, m.username]));
 
@@ -442,7 +445,7 @@ function ClubChat({ clubId, members }: { clubId: string; members: ClubMember[] }
         Club chat
       </h2>
       <p className="mt-1 text-xs text-muted">Quick phrases only. Members who have this page open see them.</p>
-      <ul className="mt-2 h-28 space-y-1 overflow-y-auto rounded-xl bg-ink-950/50 p-2 text-sm" aria-live="polite">
+      <ul className="mt-2 h-32 space-y-1 overflow-y-auto rounded-xl bg-ink-950/50 p-2 text-sm" aria-live="polite">
         {lines.length === 0 ? (
           <li className="text-muted">Nothing said yet.</li>
         ) : (
@@ -453,10 +456,24 @@ function ClubChat({ clubId, members }: { clubId: string; members: ClubMember[] }
           ))
         )}
       </ul>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {QUICK_PHRASES.map((ph, i) => (
-          <button key={ph} type="button" onClick={() => say(i)} className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-cream/90 hover:border-gold-500/50 hover:text-ivory">
-            {ph}
+      <div role="tablist" aria-label="Kind of message" className="mt-2 flex flex-wrap gap-1">
+        {groups.map((g) => (
+          <button
+            key={g.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === g.key}
+            onClick={() => setTab(g.key)}
+            className={cn('rounded-full border px-2.5 py-1 text-xs font-medium transition', tab === g.key ? 'border-gold-500/60 bg-gold-500/15 text-gold-200' : 'border-white/10 text-cream/75 hover:border-white/25')}
+          >
+            {g.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto overscroll-contain">
+        {(groups.find((g) => g.key === tab) ?? groups[0]).items.map((i) => (
+          <button key={i} type="button" onClick={() => say(i)} className="rounded-full border border-white/15 px-2.5 py-1 text-left text-xs text-cream/90 hover:border-gold-500/50 hover:text-ivory">
+            {QUICK_PHRASES[i]}
           </button>
         ))}
       </div>

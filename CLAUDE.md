@@ -547,6 +547,9 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
 - Plinko can have many balls in the air: each ball is its own `plinko_drop` call and bet (1, 3, 5 or 10 per
   press, and Drop can be pressed again mid-flight). The header balance is held with `holdBalance` and moved
   ball by ball. Crash draws the line falling to the floor for about a second after a crash (asked for by the user).
+- **Quick chat** lives in `src/lib/chat.ts`: `PHRASES` is **append-only** (a phrase travels as its position), and
+  `phraseGroups(context)` gives the menus for blackjack, roulette, craps, poker (plus a tournament group) and clubs.
+  `ReactionBar` takes a `game` prop and shows the groups as tabs, with emotes as the last tab.
 - **Copy:** the word for taking a win is **"Collect"** (the user's choice; the copy guard also rejects
   identifiers like `buy`, so name functions `takeCards`, not `buy`).
 - **Lounge and lobby:** the lounge lists games in four sections (`CATEGORIES` in `src/lib/games.ts`, driven

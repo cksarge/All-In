@@ -111,16 +111,8 @@ export function handLabel(h: Pick<BjHand, 'total' | 'soft' | 'cards' | 'status'>
   return String(h.total);
 }
 
-export const QUICK_PHRASES = [
-  'Good luck!',
-  'Nice hand!',
-  'Well played',
-  'Unlucky!',
-  'Thanks!',
-  'Wow!',
-  'Hit me!',
-  'Be right back',
-] as const;
+/** Every quick-chat phrase, by position (the full list and its menus are in lib/chat.ts). */
+export { PHRASES as QUICK_PHRASES } from './chat';
 
 // New ones go at the end: emotes travel as their position in this list.
 export const EMOTES = ['👏', '😂', '😮', '😎', '🎉', '🍀', '🔥', '😬', '🤝', '🙏', '💀', '🤯', '🥳', '😴', '💪', '🤞'] as const;
