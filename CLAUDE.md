@@ -133,7 +133,7 @@ Badugi (09); horse racing and Teen Patti tables (21).
   standard published ones).
 - From the stage 9 brainstorm, not asked for: lucky wheel, private tournaments, shareable wins, profile showcase,
   fairness page, play reminders. **Not wanted:** installing as an app. (Music was not wanted at first; the user
-  asked for it on 2026-10-12 and it is built, as one looped track in the lounge: see §8.)
+  asked for it on 2026-10-12 and it is built, as one looped track on every screen: see §8.)
 
 ## 6. Repository map
 
@@ -196,7 +196,7 @@ src/components/onboarding/           the welcome tour and QuickStart (first-visi
 src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
 src/components/progress/             ProgressCard (lounge), ProfileExtras, ReputationCard (own profile), and bits: LevelBadge, XpBar, PlayerLine
 src/components/layout/               SiteHeader (top bar, inbox bell), SectionNav, footer, balance pill, MusicPlayer
-src/assets/music/                    the lounge's one music track, README and CREDITS.txt (see §8)
+src/assets/music/                    the game's one music track, README and CREDITS.txt (see §8)
 src/components/ui/Avatar.tsx         a player's picture and frame; src/components/table/SeatAvatar.tsx looks it up by user id
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay; 52 = joker)
 src/pages/                           one file per route: Profile, Locker, Friends, Leaderboard, Clubs, Missions, Inbox,
@@ -729,14 +729,14 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   and say so.** When either document changes, change `LEGAL.version` and `LEGAL.effective` (now October 12, 2026). If the game starts collecting
   something new or uses a new outside service, the Privacy Policy must say so. The copy guard applies to these
   pages too: the banned words only pass on a line that also contains a disclaimer such as "no purchases".
-- **Music** (asked for 2026-10-12, then narrowed the same day to **one track, looped, in the lounge only**):
-  `src/assets/music/Hard Boiled.mp3` (Kevin MacLeod, CC BY 4.0; credit in `CREDITS.txt` beside it, shown in Settings
-  minus its `#` lines). `src/lib/music.ts` finds the file at build time with `import.meta.glob` (`LOUNGE_TRACK`; with
-  several files the first by name is used, so keep one). `MusicPlayer` is mounted once in `App.tsx` and plays only
-  while the route is `/lounge`, with `loop`: leaving the lounge pauses it and coming back carries on from the same
-  place. It starts on the first click or key press if the browser blocked it, and pauses while the tab is hidden.
-  Settings has a Music switch and a volume slider (`musicOn`, `musicVolume`; on at 30% by default). An earlier
-  version shuffled several tracks on every screen: the user chose this instead, so don't bring that back unasked.
+- **Music** (2026-10-12): **one track, looped, on every screen.** `src/assets/music/Hard Boiled.mp3` (Kevin MacLeod,
+  CC BY 4.0; credit in `CREDITS.txt` beside it, shown in Settings minus its `#` lines). `src/lib/music.ts` finds the
+  file at build time with `import.meta.glob` (`MUSIC_TRACK`; with several files the first by name is used, so keep
+  one). `MusicPlayer` is mounted once in `App.tsx` above the routes with `loop`, so it carries on unbroken between
+  screens; it starts on the first click or key press (browsers require that) and pauses while the tab is hidden.
+  Settings has a Music switch and a volume slider (`musicOn`, `musicVolume`; on at 30% by default). The user tried
+  two other versions the same day and dropped both (several shuffled tracks; this track in the lounge only): don't
+  bring either back unasked.
 - Styling: Tailwind with custom colours (`ink`, `felt`, `ruby`, `gold`, `cream`, `ivory`), the `.felt` and
   `.surface` classes, Playfair Display headings and Inter body text. Sounds come from `playSound(...)` in
   `src/lib/sound.ts`.

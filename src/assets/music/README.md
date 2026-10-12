@@ -1,7 +1,7 @@
 # Music
 
-The game has one piece of background music. It loops in the **lounge** and nowhere else: opening a game,
-the lobby or any other page stops it, and coming back to the lounge carries on from where it stopped.
+The game has one piece of background music. It loops on every screen and carries on without a break as you move
+between them.
 
 The track is the audio file in this folder (`Hard Boiled.mp3`). It is found automatically when the site is built.
 
@@ -24,9 +24,8 @@ Delete the file to have no music at all (Settings then says so).
 
 ## How it plays
 
-- It loops for as long as you are in the lounge, and pauses while the tab is in the background.
-- Browsers do not let a page start sound by itself, so if the lounge is the first page someone opens, the music
-  begins with their first click or key press.
+- It loops for as long as the site is open, on every screen, and pauses while the tab is in the background.
+- Browsers do not let a page start sound by itself, so the music begins with the visitor's first click or key press.
 - Players switch it on or off, and set its volume, in Settings. It is separate from the sound effects.
 
 The player is `src/components/layout/MusicPlayer.tsx`; the track is picked up in `src/lib/music.ts`.
