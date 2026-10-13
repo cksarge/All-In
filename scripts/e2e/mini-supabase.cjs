@@ -5,15 +5,20 @@ const { Pool } = require('pg');
 const pool = new Pool({ host: 'localhost', port: 55432, user: 'postgres', database: 'postgres', max: 10 });
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
-const token = (sub) => `${b64({ alg: 'none' })}.${b64({ sub, role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })}.x`;
-const subFrom = (req) => {
+// `method` is how the session was made, as Supabase Auth records it: 'password', or 'otp' for a code from an email.
+const token = (sub, method = 'password') =>
+  `${b64({ alg: 'none' })}.${b64({ sub, role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600, amr: [{ method, timestamp: Math.floor(Date.now() / 1000) }] })}.x`;
+const claimsFrom = (req) => {
   const a = req.headers['authorization'] || '';
   try {
-    return JSON.parse(Buffer.from(a.split(' ')[1].split('.')[1], 'base64url').toString()).sub || null;
+    return JSON.parse(Buffer.from(a.split(' ')[1].split('.')[1], 'base64url').toString());
   } catch {
-    return null;
+    return {};
   }
 };
+const subFrom = (req) => claimsFrom(req).sub || null;
+/** Emails "sent" with a login code, newest last (GET /test/otp-sent). Any 6 digits but 000000 are accepted. */
+const otpSent = [];
 const cors = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers': '*',
@@ -25,12 +30,13 @@ const send = (res, status, body, extra = {}) => {
   res.end(body === undefined ? '' : JSON.stringify(body));
 };
 
-async function asUser(sub, fn) {
+async function asUser(sub, fn, claims = {}) {
   const c = await pool.connect();
   try {
     await c.query('begin');
     await c.query(`set local role ${sub ? 'authenticated' : 'anon'}`);
     await c.query("select set_config('request.jwt.claim.sub', $1, true)", [sub || '']);
+    await c.query("select set_config('request.jwt.claims', $1, true)", [sub ? JSON.stringify(claims) : '']);
     const r = await fn(c);
     await c.query('commit');
     return r;
@@ -77,6 +83,19 @@ http
         const user = await userJson(rows[0].id);
         return send(res, 200, { access_token: token(user.id), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user });
       }
+      // A login code is asked for (two-step verification), then entered.
+      if (p === '/auth/v1/otp') {
+        otpSent.push({ email: body.email, at: Date.now() });
+        return send(res, 200, {});
+      }
+      if (p === '/test/otp-sent') return send(res, 200, otpSent);
+      if (p === '/auth/v1/verify') {
+        const { rows } = await pool.query('select id from auth.users where email = $1', [body.email]);
+        if (!rows[0] || !/^\d{6}$/.test(body.token || '') || body.token === '000000')
+          return send(res, 403, { code: 'otp_expired', error_code: 'otp_expired', msg: 'Token has expired or is invalid' });
+        const user = await userJson(rows[0].id);
+        return send(res, 200, { access_token: token(user.id, 'otp'), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user });
+      }
       if (p === '/auth/v1/user') {
         const sub = subFrom(req);
         return sub ? send(res, 200, await userJson(sub)) : send(res, 401, { msg: 'no' });
@@ -94,7 +113,7 @@ http
           [fn],
         );
         if (!ret[0]) return send(res, 404, { code: 'PGRST202', message: 'function not found' });
-        const r = await asUser(sub, (c) => c.query(`select public.${fn}(${args})::text as r`));
+        const r = await asUser(sub, (c) => c.query(`select public.${fn}(${args})::text as r`), claimsFrom(req));
         const v = r.rows[0].r;
         const type = ret[0].typname;
         if (type === 'void') return send(res, 204);
@@ -121,7 +140,7 @@ http
           }
         }
         const sql = `select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from (select ${cols} from public.${t}${where.length ? ' where ' + where.join(' and ') : ''}${order}${limit}) x`;
-        const r = await asUser(sub, (c) => c.query(sql));
+        const r = await asUser(sub, (c) => c.query(sql), claimsFrom(req));
         const rows = r.rows[0].r;
         if ((req.headers['accept'] || '').includes('vnd.pgrst.object')) {
           if (rows.length === 0) return send(res, 406, { code: 'PGRST116', details: 'The result contains 0 rows', message: 'JSON object requested, multiple (or no) rows returned' });

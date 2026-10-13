@@ -60,7 +60,8 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 
 - Phases 1 to 4 were built in cloud sessions on a feature branch (`claude/youthful-turing-56segv`) and merged
   into `main` through PRs #1 to #6. Since Phase 5 the work happens on the user's Mac, **directly on `main`**
-  (their choice; no feature branches or PRs unless they ask). Keep the old local branch; don't delete it.
+  (their choice; no feature branches or PRs unless they ask). That old branch was deleted on 2026-10-13
+  (the user's request); `main` is the only branch, locally and on GitHub.
 - **Pushing to `main` deploys the site** (GitHub Actions → Pages), so commit and push only when the user says to.
 - Add attribution lines to commits as the harness instructs (the user is fine with the model name there).
 - Never commit `.env`, `dist/` or `node_modules/`.
@@ -83,6 +84,9 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 11 | **Reputation and typed chat** (`22_reputation_chat.sql`), Terms of Service and Privacy Policy | ✅ built on `main` |
 | 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | ✅ all four parts built on `main` |
 
+**User action pending for two-step verification (2026-10-13):** re-run `15_moderation.sql`, and in the dashboard
+paste `supabase/email-templates/verify-identity.html` into Authentication → Emails → **Magic Link** (subject in
+SETUP.md §4).
 **User action pending for stage 12 part 4:** re-run `15_moderation.sql`, then run the new `25_admin_tools.sql`. No
 dashboard settings. Afterwards `supabase/maintenance/check_database.sql` should say OK.
 **And for part 3, if not run yet:** re-run `03_games_and_stakes.sql`, `10_slots.sql`, `13_progression.sql`,
@@ -138,7 +142,7 @@ Every part must come with its achievements, cosmetics and menu entries (standing
 ### Where things stand (2026-10-12)
 Everything planned has been built: stages 1 to 11. Nothing is designed or agreed beyond this. The site has
 **57 games** (15 table, 20 poker, 8 slots of which one is seasonal, 14 specialty; all released), **85 achievements**,
-25 numbered SQL files making 73 tables (33 in Realtime), 22 SQL test files and 20 browser suites. Stage 12 is
+25 numbered SQL files making 74 tables (33 in Realtime), 23 SQL test files and 21 browser suites. Stage 12 is
 finished; nothing further is designed or agreed.
 
 Stage 10's 23 games, for reference: Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four Card Poker,
@@ -167,15 +171,16 @@ scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/check-icons.mjs              every game in file 3 has its own icon in GameIcon.tsx, and no two are the same
 scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
-scripts/e2e/                         local end-to-end harness: 20 suites (see §9)
+scripts/e2e/                         local end-to-end harness: 21 suites (see §9)
 supabase/sql/01…25_*.sql             the database, applied in order (see §7)
 supabase/maintenance/                run by hand, not numbered, not applied by test:sql:
                                      check_database.sql (is the live database up to date? generated),
                                      cleanup.sql (frees space), maintenance_off.sql (opens a site closed for maintenance),
+                                     two_step_off.sql (switches two-step verification off for the admin's own account),
                                      season_bonus_2026_10.sql, special_cosmetics.sql (the Developer items), email_logs.sql
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
-supabase/tests/NN_*_test.sql         22 test files: tests.ok / tests.throws helpers, run as role authenticated
-supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
+supabase/tests/NN_*_test.sql         23 test files: tests.ok / tests.throws helpers, run as role authenticated
+supabase/email-templates/            confirm-signup.html, reset-password.html, verify-identity.html (+ subjects in README)
 src/App.tsx                          routes: / signup login verify forgot-password how-chips-work terms privacy settings
                                      lounge lobby table/:id play/:gameKey join/:code
                                      profile profile/:username locker friends leaderboards clubs clubs/:id
@@ -214,7 +219,8 @@ src/components/tablepoker/           TablePokerGame: the six dealer card games o
 src/components/stage10/              BlackjackVariantGame (four variants), QuickGames (Red Dog, Hi-Lo, Andar Bahar,
                                      Chuck-a-Luck), HorseRacingGame
 src/components/tournaments/          SngBar (the strip on a tournament table), TournamentRules, PrivateEvents
-src/components/account/              AccountGate (suspended / timeout / rename screens), AppealBox, ReportModal, MaintenanceGate
+src/components/account/              AccountGate (suspended / timeout / rename screens), AppealBox, ReportModal, MaintenanceGate,
+                                     TwoStep (two-step verification: the gate, "Verify your identity", the offer after sign-up)
 src/components/admin/AdminTools.tsx  the admin page's Appeals, Chat and Stats tabs and the schedule panel
 src/components/onboarding/           the welcome tour and QuickStart (first-visit guide per game)
 src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
@@ -434,6 +440,29 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      anyone but the admin (`site_maintenance`), and `MaintenanceGate` (wrapping everything in `App.tsx`) shows only
      the maintenance page to everyone else, **including the login page**: the admin must already be signed in.
      `supabase/maintenance/maintenance_off.sql` switches it off by hand if the admin is locked out.
+   - **Two-step verification (2026-10-13, the user's request):** an emailed 6-digit code after the password, at
+     every login, **off unless the player switches it on**. The hidden `player_security` holds the switch.
+     **The server is the gate:** Supabase Auth writes how a session was made into the token's `amr` claim
+     (`password`, or `otp` once a code from an email was entered: the sign-up code, a reset code or this one), and
+     `private.session_verified()` reads it. `private.sanction_check` and `private.require_admin` raise
+     `verify_required` while `private.two_step_pending(uid)` (on, and the session has only the password).
+     `set_two_step(on)` needs a verified session **both ways**: on, so nobody is locked out by an inbox that never
+     gets the codes (the user's school address blocks them); off, so a password alone cannot remove it.
+     `my_account()` returns `two_step`, `verified`, `verify_required`. `admin_two_step_off(user)` (logged) is for a
+     locked-out player; `supabase/maintenance/two_step_off.sql` for the admin. The code is sent with
+     `signInWithOtp({ shouldCreateUser: false })` (the dashboard's **Magic Link** template =
+     `verify-identity.html`) and checked with `verifyOtp({ type: 'email' })`, which replaces the session.
+     Frontend, all in `src/components/account/TwoStep.tsx`: `TwoStepGate` (inside `RequireAuth` and around `/admin`)
+     shows **"Verify your identity"** while a code is owed, and once, right after the sign-up code, **"Secure your
+     account?"** (a `sessionStorage` flag set by `VerifyEmailPage`); `IdentityCodeForm` sends and checks a code
+     (one automatic send, not repeated by a reload within 10 minutes). After a code is entered `useAccount.bump()`
+     raises `epoch`, which re-mounts the data connectors in `App.tsx`: their first calls were refused. The switch is
+     in Settings → Account; from a password-only session it asks for a code first. Accounts older than the feature
+     got one inbox notice (`two_step_available`, sent once by file 15; `player_security.announced_at` is the record).
+     **Limits, by design:** direct table reads allowed by RLS (own balance, profile) and the few RPCs that skip
+     `require_uid()` still answer a password-only session, as they do for a banned one; nothing can be played or
+     changed. Supabase's **Secure email change** must stay on, or the password alone could move the account's email.
+     **No achievement:** Completionist must stay reachable for a player whose mail provider blocks the codes.
    - Frontend: `useAccount` (`src/stores/accountStore.ts`), `AccountGate` inside `RequireAuth` (the suspended /
      timeout / choose-a-new-name screens), `ReportModal`, Block and Report on other players' profiles, the blocked
      list on the Friends page, `src/pages/AdminPage.tsx`.
@@ -737,7 +766,7 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
 - **Hidden tables:** RLS on, no policies, `revoke all … from anon, authenticated`, never published to realtime.
   Today: `bj_shoes`, `bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`,
   `bingo_secrets`, `tpt_cards`, `chat_messages`, `dm_reads`, `admins`, `player_reports`, `admin_log`,
-  `player_activity`, `player_notes`, `head_to_head`, `site_schedule`, `player_appeals`.
+  `player_activity`, `player_notes`, `head_to_head`, `site_schedule`, `player_appeals`, `player_security`.
 - **Each file ends with** `revoke execute on all functions in schema private from public, anon, authenticated;
   grant execute on function private.can_view_table(uuid) to authenticated;`. `private` must NOT be added to
   the Data API's exposed schemas.
@@ -851,6 +880,8 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   - Nothing may be clipped at 360–390 px wide.
 - Auth:
   - Sign-up asks for two confirmations: play chips only, and the Terms / Privacy / age box.
+  - After the sign-up code, and before the lounge, new players are asked once whether to switch on two-step
+    verification (§7, file 15). "Replay welcome tour" lives under Game guides in Settings, not Account.
   - Email + password. Sign-up confirmation and password reset use a 6-digit OTP (`{{ .Token }}`):
     `verifyOtp` type `'email'` for sign-up and `'recovery'` for reset.
   - Every `signUp`, `signInWithPassword`, `resend` and `resetPasswordForEmail` call gets a fresh Turnstile
@@ -862,7 +893,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   Sign-up has a second required checkbox (age, agree to the Terms, have read the Privacy Policy); the accepted
   `legal_version` and `legal_accepted_at` are saved in the account's auth metadata, so no SQL was needed.
   **Standing request (2026-10-12): update both documents with any change that affects players or their data,
-  and say so.** When either document changes, change `LEGAL.version` and `LEGAL.effective` (now October 12, 2026). If the game starts collecting
+  and say so.** When either document changes, change `LEGAL.version` and `LEGAL.effective` (now October 13, 2026). If the game starts collecting
   something new or uses a new outside service, the Privacy Policy must say so. The copy guard applies to these
   pages too: the banned words only pass on a line that also contains a disclaimer such as "no purchases".
 - **Music** (2026-10-12, the user's fourth and current version): **every track in `src/assets/music/` plays in a
@@ -938,6 +969,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage12a.cjs /tmp/shots     # stage 12 part 1: lounge search, music control, auto-play, remembered bets, stats, size, leave confirmation, sit out next hand, auto top-up (22 checks)
    node scripts/e2e/stage12b.cjs /tmp/shots     # stage 12 part 2: direct messages, a waiting-room table, watching a friend alone and at a table (16 checks)
    node scripts/e2e/stage12d.cjs /tmp/shots     # stage 12 part 4: practice walkthroughs, site stats, chat log search, a scheduled notice and closure, an appeal (37 checks)
+   node scripts/e2e/twostep.cjs /tmp/shots      # two-step verification: the offer after sign-up, "Verify your identity" at login, the Settings switch, the admin's off switch (26 checks)
    node scripts/e2e/stage12c.cjs /tmp/shots     # stage 12 part 3: Haunted Manor, season missions, seven practice drills, a private tournament, a club event (39 checks; season missions need October 2026)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
@@ -952,7 +984,9 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
      size (poker, baccarat, video poker, Three Card Poker, Pai Gow), so leftovers from one test rig the next
      game. `reset.sql` clears both. For Pai Gow also queue one `tests.dice` value: where the joker goes
      (52 = bottom of the deck, not dealt).
-   - `mini-supabase.cjs` passes JSON objects as `jsonb` and arrays as Postgres arrays.
+   - `mini-supabase.cjs` passes JSON objects as `jsonb` and arrays as Postgres arrays. A password login gets a
+     token with `amr: password`; `/auth/v1/verify` accepts any six digits but `000000` and gives `amr: otp`;
+     `GET /test/otp-sent` lists the login codes "emailed".
    - Use `exact: true` in Playwright name selectors ('50 chip' matches '250 chip').
    - Test emails need a TLD. The poker history step has timed out once on a cold start; re-run if so.
    - Kill background node processes with a bracket pattern, e.g. `pkill -f "[m]ini-supabase"`.

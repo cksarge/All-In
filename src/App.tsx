@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Fragment, useEffect } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { MaintenanceGate } from '@/components/account/MaintenanceGate';
@@ -36,6 +36,7 @@ import TournamentsPage from '@/pages/TournamentsPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import { GuestOnly, RequireAuth } from '@/routes/guards';
 import { useOnlinePresence } from '@/hooks/useLobby';
+import { TwoStepGate } from '@/components/account/TwoStep';
 import { useAccount } from '@/stores/accountStore';
 import { useDm } from '@/stores/dmStore';
 import { useReputation } from '@/stores/reputationStore';
@@ -239,6 +240,7 @@ export default function App() {
   const motionPref = useSettings((s) => s.motion);
   const textSize = useSettings((s) => s.textSize);
   const reduced = prefersReducedMotion(motionPref);
+  const epoch = useAccount((s) => s.epoch);
 
   useEffect(() => init(), [init]);
   useEffect(() => {
@@ -267,14 +269,17 @@ export default function App() {
         {/* Nothing below is shown until the server says the site is open (or that this is the admin). */}
         <MaintenanceGate>
           <RouteEffects />
-          <WalletConnector />
-          <PresenceConnector />
-          <ProgressConnector />
-          <TournamentConnector />
           <AccountConnector />
-          <ReputationConnector />
-          <DmConnector />
-          <LiveConnector />
+          {/* Started again once a two-step code is entered: with only the password, their first calls were refused. */}
+          <Fragment key={epoch}>
+            <WalletConnector />
+            <PresenceConnector />
+            <ProgressConnector />
+            <TournamentConnector />
+            <ReputationConnector />
+            <DmConnector />
+            <LiveConnector />
+          </Fragment>
           <Routes>
             <Route element={<AppLayout />}>
               <Route index element={<LandingPage />} />
@@ -306,7 +311,7 @@ export default function App() {
               <Route path="tournaments" element={<RequireAuth><TournamentsPage /></RequireAuth>} />
               <Route path="tournaments/:id" element={<RequireAuth><ShowdownPage /></RequireAuth>} />
               {/* No link leads here. The page itself answers "Access not allowed" to everyone but the admin. */}
-              <Route path="admin" element={<AdminPage />} />
+              <Route path="admin" element={<TwoStepGate><AdminPage /></TwoStepGate>} />
               <Route path="join/:code" element={<RequireAuth><JoinPage /></RequireAuth>} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>

@@ -4,6 +4,7 @@ import { AuthCard } from '@/components/auth/AuthCard';
 import { OtpInput } from '@/components/auth/OtpInput';
 import { ResendCodeButton } from '@/components/auth/ResendCodeButton';
 import { captchaErrorMessage, Turnstile, type TurnstileHandle } from '@/components/auth/Turnstile';
+import { useTwoStepOffer } from '@/components/account/TwoStep';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
@@ -48,6 +49,8 @@ export default function VerifyEmailPage() {
       return;
     }
     clearPending();
+    // Before the lounge: one question, whether to switch two-step verification on.
+    useTwoStepOffer.getState().setOffer(true);
     playSound('success');
     toast.success('Email verified', 'Welcome to All In! Your 10,000 starting chips are ready.');
     navigate('/lounge', { replace: true });

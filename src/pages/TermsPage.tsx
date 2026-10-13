@@ -84,6 +84,10 @@ const sections: LegalSection[] = [
         <ul>
           <li>You need an account to play. Give a real email address that you control: it is how you verify the account and reset your password.</li>
           <li>Keep your password to yourself. You are responsible for what happens under your account. Tell us at once if you think someone else has got into it.</li>
+          <li>
+            You can switch on two-step verification in Settings: a code is then emailed to you each time you log in. It only protects you
+            while your email account is itself safe, and if you can no longer receive the codes you will need to write to us to get back in.
+          </li>
           <li>One person per account. Do not share your account, and do not create more than one account to gain an advantage.</li>
           <li>
             Your username, and any club name or tag you choose, are shown to other players. They must not be offensive, hateful, sexual or

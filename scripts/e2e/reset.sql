@@ -37,3 +37,4 @@ update public.games set season = to_char(now() at time zone 'utc', 'YYYY-MM') wh
 delete from public.player_missions where period = 'season';
 delete from public.site_schedule;
 delete from public.player_appeals;
+delete from public.player_security;

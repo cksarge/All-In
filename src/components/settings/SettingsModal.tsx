@@ -1,9 +1,14 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { IdentityCodeForm, setTwoStep } from '@/components/account/TwoStep';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/components/ui/cn';
 import { HAS_MUSIC, MUSIC_CREDITS } from '@/lib/music';
+import { maskEmail } from '@/lib/format';
 import { playSound } from '@/lib/sound';
+import { useAccount } from '@/stores/accountStore';
+import { toast } from '@/stores/toastStore';
 import { useAuth } from '@/stores/authStore';
 import { useSettings, type MotionPreference } from '@/stores/settingsStore';
 import { useUi } from '@/stores/uiStore';
@@ -13,6 +18,75 @@ const MOTION_OPTIONS: { value: MotionPreference; label: string; hint: string }[]
   { value: 'reduce', label: 'Reduced', hint: 'Minimal animation: no flying chips, spins or confetti.' },
   { value: 'full', label: 'Full', hint: 'All animations on.' },
 ];
+
+/** Two-step verification: a code by email after the password, at every login. */
+function TwoStepSetting() {
+  const account = useAccount((s) => s.account);
+  const email = useAuth((s) => s.user?.email ?? '');
+  const [busy, setBusy] = useState(false);
+  // Switching it on from a session that has only the password: prove the codes arrive first.
+  const [proving, setProving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Before 15_moderation.sql is current the server knows no such setting.
+  if (!account || account.two_step === undefined) return null;
+  const on = account.two_step;
+
+  const apply = async (next: boolean) => {
+    setBusy(true);
+    setError(null);
+    const err = await setTwoStep(next);
+    setBusy(false);
+    setProving(false);
+    if (err !== null) {
+      playSound('error');
+      setError(err);
+      return;
+    }
+    playSound('click');
+    if (next) toast.success('Two-step verification is on', 'From your next login we will email you a code after your password.');
+    else toast.info('Two-step verification is off', 'Your password alone logs you in again.');
+  };
+
+  return (
+    <div className="mt-5 border-t border-white/10 pt-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="font-medium text-cream" id="two-step-label">Two-step verification</p>
+          <p className="text-sm text-muted">
+            Each time you log in, after your password, we email a 6-digit code to {maskEmail(email)}. Staying logged in needs no new code.
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={on}
+          aria-labelledby="two-step-label"
+          disabled={busy || proving}
+          onClick={() => {
+            if (!on && !account.verified) {
+              setError(null);
+              setProving(true);
+            } else void apply(!on);
+          }}
+          className={cn('relative h-7 w-12 shrink-0 rounded-full border transition disabled:opacity-60', on ? 'border-gold-500 bg-gold-500' : 'border-white/20 bg-ink-950')}
+        >
+          <span className={cn('absolute top-0.5 h-5.5 w-5.5 rounded-full bg-ivory shadow transition-all', on ? 'left-[calc(100%-1.5rem)]' : 'left-0.5')} />
+        </button>
+      </div>
+      {proving && (
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <p className="mb-4 text-sm text-cream/85">
+            First, let&apos;s make sure the codes reach you. Enter the 6-digit code we just sent to <strong className="text-cream">{maskEmail(email)}</strong>.
+          </p>
+          <IdentityCodeForm submitLabel="Verify and switch on" onVerified={() => apply(true)} />
+          <Button variant="ghost" size="sm" className="mt-2" onClick={() => setProving(false)}>
+            Cancel
+          </Button>
+        </div>
+      )}
+      {error && <p role="alert" className="mt-2 text-sm font-medium text-ruby-300">{error}</p>}
+    </div>
+  );
+}
 
 /** Settings popup. Opened from the gear in the top bar, the account menu, the footer, or /settings. */
 export function SettingsModal() {
@@ -211,6 +285,19 @@ export function SettingsModal() {
         >
           Show every guide again
         </Button>
+        {status === 'signedIn' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2"
+            onClick={() => {
+              setTourSeen(false);
+              go('/lounge?tour=1');
+            }}
+          >
+            Replay welcome tour
+          </Button>
+        )}
       </section>
 
       {status === 'signedIn' && (
@@ -228,17 +315,8 @@ export function SettingsModal() {
                 <dd className="truncate font-medium text-cream">{user?.email}</dd>
               </div>
             </dl>
+            <TwoStepSetting />
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setTourSeen(false);
-                  go('/lounge?tour=1');
-                }}
-              >
-                Replay welcome tour
-              </Button>
               <Button variant="ghost" size="sm" onClick={() => go('/forgot-password')}>
                 Change password
               </Button>

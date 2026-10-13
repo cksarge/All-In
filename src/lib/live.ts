@@ -107,6 +107,13 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
       return { title: `${from} sent you a friend request`, to: '/friends', action: 'Answer' };
     case 'friend_accepted':
       return { title: `${from} accepted your friend request`, to: `/profile/${from}`, action: 'See profile' };
+    case 'two_step_available':
+      return {
+        title: 'New: two-step verification',
+        body: 'Have a code emailed to you each time you log in, so a password alone is not enough. It is off until you switch it on.',
+        to: '/settings',
+        action: 'Open settings',
+      };
     case 'appeal_answer':
       return {
         title: d.accepted ? 'Your appeal was accepted' : 'Your appeal was turned down',

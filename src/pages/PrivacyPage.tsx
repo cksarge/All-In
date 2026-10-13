@@ -52,6 +52,10 @@ const sections: LegalSection[] = [
             moderator&apos;s answer.
           </li>
           <li>
+            <strong>Two-step verification.</strong> Whether you have switched it on, and when. With it on, we email a 6-digit code to your
+            address each time you log in. The codes are made and checked by our sign-in provider; the game does not keep them.
+          </li>
+          <li>
             <strong>The record that you accepted</strong> the Terms of Service and this policy, with the version and the time.
           </li>
           <li>Anything you send us by email.</li>
@@ -126,7 +130,7 @@ const sections: LegalSection[] = [
             players, and show leaderboards, profiles and results.
           </li>
           <li>
-            <strong>To send account emails:</strong> verification and password reset codes, and replies to messages you send us. We do not send
+            <strong>To send account emails:</strong> verification and password reset codes, login codes if you use two-step verification, and replies to messages you send us. We do not send
             marketing email.
           </li>
           <li>
@@ -202,7 +206,7 @@ const sections: LegalSection[] = [
             <strong>Cloudflare</strong> (Turnstile): the bot check on sign-up, log-in and code requests.
           </li>
           <li>
-            <strong>Resend</strong>: delivers the verification and password reset emails, so it handles your email address.
+            <strong>Resend</strong>: delivers the verification, password reset and login code emails, so it handles your email address.
           </li>
           <li>
             <strong>Google</strong> (Google Fonts): the site&apos;s typefaces are loaded from Google, which therefore receives your IP address and

@@ -81,9 +81,18 @@ The sign-up and reset forms check the same rules live with a checklist.
 | --- | --- | --- |
 | **Confirm signup** | `{{ .Token }} is your All In verification code` | Paste all of `supabase/email-templates/confirm-signup.html` |
 | **Reset password** | `{{ .Token }} is your All In password reset code` | Paste all of `supabase/email-templates/reset-password.html` |
+| **Magic Link** | `{{ .Token }} is your All In login code` | Paste all of `supabase/email-templates/verify-identity.html` |
 
 Prefer not to show the code in the inbox preview? Use `Your All In verification code` and
 `Reset your All In password` instead. Save each template.
+
+**Magic Link** is the email behind **two-step verification** (Settings → Account): the 6-digit code a player enters
+after their password, on the "Verify your identity" page. No link is sent. Two things keep it sound:
+
+- **Authentication → Sign In / Providers → Email → Secure email change** must stay **on** (the default). Otherwise
+  someone with only the password could move the account to their own address and receive the codes.
+- If you switch it on for your own account and the codes stop arriving, run
+  `supabase/maintenance/two_step_off.sql`. For any other player, use "Switch it off" on their page in `/admin`.
 
 ## 5. URL configuration
 

@@ -30,6 +30,7 @@ const RPC_MESSAGES: Record<string, string> = {
   account_banned: 'This account has been suspended.',
   account_timeout: 'This account is in a timeout. Try again later.',
   rename_required: 'Choose a new username to keep playing.',
+  verify_required: 'Enter the code we emailed you to finish logging in.',
   not_admin: 'Access not allowed.',
   site_maintenance: 'The site is closed for maintenance. Please come back soon.',
   club_not_found: "That club doesn't exist. Check the code, or it may have closed.",

@@ -167,6 +167,8 @@ async function walk(page, key, shot) {
   await pool.query(`update public.site_schedule set starts_at = now() + interval '10 minutes', ends_at = now() + interval '40 minutes' where kind = 'maintenance'`);
   await ben.reload();
   await ben.getByText(/The site closes for maintenance in (9|10) minutes/).waitFor({ timeout: 10000 });
+  // The warning strip is drawn before the page is (the page waits to hear about the account).
+  await ben.getByRole('heading', { name: 'The games' }).waitFor();
   ok(await ben.getByRole('heading', { name: 'The games' }).isVisible(), 'players are warned during the hour before, and can still play');
   ok(await fits(ben), 'phone: the warning strip fits 390px');
   await ben.screenshot({ path: `${SHOTS}/q-maintenance-warning-phone.png` });

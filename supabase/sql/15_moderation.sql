@@ -117,6 +117,40 @@ create table if not exists public.site_schedule (
 );
 create index if not exists site_schedule_idx on public.site_schedule (kind, starts_at);
 
+-- HIDDEN: who has switched two-step verification on (a code by email after the password, at every
+-- login). Hidden because my_account() says all a browser needs, and so that only set_two_step()
+-- can change it: a session that has only a password must not be able to switch it off.
+create table if not exists public.player_security (
+  user_id     uuid primary key references auth.users (id) on delete cascade,
+  two_step    boolean not null default false,
+  two_step_at timestamptz,
+  updated_at  timestamptz not null default now()
+);
+-- Told once that the feature exists (null = never told). New accounts are asked at sign-up instead.
+alter table public.player_security add column if not exists announced_at timestamptz;
+
+-- The accounts that were here before two-step verification get one inbox notice saying it is
+-- available. It is off for them until they switch it on. Each account is told once however often
+-- this file is run: the row made here is the record (the notice itself can be cleared).
+do $$
+declare
+  u record;
+begin
+  -- The inbox is made by 16_missions_seasons.sql; on a first install there is nobody to tell anyway.
+  if to_regprocedure('private.notify(uuid, text, jsonb)') is null then
+    return;
+  end if;
+  for u in
+    insert into public.player_security (user_id, announced_at)
+    select p.id, now() from public.profiles p
+     where p.created_at < timestamptz '2026-10-14 00:00+00'
+    on conflict (user_id) do nothing
+    returning user_id
+  loop
+    perform private.notify(u.user_id, 'two_step_available', '{}'::jsonb);
+  end loop;
+end $$;
+
 -- The admin: the account whose username is Carter (matched once, stored by id).
 insert into public.admins (user_id)
 select id from public.profiles where lower(username) = 'carter'
@@ -167,6 +201,46 @@ as $$
     from public.site_status s where s.id
 $$;
 
+-- Did this session prove it can read the account's email? Supabase Auth lists how a session was
+-- made in the token's "amr" claim: "password" for a password alone, "otp" once a code from an email
+-- was entered (the sign-up code, a password reset code, or the two-step code). Refreshing a session
+-- keeps the list, so this holds for as long as the player stays logged in.
+create or replace function private.session_verified()
+returns boolean
+language sql
+stable
+set search_path = ''
+as $$
+  with c as (
+    select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb -> 'amr', '[]'::jsonb) as amr
+  )
+  select exists (
+    select 1 from c, jsonb_array_elements(case when jsonb_typeof(c.amr) = 'array' then c.amr else '[]'::jsonb end) a
+     where coalesce(a.value ->> 'method', a.value #>> '{}') in ('otp', 'magiclink', 'recovery', 'invite', 'email/signup', 'email_change')
+  )
+$$;
+
+create or replace function private.two_step_on(p_user uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((select two_step from public.player_security where user_id = p_user), false)
+$$;
+
+-- Two-step verification is on and this session has only the password so far.
+create or replace function private.two_step_pending(p_user uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select private.two_step_on(p_user) and not private.session_verified()
+$$;
+
 -- Called by private.require_uid() at the start of every game RPC.
 create or replace function private.sanction_check(p_user uuid)
 returns void
@@ -181,6 +255,10 @@ begin
   -- Maintenance: every game call from anyone but the admin stops here, whatever their browser shows.
   if (private.site_now() ->> 'maintenance')::boolean and not private.is_admin(p_user) then
     raise exception 'site_maintenance' using hint = 'The site is closed for maintenance. Please come back soon.';
+  end if;
+  -- Two-step verification: with it on, a password alone opens nothing.
+  if private.two_step_pending(p_user) then
+    raise exception 'verify_required' using hint = 'Enter the code we emailed you to finish logging in.';
   end if;
   select * into s from public.player_sanctions where user_id = p_user;
   if not found then
@@ -209,6 +287,9 @@ as $$
 begin
   if auth.uid() is null or not private.is_admin(auth.uid()) then
     raise exception 'not_admin' using errcode = '42501';
+  end if;
+  if private.two_step_pending(auth.uid()) then
+    raise exception 'verify_required' using hint = 'Enter the code we emailed you to finish logging in.';
   end if;
   return auth.uid();
 end $$;
@@ -300,6 +381,10 @@ begin
     'timeout_until', case when s.timeout_until > now() then s.timeout_until end,
     'timeout_reason', case when s.timeout_until > now() then s.timeout_reason end,
     'must_rename', coalesce(s.must_rename, false),
+    -- two-step verification: is it on, did this session enter a code from an email, and so is one still owed
+    'two_step', private.two_step_on(v_uid),
+    'verified', private.session_verified(),
+    'verify_required', private.two_step_pending(v_uid),
     'blocked', (select coalesce(jsonb_agg(jsonb_build_object('user_id', b.blocked, 'username', p.username) order by b.created_at desc), '[]'::jsonb)
                   from public.player_blocks b join public.profiles p on p.id = b.blocked where b.blocker = v_uid),
     'notice', private.site_now() ->> 'notice'
@@ -317,6 +402,37 @@ as $$
   -- maintenance, message, until (when a scheduled closure ends), and upcoming (one starting within a day)
   select (private.site_now() - 'notice') || jsonb_build_object('server_now', now(), 'admin', coalesce(private.is_admin(auth.uid()), false))
 $$;
+
+-- Switches two-step verification on or off for your own account. Either way the session must have
+-- entered a code from an email: on, so that nobody is locked out by an inbox that never gets the
+-- codes; off, so that knowing the password is not enough to remove it. Not through require_uid():
+-- it must work on the "secure your account" page right after sign-up, whatever else is going on.
+create or replace function public.set_two_step(p_on boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'not_authenticated' using errcode = '28000';
+  end if;
+  if p_on is null then
+    raise exception 'invalid_input';
+  end if;
+  if not private.session_verified() then
+    raise exception 'verify_required' using hint = 'Enter the code we emailed you first.';
+  end if;
+  insert into public.player_security as x (user_id, two_step, two_step_at)
+  values (v_uid, p_on, case when p_on then now() end)
+  on conflict (user_id) do update
+    set two_step = excluded.two_step,
+        two_step_at = case when excluded.two_step and not x.two_step then now() when excluded.two_step then x.two_step_at end,
+        updated_at = now();
+  return jsonb_build_object('two_step', p_on);
+end $$;
 
 -- Change your own username. Only open to players who were told to (must_rename).
 create or replace function public.change_username(p_username text)
@@ -581,6 +697,7 @@ begin
     'level', coalesce((select level from public.player_progress where user_id = p.id), 1),
     'xp', coalesce((select xp from public.player_progress where user_id = p.id), 0),
     'banned', s.banned_at is not null, 'banned_at', s.banned_at, 'ban_reason', s.ban_reason,
+    'two_step', private.two_step_on(p.id),
     'timeout_until', case when s.timeout_until > now() then s.timeout_until end, 'timeout_reason', s.timeout_reason,
     'must_rename', coalesce(s.must_rename, false),
     'seat', (select jsonb_build_object('table_id', t.id, 'name', t.name, 'game', t.game_key, 'stack', ts.stack)
@@ -663,6 +780,23 @@ begin
   perform private.require_admin();
   update public.player_sanctions set banned_at = null, ban_reason = null, updated_at = now() where user_id = p_user;
   perform private.admin_note('unban', p_user);
+end $$;
+
+-- For a player who switched two-step verification on and can no longer get the codes: switches it
+-- off, so their password alone logs them in again. Works on any account, the admin's included.
+create or replace function public.admin_two_step_off(p_user uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.require_admin();
+  if not exists (select 1 from public.profiles where id = p_user) then
+    raise exception 'player_not_found';
+  end if;
+  update public.player_security set two_step = false, two_step_at = null, updated_at = now() where user_id = p_user;
+  perform private.admin_note('two_step_off', p_user);
 end $$;
 
 -- p_minutes = 0 ends a timeout early.
@@ -917,6 +1051,7 @@ alter table public.admin_log         enable row level security;
 alter table public.player_notes      enable row level security;
 alter table public.site_notice       enable row level security;
 alter table public.site_schedule     enable row level security;
+alter table public.player_security   enable row level security;
 
 drop policy if exists "player_sanctions: own row" on public.player_sanctions;
 create policy "player_sanctions: own row" on public.player_sanctions for select to authenticated using (user_id = auth.uid());
@@ -925,7 +1060,7 @@ create policy "player_blocks: own rows" on public.player_blocks for select to au
 drop policy if exists "site_notice: signed-in players can read" on public.site_notice;
 create policy "site_notice: signed-in players can read" on public.site_notice for select to authenticated using (true);
 
-revoke all on public.admins, public.player_reports, public.admin_log, public.player_activity, public.player_notes, public.site_schedule from anon, authenticated;
+revoke all on public.admins, public.player_reports, public.admin_log, public.player_activity, public.player_notes, public.site_schedule, public.player_security from anon, authenticated;
 
 -- Players asked to rename before the removed name was remembered: take it from the admin log.
 update public.player_sanctions s

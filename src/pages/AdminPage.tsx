@@ -68,6 +68,7 @@ interface Player extends PlayerRow {
   in_play: number;
   xp: number;
   ban_reason: string | null;
+  two_step?: boolean;
   timeout_reason: string | null;
   seat: { table_id: string; name: string; game: string; stack: number } | null;
   totals: { rounds: number; wagered: number; returned: number; biggest_win: number };
@@ -385,6 +386,18 @@ function PlayerPanel({ userId }: { userId: string }) {
           </Fact>
         </dl>
         {p.banned && <p className="mt-3 text-sm text-ruby-200">Banned{p.ban_reason ? `: ${p.ban_reason}` : ''}</p>}
+        {p.two_step && (
+          <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-cream/85">
+            Two-step verification is on.
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void act('admin_two_step_off', {}, `Two-step verification is off for ${p.username}`, `Switch two-step verification off for ${p.username}? Only do this when you are sure it is them asking: their password alone will log them in again.`)}
+            >
+              Switch it off
+            </Button>
+          </p>
+        )}
         {p.timeout_until && (
           <p className="mt-3 text-sm text-ruby-200">
             In a timeout until {when(p.timeout_until)}
