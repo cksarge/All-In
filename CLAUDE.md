@@ -408,8 +408,9 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
 15. `15_moderation.sql` (stage 9 part 1): the admin and moderation.
    - **The admin is a row in the hidden `admins` table**, seeded once with the account whose username is Carter and
      tied to its id (so a rename can't hand it over). Every `admin_*` RPC starts with `private.require_admin()`
-     and answers `not_admin` to anyone else. The `/admin` page has **no link anywhere** (the user's wish) and
-     shows "Access not allowed" unless `my_account().admin`; the page is a convenience, the server is the gate.
+     and answers `not_admin` to anyone else. The `/admin` page had no link at first; since 2026-10-12 (the user's
+     request) the top bar shows **Admin** after Profile, and the account menu too, **only when `my_account().admin`**.
+     Everyone else sees no link and "Access not allowed" on the page; the page is a convenience, the server is the gate.
    - **Enforcement is one hook:** `private.require_uid()` (05) and the three economy RPCs (02) call
      `private.sanction_check(uid)` if it exists, which raises `account_banned`, `account_timeout` or
      `rename_required`. So a sanction stops every game at once and new games need nothing extra, as long as their
@@ -824,7 +825,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   (`.page-in`, opacity only: a transform would trap the fixed control bars) and a rolling header balance.
   The site links to its public repo from the landing page and the footer (`GitHubLink`).
 - **UX decisions the user asked for (keep them):**
-  - Top bar: Lounge, Lobby, Tournaments, Profile. The profile pages' row of links is Profile, Locker, Friends,
+  - Top bar: Lounge, Lobby, Tournaments, Profile (and Admin, for the admin only). The profile pages' row of links is Profile, Locker, Friends,
     Clubs, Leaderboards (no Tournaments, and no duplicate buttons on the profile itself).
   - Equipped titles are visible to everyone at the tables.
   - The landing page says the project is open source and links to the repo; so does the footer.
@@ -912,7 +913,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/more.cjs /tmp/shots         # stage 6.5: nine games, two players in Crash and Bingo, lounge, lobby (44 checks)
    node scripts/e2e/social.cjs /tmp/shots       # stage 7: rewards, profile, locker, friends, join their table, leaderboards (24 checks)
    node scripts/e2e/tournaments.cjs /tmp/shots  # stage 8: freeroll, showdown, heads-up Sit & Go, first-visit guide (29 checks)
-   node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban, site maintenance (23 checks)
+   node scripts/e2e/moderation.cjs /tmp/shots   # stage 9 part 1: admin page, report, block, timeout, rename, chips, ban, site maintenance (24 checks)
    node scripts/e2e/live.cjs /tmp/shots         # stage 9 part 2: missions, season track, inbox, table invite (17 checks; season checks need a running season)
    node scripts/e2e/clubs.cjs /tmp/shots        # stage 9 part 3: clubs, ticker, head-to-head, personal records (16 checks)
    node scripts/e2e/events.cjs /tmp/shots       # stage 9 part 4: favourites, VP hint, auto-spin, formats, a three-player Main Event, trophies (20 checks)

@@ -5,6 +5,7 @@ import { ButtonLink } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
 import { cn } from '@/components/ui/cn';
 import { SettingsButton } from '@/components/settings/SettingsModal';
+import { useAccount } from '@/stores/accountStore';
 import { useAuth } from '@/stores/authStore';
 import { seasonReady } from '@/lib/live';
 import { useLive } from '@/stores/liveStore';
@@ -44,6 +45,7 @@ function UserMenu() {
   }, [open]);
 
   const me = useProgress((s) => s.me);
+  const admin = useAccount((s) => Boolean(s.account?.admin));
   // A dot on the avatar when something is waiting: rewards to collect or a friend request.
   const unread = useLive((s) => s.unread);
   const rewards = useLive((s) => (s.missions ? s.missions.to_collect + seasonReady(s.missions.season) : 0));
@@ -99,6 +101,12 @@ function UserMenu() {
             Profile
             {me && me.unclaimed_chips > 0 && <span className="ml-2 text-xs text-gold-300">rewards waiting</span>}
           </Link>
+          {/* Only the admin's own browser shows this. The page and every admin call check again on the server. */}
+          {admin && (
+            <Link role="menuitem" to="/admin" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+              Admin
+            </Link>
+          )}
           <Link role="menuitem" to="/locker" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Locker
           </Link>
@@ -168,6 +176,7 @@ function InboxBell() {
 export function SiteHeader() {
   const status = useAuth((s) => s.status);
   const signedIn = status === 'signedIn';
+  const admin = useAccount((s) => Boolean(s.account?.admin));
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink-900/80 backdrop-blur-md">
@@ -194,6 +203,11 @@ export function SiteHeader() {
               <NavLink to="/profile" className={navCls}>
                 Profile
               </NavLink>
+              {admin && (
+                <NavLink to="/admin" className={navCls}>
+                  Admin
+                </NavLink>
+              )}
             </>
           )}
           {/* Signed-in players have this in the account menu and the footer. */}

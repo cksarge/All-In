@@ -71,6 +71,7 @@ async function login(browser, email, vp) {
   const cat = await login(browser, 'cat@allin.test', { width: 390, height: 800 });
   await ann.goto(BASE + '/admin');
   await ann.getByRole('heading', { name: 'Admin' }).waitFor();
+  ok(await ann.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Admin', exact: true }).isVisible(), 'the admin, and only the admin, has an Admin link in the top bar');
   await ann.getByText('Kept spamming emotes').waitFor();
   await ann.screenshot({ path: `${SHOTS}/a-reports.png` });
   await ann.getByRole('button', { name: 'Open player' }).click();
