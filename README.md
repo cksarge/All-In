@@ -31,12 +31,13 @@ It builds to a static site.
   (baccarat, video poker, dealer poker games, blackjack variants, keno, Plinko, Mines and more).
 - **Tournaments:** Sit & Go poker, a multi-table Main Event, Slot Showdowns, a Daily Freeroll, and private
   tournaments and club events you set up yourself.
-- **Practice:** seven free drills (blackjack strategy, video poker holds, poker showdowns and pot odds, craps,
-  roulette, baccarat) that bet nothing.
+- **Practice:** step-by-step walkthroughs of blackjack, Hold'em, craps, roulette, baccarat and video poker, and
+  seven drills to test yourself. Nothing is bet.
 - **Progress:** XP and 100 levels, 85 achievements, earned cosmetics, daily and weekly missions, monthly seasons.
 - **Social:** friends, clubs, leaderboards, profiles with records, and chat: typed (filtered, with a reputation that
   good and bad behaviour moves) and quick preset phrases.
-- **Moderation:** reports, blocks, an admin page, and a site maintenance switch.
+- **Moderation:** reports, blocks, appeals, an admin page (site statistics, chat log search), and site notices and
+  maintenance that can be switched by hand or scheduled.
 - **Music:** a playlist shuffled on every screen, and a theme of its own for the seasonal slot (`src/assets/music/`,
   with the licences in `CREDITS.txt`).
 - **Terms of Service and Privacy Policy** at `/terms` and `/privacy`, agreed to at sign-up (their shared facts,
@@ -70,7 +71,7 @@ It builds to a static site.
 │   ├── routes/              auth guards
 │   └── stores/              auth, wallet, progress, account, live data, settings, toasts
 └── supabase/
-    ├── sql/                 24 numbered, re-runnable SQL files and their README
+    ├── sql/                 25 numbered, re-runnable SQL files and their README
     ├── maintenance/         scripts run by hand: database check, cleanup, maintenance off
     ├── email-templates/     confirm-signup.html, reset-password.html (+ subjects)
     └── tests/               local-only Supabase stub and 20 SQL test files

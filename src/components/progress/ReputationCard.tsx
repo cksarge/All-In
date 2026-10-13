@@ -1,3 +1,4 @@
+import { AppealBox } from '@/components/account/AppealBox';
 import { useEffect } from 'react';
 import { cn } from '@/components/ui/cn';
 import { formatRelativeTime } from '@/lib/format';
@@ -51,6 +52,11 @@ export function ReputationCard() {
           {rep.quick_banned_until && rep.quick_ban_reason && <p className="mt-1 text-xs text-cream/85">Reason: {rep.quick_ban_reason}</p>}
         </li>
       </ul>
+      {(!rep.can_chat || !rep.can_quick) && (
+        <div className="mt-3">
+          <AppealBox what="the chat restriction" />
+        </div>
+      )}
 
       <div className="mt-4 grid gap-4 text-sm text-cream/85 sm:grid-cols-2">
         <div>

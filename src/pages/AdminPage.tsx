@@ -1,3 +1,4 @@
+import { AppealsTab, ChatLogTab, SchedulePanel, StatsTab } from '@/components/admin/AdminTools';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
@@ -93,7 +94,7 @@ export default function AdminPage() {
   const status = useAuth((s) => s.status);
   const account = useAccount((s) => s.account);
   const loaded = useAccount((s) => s.loaded);
-  const [tab, setTab] = useState<'reports' | 'players' | 'clubs' | 'overview'>('reports');
+  const [tab, setTab] = useState<'reports' | 'appeals' | 'players' | 'clubs' | 'chat' | 'stats' | 'overview'>('reports');
   const [selected, setSelected] = useState<string | null>(null);
 
   if (status === 'loading' || (status === 'signedIn' && !loaded)) return <FullPageLoader label="One moment…" />;
@@ -115,7 +116,7 @@ export default function AdminPage() {
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">Moderator only</p>
       <h1 className="font-display text-4xl font-bold text-ivory">Admin</h1>
       <div role="tablist" aria-label="Admin sections" className="mt-5 flex flex-wrap gap-1.5">
-        {(['reports', 'players', 'clubs', 'overview'] as const).map((t) => (
+        {(['reports', 'appeals', 'players', 'clubs', 'chat', 'stats', 'overview'] as const).map((t) => (
           <button
             key={t}
             role="tab"
@@ -134,6 +135,9 @@ export default function AdminPage() {
         {tab === 'reports' && <Reports onOpen={open} />}
         {tab === 'players' && <Players selected={selected} onSelect={setSelected} />}
         {tab === 'clubs' && <Clubs onOpen={open} />}
+        {tab === 'appeals' && <AppealsTab onOpen={open} />}
+        {tab === 'chat' && <ChatLogTab onOpen={open} />}
+        {tab === 'stats' && <StatsTab onOpen={open} />}
         {tab === 'overview' && <OverviewTab />}
       </div>
     </div>
@@ -859,6 +863,7 @@ function OverviewTab() {
           </Button>
         </div>
       </div>
+      <SchedulePanel />
       <div className="surface p-5">
         <h3 className="font-display text-lg font-bold text-ivory">Recent admin actions</h3>
         {data.log.length === 0 ? (

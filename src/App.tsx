@@ -73,7 +73,7 @@ function RouteEffects() {
   useEffect(() => {
     document.title =
       TITLES[pathname] ??
-      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : pathname.startsWith('/profile/') ? 'Profile · All In' : pathname.startsWith('/tournaments/') ? 'Tournament · All In' : pathname.startsWith('/clubs/') ? 'Club · All In' : 'All In');
+      (pathname.startsWith('/table/') ? 'At the table · All In' : pathname.startsWith('/play/') ? 'Playing · All In' : pathname.startsWith('/profile/') ? 'Profile · All In' : pathname.startsWith('/tournaments/') ? 'Tournament · All In' : pathname.startsWith('/clubs/') ? 'Club · All In' : pathname.startsWith('/practice/') ? 'Practice · All In' : 'All In');
     window.scrollTo({ top: 0 });
   }, [pathname]);
   return null;
@@ -291,6 +291,7 @@ export default function App() {
               <Route path="lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
               <Route path="practice" element={<RequireAuth><PracticePage /></RequireAuth>} />
               <Route path="practice/:drill" element={<RequireAuth><PracticePage /></RequireAuth>} />
+              <Route path="practice/learn/:lesson" element={<RequireAuth><PracticePage /></RequireAuth>} />
               <Route path="table/:id" element={<RequireAuth><TablePage /></RequireAuth>} />
               <Route path="play/:gameKey" element={<RequireAuth><PlayPage /></RequireAuth>} />
               <Route path="profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />

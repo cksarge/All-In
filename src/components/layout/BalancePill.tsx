@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import { ChipAmount, PlayChipsBadge } from '@/components/ui/ChipAmount';
+import { ChipAmount } from '@/components/ui/ChipAmount';
 import { Skeleton } from '@/components/ui/States';
 import { formatSigned } from '@/lib/format';
 import { prefersReducedMotion, useSettings } from '@/stores/settingsStore';
 import { useWallet } from '@/stores/walletStore';
 
-/** Live chip balance with the "Play chips" badge. Flashes +/- on change. */
+/** Live chip balance in the top bar. Flashes +/- on change. (The user asked for the "Play chips" tag to go from here.) */
 export function BalancePill() {
   const balance = useWallet((s) => (s.status ? (s.displayBalance ?? s.status.balance) : undefined));
   const prev = useRef<number | undefined>(undefined);
@@ -44,13 +44,12 @@ export function BalancePill() {
   }, [balance]);
 
   return (
-    <div className="relative flex items-center gap-1.5 rounded-xl border border-white/10 bg-ink-950/60 py-1.5 pl-2 pr-1.5 xs:gap-2 xs:pl-2.5 xs:pr-2">
+    <div className="relative flex items-center gap-1.5 rounded-xl border border-white/10 bg-ink-950/60 px-2.5 py-1.5 xs:gap-2 xs:px-3">
       {balance === undefined ? (
         <Skeleton className="h-5 w-20" />
       ) : (
         <ChipAmount value={shown ?? balance} className="text-[0.95rem] font-semibold text-ivory" iconClassName="h-5 w-5" />
       )}
-      <PlayChipsBadge className="whitespace-nowrap max-xs:px-1.5 max-xs:tracking-[0.06em]" />
       <AnimatePresence>
         {delta && (
           <motion.span

@@ -35,3 +35,5 @@ delete from public.game_tables where is_private;
 -- The seasonal game is "this month's" whenever the suites run.
 update public.games set season = to_char(now() at time zone 'utc', 'YYYY-MM') where season is not null;
 delete from public.player_missions where period = 'season';
+delete from public.site_schedule;
+delete from public.player_appeals;

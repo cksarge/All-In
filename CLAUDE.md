@@ -81,11 +81,12 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
 | 10 | **More games (the user's list, below), in four parts** | ✅ all four parts built on `main` |
 | 11 | **Reputation and typed chat** (`22_reputation_chat.sql`), Terms of Service and Privacy Policy | ✅ built on `main` |
-| 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | **Parts 1 to 3 built on `main`; part 4 next** |
+| 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | ✅ all four parts built on `main` |
 
-**User action pending for stage 12 part 3:** re-run `03_games_and_stakes.sql`, `10_slots.sql`, `13_progression.sql`,
-`14_tournaments.sql`, `16_missions_seasons.sql` and `18_tournaments_plus.sql` (in that order), then run the new
-`24_events.sql`. No dashboard settings. Afterwards `supabase/maintenance/check_database.sql` should say OK.
+**User action pending for stage 12 part 4:** re-run `15_moderation.sql`, then run the new `25_admin_tools.sql`. No
+dashboard settings. Afterwards `supabase/maintenance/check_database.sql` should say OK.
+**And for part 3, if not run yet:** re-run `03_games_and_stakes.sql`, `10_slots.sql`, `13_progression.sql`,
+`14_tournaments.sql`, `16_missions_seasons.sql` and `18_tournaments_plus.sql` (in that order), then run `24_events.sql`.
 (Part 2's SQL first, if not run yet: re-run `05`, `06`, `07`, `08`, `09`, `21`, `22`, then run `23_social.sql`.)
 (Phase 11's SQL first, if not run yet: re-run `13` and `15`, run `22`, then `maintenance/special_cosmetics.sql`.)
 
@@ -99,7 +100,9 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
    (`/practice`, browser only), the seasonal game **Haunted Manor** for October 2026 (in `03` and `10`) and three
    **season-long missions worth 300 season points** tied to it (in `16`). **Each later month needs its own seasonal
    game built** (the user wants a different one every month, and a slot must be special): see file 24's notes in §7.
-4. **Admin:** a site stats page, chat log search, scheduled site notices and maintenance, an appeal form.
+4. ✅ **Admin:** a site stats page, chat log search and appeals (`25_admin_tools.sql`), scheduled site notices and
+   maintenance (in `15`). Also in this round: the Practice page gained **walkthroughs** ("Learn to play"), and the
+   "Play chips" tag was taken off the top bar's balance (the user's requests of 2026-10-12).
 **The user's answers (2026-10-12):** direct messages are friends only and kept at most 3 days. Watching a friend
 works for tables and solo games, with a way to join when the game is live. The seasonal game is a **different game
 each month**; it may be a slot machine, but then it must be special: its own effects and interesting gameplay, not a
@@ -135,7 +138,8 @@ Every part must come with its achievements, cosmetics and menu entries (standing
 ### Where things stand (2026-10-12)
 Everything planned has been built: stages 1 to 11. Nothing is designed or agreed beyond this. The site has
 **57 games** (15 table, 20 poker, 8 slots of which one is seasonal, 14 specialty; all released), **85 achievements**,
-24 numbered SQL files making 71 tables (33 in Realtime), 21 SQL test files and 19 browser suites.
+25 numbered SQL files making 73 tables (33 in Realtime), 22 SQL test files and 20 browser suites. Stage 12 is
+finished; nothing further is designed or agreed.
 
 Stage 10's 23 games, for reference: Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four Card Poker,
 Teen Patti against the dealer (19); Bonus, Double Bonus and Joker video poker (11); Spanish 21, Blackjack Switch,
@@ -162,19 +166,19 @@ vite.config.ts                       VITE_BASE base path, spaFallback plugin (40
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
-scripts/e2e/                         local end-to-end harness: 19 suites (see §9)
-supabase/sql/01…24_*.sql             the database, applied in order (see §7)
+scripts/e2e/                         local end-to-end harness: 20 suites (see §9)
+supabase/sql/01…25_*.sql             the database, applied in order (see §7)
 supabase/maintenance/                run by hand, not numbered, not applied by test:sql:
                                      check_database.sql (is the live database up to date? generated),
                                      cleanup.sql (frees space), maintenance_off.sql (opens a site closed for maintenance),
                                      season_bonus_2026_10.sql, special_cosmetics.sql (the Developer items), email_logs.sql
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
-supabase/tests/NN_*_test.sql         21 test files: tests.ok / tests.throws helpers, run as role authenticated
+supabase/tests/NN_*_test.sql         22 test files: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
 src/App.tsx                          routes: / signup login verify forgot-password how-chips-work terms privacy settings
                                      lounge lobby table/:id play/:gameKey join/:code
                                      profile profile/:username locker friends leaderboards clubs clubs/:id
-                                     missions inbox tournaments tournaments/:id practice practice/:drill admin *
+                                     missions inbox tournaments tournaments/:id practice practice/:drill practice/learn/:lesson admin *
                                      Wrapped in MaintenanceGate; connectors for progress, account and live data.
 src/lib/                             supabase client, errors (friendlyError), format, cards, sound (WebAudio),
                                      turnstile, validation, types, and per-game helpers: blackjack, roulette, craps, poker,
@@ -209,7 +213,8 @@ src/components/tablepoker/           TablePokerGame: the six dealer card games o
 src/components/stage10/              BlackjackVariantGame (four variants), QuickGames (Red Dog, Hi-Lo, Andar Bahar,
                                      Chuck-a-Luck), HorseRacingGame
 src/components/tournaments/          SngBar (the strip on a tournament table), TournamentRules, PrivateEvents
-src/components/account/              AccountGate (suspended / timeout / rename screens), ReportModal, MaintenanceGate
+src/components/account/              AccountGate (suspended / timeout / rename screens), AppealBox, ReportModal, MaintenanceGate
+src/components/admin/AdminTools.tsx  the admin page's Appeals, Chat and Stats tabs and the schedule panel
 src/components/onboarding/           the welcome tour and QuickStart (first-visit guide per game)
 src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
 src/components/progress/             ProgressCard (lounge), ProfileExtras, ReputationCard (own profile), and bits: LevelBadge, XpBar, PlayerLine
@@ -618,6 +623,34 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      the locker's "Reputation N+" tag, and "Reputation and chat" in the admin's player panel plus "Warn" and
      "False report" on each report.
 
+25. `25_admin_tools.sql` (stage 12 part 4), with scheduling in 15.
+   - **Scheduled notices and maintenance (in 15):** the hidden `site_schedule` (kind, message, `starts_at`,
+     `ends_at`, `cancelled_at`). **Nothing runs at those times.** `private.site_now()` answers from the clock:
+     maintenance is on when the hand switch is on *or* a maintenance row's window is open; the notice is an open
+     notice row's message, else the hand-set one. `sanction_check`, `site_status()` and `my_account()` all read it,
+     so a closure starts and ends on the server whether or not any browser is watching. `site_status()` also
+     returns `until` and `upcoming` (a closure starting within a day): `MaintenanceGate` re-asks at those moments
+     and shows a gold warning strip during the last hour. `admin_schedule_add(kind, message, starts_at, ends_at)`
+     (a notice needs an end; a closure with none lasts until switched off), `admin_schedule_cancel(id)`,
+     `admin_schedule()`. `admin_set_maintenance(false)` and `maintenance_off.sql` also end a running window.
+   - **Site statistics:** `admin_stats(days)` (up to 60): totals, one row per UTC day (new players, players who
+     played, rounds, chips bet and paid back), every game of the last 7 days with its actual return, the ledger by
+     reason, the ten largest balances. Read-only; `cleanup.sql` trims the history it reads.
+   - **Chat log search:** `admin_chat_search(query, player, kind, before)` over the hidden `chat_messages` (so only
+     the 3 days that are kept): words as delivered or as typed, a username, and kind `all | table | club | room |
+     dm | caught | hidden`; 100 a page. **Every search is written to `admin_log`** (`chat_search`).
+   - **Appeals:** the hidden `player_appeals`. `private.appeal_kind(user)` = `ban`, `timeout`, `chat` (cannot type or
+     cannot quick chat, by ban or by reputation) or null. `my_appeal()` and `appeal_submit(text)` use `auth.uid()`
+     directly and **skip the sanction check on purpose** (they are for locked-out players, and work during
+     maintenance too). One open appeal per player; after a refusal, 3 days before another. `admin_appeals(status)`,
+     `admin_appeal_resolve(id, accept, reply, lift, reputation)`: accepting with `lift` calls `admin_unban` /
+     `admin_timeout(…, 0)` / `admin_chat_ban(…, 0)` for what was appealed, and `reputation` sets the number (a ban
+     takes it to 0, and at 30 or less chat stays off). The player gets `appeal_answer` in the inbox.
+   - Frontend: `src/components/admin/AdminTools.tsx` (tabs Appeals, Chat, Stats; `SchedulePanel` on Overview),
+     `AppealBox` on the suspended and timeout screens and on the reputation card when chat is restricted.
+   - No achievements or cosmetics came with this part: it is moderator tooling, and a prize for appealing would be
+     perverse. (The standing request was considered, not forgotten.)
+
 24. `24_events.sql` (stage 12 part 3), with the seasonal game in 03 and 10 and the season missions in 16.
    - **Private tournaments and club events (24, with columns in 14):** `tournaments.host`, `invite_code`, `club_id`.
      **`invite_code is not null` is what marks one** (the host column empties if the host's account goes), and
@@ -652,6 +685,12 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      `season`, kinds `g_rounds`, `g_wins`, `g_feat` with `meta.feat` = the round summary's `feature`; 60 + 100 + 140
      points). Dealt by `missions_ensure` once the month has begun, moved by the same trigger, and **only collectable
      during their month**. `missions_state` returns them with `season_game`. A month with no entry has none.
+   - **Practice has two sections** (the user's request): **Learn to play**, walkthroughs in `src/lib/lessons.ts`
+     (`LESSONS`: blackjack, Hold'em, craps, roulette, baccarat, video poker). A step has text, an optional scene
+     (cards, dice, a roulette pocket, facts) and an optional "Your move" that must be answered correctly to go on;
+     a wrong pick explains itself. Progress is kept per device (`lesson:<key>`). **The rules they state are this
+     site's** (payouts, 3× odds, the field's 2 and 12, the 5% commission, 20-second timers): change a game's
+     rules and its walkthrough must change too. And **Drills**:
    - **Practice (no SQL):** `src/lib/practice.ts` (`DRILLS`: blackjack basic strategy, video poker holds through
      `vpHint`, Hold'em showdowns, pot odds, craps bets, roulette payouts, baccarat's third card) and
      `src/pages/PracticePage.tsx` (`/practice`, `/practice/:drill`). Nothing is bet, nothing reaches the server, the
@@ -695,7 +734,7 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
 - **Hidden tables:** RLS on, no policies, `revoke all … from anon, authenticated`, never published to realtime.
   Today: `bj_shoes`, `bj_secrets`, `rl_secrets`, `pk_decks`, `pk_topups`, `solo_secrets`, `crash_secrets`,
   `bingo_secrets`, `tpt_cards`, `chat_messages`, `dm_reads`, `admins`, `player_reports`, `admin_log`,
-  `player_activity`, `player_notes`, `head_to_head`.
+  `player_activity`, `player_notes`, `head_to_head`, `site_schedule`, `player_appeals`.
 - **Each file ends with** `revoke execute on all functions in schema private from public, anon, authenticated;
   grant execute on function private.can_view_table(uuid) to authenticated;`. `private` must NOT be added to
   the Data API's exposed schemas.
@@ -774,6 +813,8 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
     only. Anything new that should follow the felt just needs the `.felt` class.
   - "Collect rewards" lives on the lounge's `ProgressCard`; the header avatar shows a gold dot when rewards
     or a friend request are waiting.
+- The top bar's balance (`BalancePill`) shows the chip icon and the number only: the user had the "Play chips" tag
+  removed from it (2026-10-12). The tag is still on the lounge's balance card and the How chips work page.
 - Table pages share `TableHeader`: a single "← Leave table" / "← Lobby" button that leaves the seat, plus
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
 - Stage 8 polish: `QuickStart` (first-visit guide per game, text in `src/lib/quickstart.ts`, mounted once in
@@ -882,6 +923,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage11.cjs /tmp/shots      # phase 11: room and table chat, the filter, reputation, a reported message, admin controls and reasons, notes, cosmetics (24 checks)
    node scripts/e2e/stage12a.cjs /tmp/shots     # stage 12 part 1: lounge search, music control, auto-play, remembered bets, stats, size, leave confirmation, sit out next hand, auto top-up (22 checks)
    node scripts/e2e/stage12b.cjs /tmp/shots     # stage 12 part 2: direct messages, a waiting-room table, watching a friend alone and at a table (16 checks)
+   node scripts/e2e/stage12d.cjs /tmp/shots     # stage 12 part 4: practice walkthroughs, site stats, chat log search, a scheduled notice and closure, an appeal (37 checks)
    node scripts/e2e/stage12c.cjs /tmp/shots     # stage 12 part 3: Haunted Manor, season missions, seven practice drills, a private tournament, a club event (39 checks; season missions need October 2026)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.

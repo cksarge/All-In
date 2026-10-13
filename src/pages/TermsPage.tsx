@@ -300,7 +300,9 @@ const sections: LegalSection[] = [
     body: (
       <p>
         You may stop using the game and ask for your account to be deleted at any time. We may suspend or close your account, or stop offering the
-        game to you, at any time, including when we believe you have broken these terms. The sections that by their nature should continue
+        game to you, at any time, including when we believe you have broken these terms. If your account is suspended, paused or barred from
+        chat, you can send one appeal from the screen that tells you so; a moderator reads it and answers, and that answer is final unless you
+        are invited to write again. The sections that by their nature should continue
         (including those on play chips having no value, ownership, no warranties, the limit of liability and the law that applies) continue after
         the agreement ends.
       </p>

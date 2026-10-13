@@ -36,6 +36,7 @@ look for the same setting name under **Authentication**.
 22. `22_reputation_chat.sql`
 23. `23_social.sql`
 24. `24_events.sql`
+25. `25_admin_tools.sql`
 
 Every file is safe to re-run. See `supabase/sql/README.md` for what each one does.
 

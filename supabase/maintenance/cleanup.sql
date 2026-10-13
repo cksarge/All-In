@@ -37,6 +37,8 @@
 --   * weekly leaderboard rows older than 8 weeks
 --   * missions older than 60 days, and old notifications
 --   * player reports settled more than 90 days ago, and admin log entries older than a year
+--   * appeals answered more than 90 days ago, and scheduled notices and maintenance that ended
+--     or were cancelled more than 90 days ago
 --   * typed chat and direct messages older than 3 days (the game deletes these itself whenever
 --     someone chats; this catches them when nobody has)
 --
@@ -202,6 +204,26 @@ with d as (
   delete from public.admin_log where created_at < now() - (select admin_log_age from cleanup_keep)
   returning 1)
 insert into cleanup_report (what, rows_deleted) select 'admin log entries', count(*) from d;
+
+-- Appeals that were answered long ago (an open appeal is never touched), and the old end of the schedule.
+-- (Both tables arrive with stage 12 part 4; the checks keep this file working on an older database.)
+do $$
+declare
+  n bigint := 0;
+begin
+  if to_regclass('public.player_appeals') is not null then
+    execute 'with d as (delete from public.player_appeals
+                         where status <> ''open'' and resolved_at < now() - (select report_age from cleanup_keep) returning 1)
+             select count(*) from d' into n;
+    insert into cleanup_report (what, rows_deleted) values ('answered appeals', n);
+  end if;
+  if to_regclass('public.site_schedule') is not null then
+    execute 'with d as (delete from public.site_schedule
+                         where coalesce(cancelled_at, ends_at) < now() - (select report_age from cleanup_keep) returning 1)
+             select count(*) from d' into n;
+    insert into cleanup_report (what, rows_deleted) values ('old scheduled notices and maintenance', n);
+  end if;
+end $$;
 
 -- ---- Horse racing and Teen Patti tables (21_racing_teen_patti.sql) ----------------
 -- Old finished races (their bets go with them) and old finished Teen Patti hands

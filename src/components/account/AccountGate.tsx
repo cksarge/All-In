@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
+import { AppealBox } from './AppealBox';
 import { TextField } from '@/components/ui/TextField';
 import { friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
@@ -83,6 +84,7 @@ export function AccountGate({ children }: { children: ReactNode }) {
             Reason: <strong className="text-ivory">{account.ban_reason}</strong>
           </p>
         )}
+        <AppealBox what="the suspension" />
       </Frame>
     );
   }
@@ -99,6 +101,7 @@ export function AccountGate({ children }: { children: ReactNode }) {
             Reason: <strong className="text-ivory">{account.timeout_reason}</strong>
           </p>
         )}
+        <AppealBox what="the timeout" />
       </Frame>
     );
   }

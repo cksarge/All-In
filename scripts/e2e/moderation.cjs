@@ -138,7 +138,7 @@ async function login(browser, email, vp) {
 
   // Notice and overview
   await ann.getByRole('tab', { name: 'overview' }).click();
-  await ann.getByLabel('Notice').fill('Tournament night at 8');
+  await ann.getByLabel('Notice', { exact: true }).fill('Tournament night at 8');
   await ann.getByRole('button', { name: 'Save' }).click();
   await ann.getByText('Notice is up').waitFor();
   await nudge(ben);

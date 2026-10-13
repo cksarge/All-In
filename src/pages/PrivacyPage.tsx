@@ -48,6 +48,10 @@ const sections: LegalSection[] = [
             you report a chat message, a copy of that message is kept with the report.
           </li>
           <li>
+            <strong>Appeals.</strong> If a moderator limits your account and you send an appeal: what you wrote, what it was about, and the
+            moderator&apos;s answer.
+          </li>
+          <li>
             <strong>The record that you accepted</strong> the Terms of Service and this policy, with the version and the time.
           </li>
           <li>Anything you send us by email.</li>
@@ -245,6 +249,9 @@ const sections: LegalSection[] = [
         <li>
           <strong>Chat messages</strong>, including direct messages, are deleted after 3 days. A message that was reported is kept with the report until the matter is
           settled and for up to 90 days afterwards.
+        </li>
+        <li>
+          <strong>Appeals</strong> are kept until they are answered and for up to 90 days afterwards.
         </li>
         <li>
           <strong>Reputation</strong> is kept with your account, with the history of its last 50 changes.

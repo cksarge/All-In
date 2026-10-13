@@ -9,7 +9,14 @@ interface SiteStatus {
   maintenance: boolean;
   message: string | null;
   admin: boolean;
+  /** When a scheduled closure is due to end. */
+  until?: string | null;
+  /** A scheduled closure starting within a day. */
+  upcoming?: { starts_at: string; ends_at: string | null; message: string | null } | null;
+  server_now?: string;
 }
+
+const clock = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 
 /**
  * Asks the server whether the site is open before anything else is shown.
@@ -22,6 +29,7 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
   const userId = useAuth((s) => s.user?.id);
   const [status, setStatus] = useState<SiteStatus | null>(null);
   const [asked, setAsked] = useState(false);
+  const [, tick] = useState(0);
   // The Terms and the Privacy Policy stay readable whatever the site is doing.
   const { pathname } = useLocation();
   const legal = pathname === '/terms' || pathname === '/privacy';
@@ -36,14 +44,25 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
         // No such function yet (the SQL hasn't been run), or the network failed: the site is open.
         setStatus(error ? null : (data as SiteStatus));
         setAsked(true);
+        // A scheduled closure starts and ends by the clock: ask again just after each moment.
+        const s = error ? null : (data as SiteStatus);
+        window.clearTimeout(timer);
+        const at = [s?.upcoming?.starts_at, s?.until].filter(Boolean).map((t) => new Date(t as string).getTime() - Date.now());
+        const soonest = Math.min(...at.filter((ms) => ms > -5000));
+        if (Number.isFinite(soonest)) timer = window.setTimeout(ask, Math.min(Math.max(soonest + 1500, 1500), 2 ** 31 - 1));
       });
+    let timer: number | undefined;
     ask();
+    // Keeps the "starts in N minutes" strip counting down.
+    const beat = window.setInterval(() => tick((n) => n + 1), 20_000);
     const poll = window.setInterval(ask, 30_000);
     const onVisible = () => document.visibilityState === 'visible' && ask();
     document.addEventListener('visibilitychange', onVisible);
     const ch = supabase.channel('site-status').on('postgres_changes', { event: '*', schema: 'public', table: 'site_status' }, ask).subscribe();
     return () => {
       alive = false;
+      window.clearTimeout(timer);
+      window.clearInterval(beat);
       window.clearInterval(poll);
       document.removeEventListener('visibilitychange', onVisible);
       void supabase.removeChannel(ch);
@@ -63,6 +82,7 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
             anything you had on a table are safe.
           </p>
           {status.message && <p className="mt-3 rounded-xl border border-gold-500/30 bg-gold-500/10 p-3 text-sm text-gold-100">{status.message}</p>}
+          {status.until && <p className="mt-3 text-sm text-cream/85">Planned to reopen around <strong className="text-ivory">{clock(status.until)}</strong>.</p>}
           <p className="mt-4 text-xs text-muted">This page checks by itself and will let you back in as soon as the site reopens.</p>
         </div>
         <p className="text-xs text-muted">Free to play. No real money. No purchases. Chips have no cash value.</p>
@@ -77,8 +97,17 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
       </main>
     );
   }
+  // A closure that starts within the hour is announced to everyone, so nobody is caught mid-game.
+  const up = status?.upcoming;
+  const minutes = up ? Math.ceil((new Date(up.starts_at).getTime() - Date.now()) / 60_000) : null;
   return (
     <>
+      {up && minutes !== null && minutes > 0 && minutes <= 60 && !status?.maintenance && (
+        <p role="status" className="bg-gold-500 px-4 py-1.5 text-center text-sm font-semibold text-ink-950">
+          The site closes for maintenance in {minutes} minute{minutes === 1 ? '' : 's'}
+          {up.ends_at ? `, until about ${clock(up.ends_at)}` : ''}. Finish your game before then.{up.message ? ` ${up.message}` : ''}
+        </p>
+      )}
       {status?.maintenance && status.admin && (
         <p role="status" className="bg-ruby-600 px-4 py-1.5 text-center text-sm font-semibold text-ivory">
           Maintenance mode is ON. Only you can use the site. Switch it off on the admin page.

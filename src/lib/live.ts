@@ -107,6 +107,13 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
       return { title: `${from} sent you a friend request`, to: '/friends', action: 'Answer' };
     case 'friend_accepted':
       return { title: `${from} accepted your friend request`, to: `/profile/${from}`, action: 'See profile' };
+    case 'appeal_answer':
+      return {
+        title: d.accepted ? 'Your appeal was accepted' : 'Your appeal was turned down',
+        body: typeof d.reply === 'string' ? `Moderator: ${d.reply}` : undefined,
+        to: '/profile',
+        action: 'See profile',
+      };
     case 'club_event':
       return {
         title: `${from} set up a club event`,

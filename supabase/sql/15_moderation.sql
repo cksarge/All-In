@@ -103,6 +103,20 @@ create table if not exists public.site_status (
 );
 insert into public.site_status (id) values (true) on conflict (id) do nothing;
 
+-- Notices and maintenance set to start (and stop) by themselves. Nothing runs at those times: every
+-- question about the site's state is answered from the clock and these rows (private.site_now).
+-- ends_at null = until it is switched off (maintenance) or cancelled.
+create table if not exists public.site_schedule (
+  id            bigint generated always as identity primary key,
+  kind          text not null check (kind in ('notice', 'maintenance')),
+  message       text check (char_length(message) <= 300),
+  starts_at     timestamptz not null,
+  ends_at       timestamptz check (ends_at is null or ends_at > starts_at),
+  cancelled_at  timestamptz,
+  created_at    timestamptz not null default now()
+);
+create index if not exists site_schedule_idx on public.site_schedule (kind, starts_at);
+
 -- The admin: the account whose username is Carter (matched once, stored by id).
 insert into public.admins (user_id)
 select id from public.profiles where lower(username) = 'carter'
@@ -121,6 +135,38 @@ as $$
   select exists (select 1 from public.admins where user_id = p_user);
 $$;
 
+-- What the site is doing right now: the switch and the notice set by hand, and whatever is scheduled.
+create or replace function private.site_now()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with w as (
+    -- the maintenance window we are inside, if any (the one that ends last)
+    select * from public.site_schedule
+     where kind = 'maintenance' and cancelled_at is null and starts_at <= now() and (ends_at is null or ends_at > now())
+     order by ends_at desc nulls first limit 1
+  ), n as (
+    select * from public.site_schedule
+     where kind = 'notice' and cancelled_at is null and starts_at <= now() and (ends_at is null or ends_at > now())
+     order by starts_at desc limit 1
+  ), u as (
+    -- the next maintenance window, when it is less than a day away
+    select * from public.site_schedule
+     where kind = 'maintenance' and cancelled_at is null and starts_at > now() and starts_at < now() + interval '1 day'
+     order by starts_at limit 1
+  )
+  select jsonb_build_object(
+    'maintenance', s.maintenance or exists (select 1 from w),
+    'message', case when s.maintenance then s.message else (select message from w) end,
+    'until', case when not s.maintenance then (select ends_at from w) end,
+    'notice', coalesce((select message from n), (select message from public.site_notice where id)),
+    'upcoming', (select jsonb_build_object('starts_at', u.starts_at, 'ends_at', u.ends_at, 'message', u.message) from u))
+    from public.site_status s where s.id
+$$;
+
 -- Called by private.require_uid() at the start of every game RPC.
 create or replace function private.sanction_check(p_user uuid)
 returns void
@@ -133,7 +179,7 @@ declare
   s public.player_sanctions;
 begin
   -- Maintenance: every game call from anyone but the admin stops here, whatever their browser shows.
-  if (select maintenance from public.site_status where id) and not private.is_admin(p_user) then
+  if (private.site_now() ->> 'maintenance')::boolean and not private.is_admin(p_user) then
     raise exception 'site_maintenance' using hint = 'The site is closed for maintenance. Please come back soon.';
   end if;
   select * into s from public.player_sanctions where user_id = p_user;
@@ -256,7 +302,7 @@ begin
     'must_rename', coalesce(s.must_rename, false),
     'blocked', (select coalesce(jsonb_agg(jsonb_build_object('user_id', b.blocked, 'username', p.username) order by b.created_at desc), '[]'::jsonb)
                   from public.player_blocks b join public.profiles p on p.id = b.blocked where b.blocker = v_uid),
-    'notice', (select message from public.site_notice where id)
+    'notice', private.site_now() ->> 'notice'
   );
 end $$;
 
@@ -268,8 +314,8 @@ stable
 security definer
 set search_path = ''
 as $$
-  select jsonb_build_object('maintenance', s.maintenance, 'message', s.message, 'admin', coalesce(private.is_admin(auth.uid()), false))
-    from public.site_status s where s.id
+  -- maintenance, message, until (when a scheduled closure ends), and upcoming (one starting within a day)
+  select (private.site_now() - 'notice') || jsonb_build_object('server_now', now(), 'admin', coalesce(private.is_admin(auth.uid()), false))
 $$;
 
 -- Change your own username. Only open to players who were told to (must_rename).
@@ -419,6 +465,7 @@ begin
     'notice', (select message from public.site_notice where id),
     'maintenance', (select maintenance from public.site_status where id),
     'maintenance_message', (select message from public.site_status where id),
+    'now', private.site_now(),
     'log', (select coalesce(jsonb_agg(x.j order by x.id desc), '[]'::jsonb)
               from (select l.id, jsonb_build_object('id', l.id, 'action', l.action, 'at', l.created_at, 'details', l.details,
                              'target', (select username from public.profiles where id = l.target)) as j
@@ -742,7 +789,86 @@ begin
   update public.site_status
      set maintenance = coalesce(p_on, false), message = nullif(left(btrim(coalesce(p_message, '')), 300), ''), updated_at = now()
    where id;
+  -- Switching it off also ends a scheduled closure that is under way.
+  if not coalesce(p_on, false) then
+    update public.site_schedule set ends_at = now()
+     where kind = 'maintenance' and cancelled_at is null and starts_at <= now() and (ends_at is null or ends_at > now());
+  end if;
   perform private.admin_note(case when p_on then 'maintenance_on' else 'maintenance_off' end, null, jsonb_build_object('message', p_message));
+end $$;
+
+-- Schedules a notice or a closure. A closure with no end lasts until maintenance is switched off.
+create or replace function public.admin_schedule_add(p_kind text, p_message text, p_starts_at timestamptz, p_ends_at timestamptz default null)
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_message text := nullif(left(btrim(coalesce(p_message, '')), 300), '');
+  v_id bigint;
+begin
+  perform private.require_admin();
+  if p_kind not in ('notice', 'maintenance') or p_starts_at is null then
+    raise exception 'action_not_allowed' using hint = 'Pick a notice or maintenance, and when it starts.';
+  end if;
+  if p_starts_at < now() - interval '1 minute' or p_starts_at > now() + interval '90 days' then
+    raise exception 'action_not_allowed' using hint = 'The start must be between now and 90 days from now.';
+  end if;
+  if p_ends_at is not null and p_ends_at <= p_starts_at then
+    raise exception 'action_not_allowed' using hint = 'The end must be after the start.';
+  end if;
+  if p_kind = 'notice' and (v_message is null or p_ends_at is null) then
+    raise exception 'action_not_allowed' using hint = 'A scheduled notice needs its words and a time to come down.';
+  end if;
+  if p_kind = 'notice' and char_length(v_message) > 200 then
+    raise exception 'action_not_allowed' using hint = 'A notice can be 200 characters at most.';
+  end if;
+  if (select count(*) from public.site_schedule where cancelled_at is null and (ends_at is null or ends_at > now())) >= 20 then
+    raise exception 'action_not_allowed' using hint = 'That is plenty scheduled already. Cancel one first.';
+  end if;
+  insert into public.site_schedule (kind, message, starts_at, ends_at) values (p_kind, v_message, p_starts_at, p_ends_at) returning id into v_id;
+  perform private.admin_note('schedule_add', null, jsonb_build_object('kind', p_kind, 'message', v_message, 'starts_at', p_starts_at, 'ends_at', p_ends_at));
+  return v_id;
+end $$;
+
+-- Cancels one: before it starts, or while it runs (it then stops at once).
+create or replace function public.admin_schedule_cancel(p_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.require_admin();
+  update public.site_schedule set cancelled_at = now()
+   where id = p_id and cancelled_at is null and (ends_at is null or ends_at > now());
+  if not found then
+    raise exception 'action_not_allowed' using hint = 'That one is already over.';
+  end if;
+  perform private.admin_note('schedule_cancel', null, jsonb_build_object('id', p_id));
+end $$;
+
+-- What is scheduled: running, still to come, and the last few that are over.
+create or replace function public.admin_schedule()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.require_admin();
+  return (select coalesce(jsonb_agg(jsonb_build_object(
+                   'id', x.id, 'kind', x.kind, 'message', x.message, 'starts_at', x.starts_at, 'ends_at', x.ends_at,
+                   'state', x.state) order by x.live desc, x.starts_at), '[]'::jsonb)
+            from (select s.*, case when s.cancelled_at is not null then 'cancelled'
+                                   when s.ends_at is not null and s.ends_at <= now() then 'over'
+                                   when s.starts_at <= now() then 'running' else 'waiting' end as state,
+                         (s.cancelled_at is null and (s.ends_at is null or s.ends_at > now())) as live
+                    from public.site_schedule s
+                   order by (s.cancelled_at is null and (s.ends_at is null or s.ends_at > now())) desc, s.starts_at desc
+                   limit 30) x);
 end $$;
 
 -- The announcement strip everyone sees (null or empty takes it down).
@@ -768,7 +894,8 @@ begin
     'public.admin_overview()', 'public.admin_reports(text)', 'public.admin_resolve_report(bigint, text, text)',
     'public.admin_find_players(text)', 'public.admin_player(uuid)', 'public.admin_ban(uuid, text)', 'public.admin_unban(uuid)',
     'public.admin_timeout(uuid, integer, text)', 'public.admin_rename(uuid, text)', 'public.admin_chips(uuid, text, bigint, text)',
-    'public.admin_kick(uuid)', 'public.admin_set_notice(text)', 'public.admin_file_note_add(uuid, text)', 'public.admin_file_note_delete(bigint)', 'public.admin_set_maintenance(boolean, text)'
+    'public.admin_kick(uuid)', 'public.admin_set_notice(text)', 'public.admin_file_note_add(uuid, text)', 'public.admin_file_note_delete(bigint)', 'public.admin_set_maintenance(boolean, text)',
+    'public.admin_schedule_add(text, text, timestamptz, timestamptz)', 'public.admin_schedule_cancel(bigint)', 'public.admin_schedule()'
   ]
   loop
     execute format('revoke all on function %s from public, anon', f);
@@ -789,6 +916,7 @@ alter table public.player_reports    enable row level security;
 alter table public.admin_log         enable row level security;
 alter table public.player_notes      enable row level security;
 alter table public.site_notice       enable row level security;
+alter table public.site_schedule     enable row level security;
 
 drop policy if exists "player_sanctions: own row" on public.player_sanctions;
 create policy "player_sanctions: own row" on public.player_sanctions for select to authenticated using (user_id = auth.uid());
@@ -797,7 +925,7 @@ create policy "player_blocks: own rows" on public.player_blocks for select to au
 drop policy if exists "site_notice: signed-in players can read" on public.site_notice;
 create policy "site_notice: signed-in players can read" on public.site_notice for select to authenticated using (true);
 
-revoke all on public.admins, public.player_reports, public.admin_log, public.player_activity, public.player_notes from anon, authenticated;
+revoke all on public.admins, public.player_reports, public.admin_log, public.player_activity, public.player_notes, public.site_schedule from anon, authenticated;
 
 -- Players asked to rename before the removed name was remembered: take it from the admin log.
 update public.player_sanctions s
