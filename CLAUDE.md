@@ -47,7 +47,7 @@ React Router 7, supabase-js v2. Static site. Node 22 (CI uses 22).
 ```bash
 npm install
 npm run dev          # http://localhost:5173 against the real Supabase project (.env)
-npm run check        # typecheck (tsc -b) + copy guard: run before every commit
+npm run check        # typecheck (tsc -b) + copy guard + icon check: run before every commit
 npm run build        # tsc -b && vite build -> dist/ (also writes 404.html for SPA routes)
 npm run test:sql     # throwaway Postgres: applies every SQL file twice, runs supabase/tests/*_test.sql
 ```
@@ -164,6 +164,7 @@ public/                              favicon.svg (same ruby chip as ChipIcon), C
 index.html                           boot screen inside #root ("Shuffling up…", help text after 6 s)
 vite.config.ts                       VITE_BASE base path, spaFallback plugin (404.html), manualChunks, @ -> src
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
+scripts/check-icons.mjs              every game in file 3 has its own icon in GameIcon.tsx, and no two are the same
 scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
 scripts/e2e/                         local end-to-end harness: 20 suites (see §9)
@@ -220,6 +221,7 @@ src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, ea
 src/components/progress/             ProgressCard (lounge), ProfileExtras, ReputationCard (own profile), and bits: LevelBadge, XpBar, PlayerLine
 src/components/layout/               SiteHeader (top bar, inbox bell), SectionNav, footer, balance pill, MusicPlayer
 src/assets/music/                    the music: a shuffled playlist and game themes, README and CREDITS.txt (see §8)
+src/components/ui/GameIcon.tsx       one icon per game (`ICONS`, keyed by game key), built from shared Card / Die / Chip / Screen pieces
 src/components/ui/Avatar.tsx         a player's picture and frame; src/components/table/SeatAvatar.tsx looks it up by user id
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay; 52 = joker)
 src/pages/                           one file per route: Profile, Locker, Friends, Leaderboard, Clubs, Missions, Inbox,
@@ -816,6 +818,9 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
     or a friend request are waiting.
 - The top bar's balance (`BalancePill`) shows the chip icon and the number only: the user had the "Play chips" tag
   removed from it (2026-10-12). The tag is still on the lounge's balance card and the How chips work page.
+- **Game icons** (`src/components/ui/GameIcon.tsx`): **every game has an icon of its own and no two are alike** (the
+  user's request, 2026-10-13). They are 48 x 48 SVGs in `ICONS`, keyed by game key. **A new game needs a new entry
+  there**: `npm run check` fails (`check:icons`) while a game in file 3 has none, or shares another's drawing.
 - Table pages share `TableHeader`: a single "← Leave table" / "← Lobby" button that leaves the seat, plus
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
 - Stage 8 polish: `QuickStart` (first-visit guide per game, text in `src/lib/quickstart.ts`, mounted once in

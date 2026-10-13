@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "check:copy": "node scripts/check-copy.mjs",
-    "check": "npm run typecheck && npm run check:copy",
+    "check:icons": "node scripts/check-icons.mjs",
+    "check": "npm run typecheck && npm run check:copy && npm run check:icons",
     "test:sql": "bash scripts/test-sql.sh"
   },
   "dependencies": {
