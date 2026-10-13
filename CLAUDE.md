@@ -821,6 +821,10 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
 - **Game icons** (`src/components/ui/GameIcon.tsx`): **every game has an icon of its own and no two are alike** (the
   user's request, 2026-10-13). They are 48 x 48 SVGs in `ICONS`, keyed by game key. **A new game needs a new entry
   there**: `npm run check` fails (`check:icons`) while a game in file 3 has none, or shares another's drawing.
+- **The dealer button** (poker and Teen Patti tables) is moved with `animate={{ left, top }}`, never Framer's
+  `layout` prop: `layout` re-measures on every render (the table re-renders twice a second), so whenever anything
+  else on the page shifted (the betting controls appearing on your turn, a banner) the button came loose from its
+  seat and glided back. Don't put `layout` on anything positioned on the felt.
 - Table pages share `TableHeader`: a single "← Leave table" / "← Lobby" button that leaves the seat, plus
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
 - Stage 8 polish: `QuickStart` (first-visit guide per game, text in `src/lib/quickstart.ts`, mounted once in
@@ -911,7 +915,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
      npx vite build --outDir /tmp/allin-e2e-dist --emptyOutDir
    npx vite preview --outDir /tmp/allin-e2e-dist --port 4180 --strictPort &
    psql -h localhost -p 55432 -U postgres -f scripts/e2e/reset.sql   # fresh players before each run
-   node scripts/e2e/poker.cjs /tmp/shots        # Hold'em, Draw, Stud (24 checks); screenshots to /tmp/shots
+   node scripts/e2e/poker.cjs /tmp/shots        # Hold'em, Draw, Stud (25 checks); screenshots to /tmp/shots
    node scripts/e2e/phase3.cjs /tmp/shots       # roulette (incl. the balance waiting for the ball) + craps (11 checks)
    node scripts/e2e/slots.cjs /tmp/shots        # all six machines, features, jackpot, phone widths (21 checks)
    node scripts/e2e/solo.cjs /tmp/shots         # the eight Phase 6 games, a resumed hand, phone widths (29 checks)

@@ -79,6 +79,27 @@ async function leave(page) {
   ok(await ann.getByText('Your turn').isVisible(), 'hand dealt: Ann (small blind) to act');
   ok(await ann.getByRole('img', { name: 'Ace of spades' }).first().isVisible(), 'Ann sees her own cards');
   ok((await ann.getByRole('img', { name: 'King of clubs' }).count()) === 0, "Ann can't see Ben's cards");
+  // The dealer button belongs to a seat: scrolling the page or a refresh of the table must not move it on the felt.
+  {
+    const where = () => ann.evaluate(() => {
+      const b = document.querySelector('[aria-label^="Dealer button"]');
+      const f = b.offsetParent.getBoundingClientRect();
+      const r = b.getBoundingClientRect();
+      return [r.left - f.left, r.top - f.top];
+    });
+    await ann.waitForTimeout(600);
+    const first = await where();
+    let drift = 0;
+    for (let i = 0; i < 12; i++) {
+      await ann.evaluate((y) => window.scrollTo(0, y), i % 2 ? 0 : 140);
+      await ann.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await ann.waitForTimeout(110);
+      const now = await where();
+      drift = Math.max(drift, Math.abs(now[0] - first[0]), Math.abs(now[1] - first[1]));
+    }
+    await ann.evaluate(() => window.scrollTo(0, 0));
+    ok(drift < 1.5, `the dealer button stays at its seat while the page scrolls and refreshes (moved ${drift.toFixed(1)}px)`);
+  }
   await ann.screenshot({ path: `${SHOTS}/pk-preflop-desktop.png` });
   await ben.screenshot({ path: `${SHOTS}/pk-preflop-mobile.png`, fullPage: true });
 

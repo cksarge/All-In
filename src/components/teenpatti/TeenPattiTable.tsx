@@ -319,12 +319,16 @@ export function TeenPattiTable({ tableId }: { tableId: string }) {
         {/* Dealer button */}
         {viewHand?.button_seat && (
           <motion.div
-            layout
-            className="absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink-300 bg-ivory text-[0.65rem] font-black text-ink-900 shadow"
-            style={{
+            // The button glides from seat to seat by its own position only. (Framer's automatic `layout` animation
+            // was used here before: it re-measures on every render, so a scroll or any shift on the page sent the
+            // button flying.)
+            initial={false}
+            animate={{
               left: `${compact ? 50 + (layout[viewHand.button_seat - 1].buttonX - 50) * 0.85 : layout[viewHand.button_seat - 1].buttonX}%`,
               top: `${layout[viewHand.button_seat - 1].buttonY}%`,
             }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            className="absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink-300 bg-ivory text-[0.65rem] font-black text-ink-900 shadow"
             title="Dealer button"
             aria-label={`Dealer button: seat ${viewHand.button_seat}`}
           >
