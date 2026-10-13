@@ -56,6 +56,11 @@ create table if not exists public.tournaments (
 );
 -- Sit & Go format: 'standard', 'turbo' (one-minute blind levels) or 'omaha' (Pot-Limit Omaha).
 alter table public.tournaments add column if not exists variant text not null default 'standard';
+-- Private tournaments and club events (24_events.sql): who set it up, the code to join by, and the club it is for.
+alter table public.tournaments add column if not exists host uuid references auth.users (id) on delete set null;
+alter table public.tournaments add column if not exists invite_code text;
+alter table public.tournaments add column if not exists club_id uuid;
+create unique index if not exists tournaments_invite_idx on public.tournaments (invite_code) where invite_code is not null;
 create unique index if not exists tournaments_round_key on public.tournaments (kind, tier, starts_at) where kind <> 'sng';
 create index if not exists tournaments_open_idx on public.tournaments (kind, status);
 create index if not exists tournaments_table_idx on public.tournaments (table_id);
@@ -201,7 +206,8 @@ begin
                                   jsonb_build_object('place', e.place, 'players', t.size));
     end if;
     perform private.record_round(e.user_id, 'sng_poker', null, t.id, t.entry_fee, coalesce(v_prizes[e.place], 0),
-                                 jsonb_build_object('kind', 'sng', 'place', e.place, 'players', t.size));
+                                 jsonb_strip_nulls(jsonb_build_object('kind', 'sng', 'place', e.place, 'players', t.size,
+                                   'private', case when t.invite_code is not null then true end, 'club', case when t.club_id is not null then true end)));
   end loop;
 
   -- The tournament is already marked finished, so freeing the seats sets nothing else off.
@@ -318,7 +324,8 @@ begin
 
   insert into public.game_tables (game_key, tier, name, max_seats, play_money, stakes)
   values (coalesce(private.tourney_cfg() #>> array['sng', 'variants', t.variant, 'game'], 'poker_holdem'), 'low',
-          case t.variant when 'turbo' then 'Turbo Sit & Go #' when 'omaha' then 'Omaha Sit & Go #' else 'Sit & Go #' end || t.seq,
+          case when t.club_id is not null then 'Club event #' when t.invite_code is not null then 'Private tournament #'
+               when t.variant = 'turbo' then 'Turbo Sit & Go #' when t.variant = 'omaha' then 'Omaha Sit & Go #' else 'Sit & Go #' end || t.seq,
           t.size, true, private.sng_stakes(1))
   returning id into v_table;
   for e in select user_id, row_number() over (order by random()) as seat from public.tournament_entries where tournament_id = t.id loop
@@ -362,6 +369,7 @@ begin
   perform pg_advisory_xact_lock(hashtext('allin_sng'));
   select * into t from public.tournaments
    where kind = 'sng' and status = 'registering' and size = p_size and entry_fee = p_entry_fee and variant = p_variant
+     and invite_code is null
    order by created_at limit 1 for update;
   if not found then
     insert into public.tournaments (kind, status, size, entry_fee, variant) values ('sng', 'registering', p_size, p_entry_fee, p_variant) returning * into t;
@@ -392,6 +400,9 @@ begin
   select * into t from public.tournaments where id = p_tournament and kind = 'sng' for update;
   if not found or t.status <> 'registering' then
     raise exception 'action_not_allowed' using hint = 'It has already started.';
+  end if;
+  if t.invite_code is not null and t.host = v_uid then
+    raise exception 'action_not_allowed' using hint = 'You are the host. Cancel the tournament instead.';
   end if;
   delete from public.tournament_entries where tournament_id = t.id and user_id = v_uid and status = 'registered';
   if not found then
@@ -696,6 +707,7 @@ begin
              cross join (select x as variant from jsonb_object_keys(c #> '{sng,variants}') x) v
               left join lateral (select * from public.tournaments t0
                                   where t0.kind = 'sng' and t0.status = 'registering' and t0.size = s.size and t0.entry_fee = b.entry_fee and t0.variant = v.variant
+                                    and t0.invite_code is null
                                   order by t0.created_at limit 1) t on true),
     -- The Sit & Go you are in the middle of, if any.
     'my_sng', (select jsonb_build_object('id', t.id, 'status', t.status, 'table_id', t.table_id, 'size', t.size, 'entry_fee', t.entry_fee, 'variant', t.variant)
@@ -705,7 +717,7 @@ begin
     'live', (select coalesce(jsonb_agg(jsonb_build_object(
                'id', t.id, 'table_id', t.table_id, 'size', t.size, 'entry_fee', t.entry_fee, 'variant', t.variant,
                'players_left', (select count(*) from public.tournament_entries e where e.tournament_id = t.id and e.status = 'playing')) order by t.started_at desc), '[]'::jsonb)
-               from public.tournaments t where t.kind = 'sng' and t.status = 'running'),
+               from public.tournaments t where t.kind = 'sng' and t.status = 'running' and t.invite_code is null),
     'showdowns', (select coalesce(jsonb_agg(private.showdown_json(t, v_uid) order by t.entry_fee), '[]'::jsonb)
                     from public.tournaments t where t.kind in ('showdown', 'freeroll') and t.status = 'running'),
     'results', (select coalesce(jsonb_agg(jsonb_build_object(
@@ -747,7 +759,11 @@ create policy "tournament_entries: signed-in players can read" on public.tournam
 
 revoke insert, update, delete, truncate on public.tournaments, public.tournament_entries from anon, authenticated;
 revoke all on public.tournaments, public.tournament_entries from anon;
-grant select on public.tournaments, public.tournament_entries to authenticated;
+-- Every column but invite_code: a private tournament's code is only given out by events_state (24).
+revoke select on public.tournaments from authenticated;
+grant select (id, seq, kind, status, size, table_id, entry_fee, tier, machine, starts_at, ends_at, started_at, finished_at,
+              created_at, variant, host, club_id) on public.tournaments to authenticated;
+grant select on public.tournament_entries to authenticated;
 
 update public.games set released = true where key in ('sng_poker', 'slot_showdown');
 

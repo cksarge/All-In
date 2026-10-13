@@ -72,7 +72,7 @@ async function login(browser, email, vp) {
   const cat = await login(browser, 'cat@allin.test', { width: 1280, height: 900 });
   await ann.goto(`${BASE}/tournaments`);
   await ann.getByRole('heading', { name: 'Main Event' }).waitFor();
-  await ann.getByRole('radio', { name: /Turbo/ }).click();
+  await ann.getByRole('radio', { name: /Turbo.*fast/ }).click();
   await ann.getByText('blinds up every minute').waitFor();
   ok((await ann.getByRole('heading', { name: /^(Heads-up|\d players)$/ }).count()) === 9, 'a format picker: Turbo games with one-minute blinds');
   await ann.screenshot({ path: `${SHOTS}/e-hub.png`, fullPage: true });

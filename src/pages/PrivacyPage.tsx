@@ -101,7 +101,8 @@ const sections: LegalSection[] = [
         <ul>
           <li>your sign-in session, so you stay logged in;</li>
           <li>your settings (sound, motion, guides you have seen), your favourite games and the last games you opened;</li>
-          <li>small conveniences such as your last bet at a table.</li>
+          <li>small conveniences such as your last bet at a table;</li>
+          <li>your scores in the practice drills, which never leave your device.</li>
         </ul>
         <p>
           These are needed for the game to work or are kept at your choice, and clearing your browser&apos;s site data removes them (and signs you

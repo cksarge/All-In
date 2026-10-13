@@ -63,6 +63,9 @@ export default function LoungePage() {
           <h1 className="font-display text-3xl font-bold text-ivory sm:text-4xl">{profile?.username ?? '…'}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          <ButtonLink to="/practice" size="lg" variant="ghost">
+            Practice
+          </ButtonLink>
           <ButtonLink to="/tournaments" size="lg" variant="outline">
             Tournaments
           </ButtonLink>

@@ -60,7 +60,7 @@ async function login(browser, email, vp) {
   // Profile
   await ann.goto(`${BASE}/profile`);
   await ann.getByRole('heading', { name: 'Achievements' }).waitFor();
-  await ann.getByText(/of 83 unlocked/).waitFor();
+  await ann.getByText(/of 85 unlocked/).waitFor();
   ok((await ann.getByText('(unlocked)').count()) >= 4, 'profile lists the unlocked achievements');
   await ann.waitForTimeout(400);
   await ann.screenshot({ path: `${SHOTS}/s-profile.png`, fullPage: true });

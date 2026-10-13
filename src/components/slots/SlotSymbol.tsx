@@ -41,6 +41,32 @@ function Pyramid() {
   );
 }
 
+/** Haunted Manor's wild: a ghost carrying the word. */
+function Ghost() {
+  return (
+    <div className="relative flex h-full w-full items-center justify-center">
+      <span className="haunt-bob leading-none drop-shadow-[0_0_6px_rgba(190,160,255,0.9)]" style={{ fontSize: '56cqmin' }}>
+        👻
+      </span>
+      <span
+        className="absolute bottom-[6%] rounded-[4cqmin] bg-[#b78cff] px-[6cqmin] font-display font-black leading-none text-ink-950"
+        style={{ fontSize: '17cqmin', paddingBlock: '2.5cqmin', letterSpacing: '0.06em' }}
+      >
+        WILD
+      </span>
+    </div>
+  );
+}
+
+/** Haunted Manor's scatter: a jack-o'-lantern lit from inside. */
+function Pumpkin() {
+  return (
+    <span className="haunt-flicker leading-none" style={{ fontSize: '62cqmin', filter: 'drop-shadow(0 0 5cqmin rgba(255,150,40,0.85))' }}>
+      🎃
+    </span>
+  );
+}
+
 function Pearl({ chips, big }: { chips: number | null; big: boolean }) {
   return (
     <div
@@ -88,6 +114,8 @@ export const SlotSymbol = memo(function SlotSymbol({
       {art.art === 'bar3' && <Bars n={3} />}
       {art.art === 'gem' && <Gem color={art.fg ?? '#fff'} />}
       {art.art === 'pyramid' && <Pyramid />}
+      {art.art === 'ghost' && <Ghost />}
+      {art.art === 'pumpkin' && <Pumpkin />}
       {art.art === 'pearl' && <Pearl chips={pearlChips} big={bigPearl} />}
       {art.art === 'blank' && <span className="h-[3cqmin] w-[34%] rounded-full bg-white/10" />}
       {art.glyph && (

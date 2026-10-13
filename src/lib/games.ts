@@ -4,11 +4,21 @@ import type { GameRow } from './types';
 export const CATEGORIES = [
   { key: 'table', label: 'Table games', blurb: 'Cards, dice and wheels on the felt.' },
   { key: 'poker', label: 'Poker', blurb: 'Against other players, or heads-up against the dealer.' },
-  { key: 'slots', label: 'Slots', blurb: 'Six machines and one shared jackpot.' },
+  { key: 'slots', label: 'Slots', blurb: 'Six machines, one shared jackpot, and a seasonal machine that changes with the month.' },
   { key: 'specialty', label: 'Specialty', blurb: 'Video poker, number draws and quick instant games.' },
 ] as const;
 
 export type CategoryKey = (typeof CATEGORIES)[number]['key'];
+
+/** This month as the database writes a season: "2026-10" (UTC). */
+export const currentSeason = () => new Date().toISOString().slice(0, 7);
+
+/** A seasonal game is only listed (and only playable: the server checks) during its month. */
+export const inSeason = (g: Pick<GameRow, 'season'>) => !g.season || g.season === currentSeason();
+
+/** "October 2026" for "2026-10". */
+export const seasonLabel = (key: string) =>
+  new Date(`${key}-15T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /** Solo-style games that are really one room shared by everyone (no tables or seats). */
 const LIVE_ROOMS = new Set(['crash', 'bingo', 'horse_racing']);

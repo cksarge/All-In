@@ -6,7 +6,7 @@ import { GameIcon } from '@/components/ui/GameIcon';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States';
 import { cn } from '@/components/ui/cn';
 import { friendlyError } from '@/lib/errors';
-import { CATEGORIES, gameHref, gameMode, modeLabel, type CategoryKey } from '@/lib/games';
+import { CATEGORIES, gameHref, gameMode, modeLabel, type CategoryKey, inSeason, seasonLabel } from '@/lib/games';
 import { supabase } from '@/lib/supabase';
 import type { GameRow } from '@/lib/types';
 import { useSettings } from '@/stores/settingsStore';
@@ -56,6 +56,9 @@ function GameCard({ g, jackpot, index }: { g: GameRow; jackpot: number | undefin
       <div className="min-w-0 pr-6">
         <div className="flex flex-wrap items-center gap-2">
           <h4 className="font-display text-lg font-bold leading-tight text-ivory">{g.name}</h4>
+          {g.season && (
+            <span className="rounded-full bg-[#ffb057]/15 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-[#ffb057]">This month only</span>
+          )}
           {g.released ? (
             <span className={cn('rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider', tag.className)}>{tag.text}</span>
           ) : (
@@ -98,10 +101,10 @@ export function GameGrid() {
     setError(null);
     const { data, error: err } = await supabase
       .from('games')
-      .select('key, name, category, tagline, multiplayer, max_seats, sort_order, released')
+      .select('*')
       .order('sort_order');
     if (err) setError(friendlyError(err));
-    else setGames((data ?? []) as GameRow[]);
+    else setGames(((data ?? []) as GameRow[]).filter(inSeason));
     // The jackpot is a nice-to-have on the card: ignore errors (e.g. before 10_slots.sql is run).
     const { data: pots } = await supabase.from('jackpots').select('game_key, amount');
     if (pots) setJackpots(Object.fromEntries(pots.map((p) => [p.game_key as string, p.amount as number])));
@@ -131,6 +134,7 @@ export function GameGrid() {
   const recent = useSettings((s) => s.recentGames);
   const byKey = new Map((games ?? []).map((g) => [g.key, g]));
   const shelf = (keys: string[]) => keys.map((k) => byKey.get(k)).filter((g): g is GameRow => Boolean(g && g.released));
+  const seasonal = (games ?? []).find((g) => g.season && g.released);
   const count = (key: CategoryKey) => (games ?? []).filter((g) => g.category === key).length;
 
   return (
@@ -217,6 +221,25 @@ export function GameGrid() {
           ))}
         </div>
       </div>
+
+      {seasonal && !narrowed && (
+        <Link
+          to={gameHref(seasonal)}
+          className="group relative mt-5 flex items-center gap-4 overflow-hidden rounded-2xl border border-[#ffb057]/40 p-4 transition hover:border-[#ffb057]/80 sm:p-5"
+          style={{ background: 'linear-gradient(110deg, #2b1247, #130a24 60%, #3a1a08)' }}
+        >
+          <span aria-hidden="true" className="haunt-bob text-4xl sm:text-5xl">👻</span>
+          <span className="min-w-0">
+            <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[#ffb057]">
+              Seasonal game · {seasonLabel(seasonal.season ?? '')} only
+            </span>
+            <span className="mt-0.5 block font-display text-xl font-bold text-ivory sm:text-2xl">{seasonal.name}</span>
+            <span className="mt-0.5 block text-sm text-cream/75">{seasonal.tagline}</span>
+          </span>
+          <span className="ml-auto hidden shrink-0 text-sm font-semibold text-[#ffb057] group-hover:underline sm:block">Play now →</span>
+          <span aria-hidden="true" className="haunt-flicker absolute right-3 top-2 text-lg sm:hidden">🎃</span>
+        </Link>
+      )}
 
       {games && !narrowed && (shelf(recent).length > 0 || shelf(favourites).length > 0) && (
         <div className="mt-5 space-y-2">

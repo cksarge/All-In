@@ -24,6 +24,12 @@ export interface LineSpin {
   /** Dragon Pearls: prize on each cell (reel * 3 + row), 0 for none. */
   pearls?: number[];
   awarded?: number;
+  /** Haunted Manor: the grid as it landed, before ghosts turned cells wild. */
+  before?: Grid;
+  /** Haunted Manor: the cells the ghosts took (reel * 3 + row). */
+  haunted?: number[];
+  /** Haunted Manor, midnight spins: the multiplier this spin was played at. */
+  mult?: number;
 }
 export interface WaysSpin {
   grid: Grid;
@@ -80,7 +86,9 @@ export interface SlotConfig {
   mults?: number[];
   pays: Record<string, number | number[] | Record<string, number>>;
   scatter_pays?: Record<string, number>;
-  free?: { trigger: number; spins: number; mult?: number; height?: number; max: number };
+  free?: { trigger: number; spins: number; mult?: number; mult_step?: number; mult_max?: number; height?: number; max: number };
+  /** Haunted Manor: ghosts may turn cells wild (how often stays on the server). */
+  haunt?: Record<string, never>;
   hold?: { symbol: string; trigger: number; respins: number; grand: number; values: number[] };
   jackpot?: { symbol: string; seed: number; feed_bp: number; odds: number };
 }
@@ -97,6 +105,8 @@ export interface SlotInfo {
   game: string;
   name: string;
   released: boolean;
+  /** A seasonal machine: the month it is open, as "2026-10". */
+  season?: string | null;
   config: SlotConfig;
   bets: number[];
   tiers: { tier: TierKey; label: string; min_bet: number; max_bet: number; min_bankroll: number }[];
@@ -119,7 +129,7 @@ export interface SymbolArt {
   /** Short text drawn instead of a glyph (card ranks, 7, WILD…). */
   text?: string;
   /** Custom drawing. */
-  art?: 'bar1' | 'bar2' | 'bar3' | 'gem' | 'pearl' | 'pyramid' | 'blank';
+  art?: 'bar1' | 'bar2' | 'bar3' | 'gem' | 'pearl' | 'pyramid' | 'blank' | 'ghost' | 'pumpkin';
   /** Tile background (CSS). */
   bg: string;
   /** Text / gem colour. */
@@ -211,6 +221,18 @@ export const SYMBOLS: Record<string, Record<string, SymbolArt>> = {
     CHERRY: SHARED.CHERRY,
     WILD: SHARED.WILD,
   },
+  slots_haunted: {
+    VAMPIRE: { label: 'Vampire', glyph: '🧛', bg: tile('#5e0e18', '#1c0509') },
+    WITCH: { label: 'Witch', glyph: '🧙', bg: tile('#2f1a5e', '#120a26') },
+    SKULL: { label: 'Skull', glyph: '💀', bg: tile('#33383f', '#111418') },
+    BAT: { label: 'Bat', glyph: '🦇', bg: tile('#1d2247', '#0a0c1c') },
+    A: rank('Ace', 'A', '#ff8a3c'),
+    K: rank('King', 'K', '#b78cff'),
+    Q: rank('Queen', 'Q', '#7be0a0'),
+    J: rank('Jack', 'J', '#8fb0f0'),
+    WILD: { label: 'Ghost (wild)', art: 'ghost', bg: tile('#3b2a6e', '#150d2e') },
+    SCATTER: { label: 'Jack-o\'-lantern (scatter)', art: 'pumpkin', bg: tile('#5f2a08', '#1f0d06') },
+  },
 };
 
 export const symbolArt = (game: string, sym: string): SymbolArt =>
@@ -255,6 +277,11 @@ export const THEMES: Record<string, SlotTheme> = {
     accent: '#f0d688',
     tagline: 'One jackpot, shared by everyone, growing with every spin.',
   },
+  slots_haunted: {
+    cabinet: 'linear-gradient(180deg, #2b1247, #130a24 55%, #07040f)',
+    accent: '#ffb057',
+    tagline: 'Ghosts turn symbols wild. At midnight, every win raises the multiplier.',
+  },
 };
 
 export const CLASSIC_WINS: Record<string, string> = {
@@ -292,12 +319,13 @@ export function idleGrid(game: string, cfg: SlotConfig): Grid {
 // Turning a result into scenes to play back
 // ---------------------------------------------------------------------------
 export type SceneTone = 'base' | 'free' | 'hold' | 'cascade' | 'jackpot';
+export type SceneFx = 'lightning' | 'ghosts' | 'midnight';
 
 export interface Scene {
   id: string;
   grid: Grid;
   /** How this grid arrives: reels spin in, gems drop, pearls land, or it's already there. */
-  enter: 'spin' | 'drop' | 'hold' | 'none';
+  enter: 'spin' | 'drop' | 'hold' | 'haunt' | 'none';
   /** Winning cells as "reel-row". */
   hl: string[];
   /** Winning paylines to draw. */
@@ -308,6 +336,13 @@ export interface Scene {
   holdMode?: boolean;
   /** Cells that just landed (hold and win). */
   fresh?: number[];
+  /** Haunted Manor: cells the ghosts turned wild (reel * 3 + row). */
+  haunted?: number[];
+  /** Haunted Manor, midnight spins: the multiplier in force, and what it becomes once this scene has landed. */
+  mult?: number;
+  multAfter?: number;
+  /** A special effect to play as the scene lands. */
+  fx?: SceneFx;
   /** Gem Cascade: how many rows each cell fell, per reel. */
   shift?: number[][];
   caption?: string;
@@ -343,6 +378,7 @@ function lineParts(spin: LineSpin, cfg: SlotConfig, game: string) {
     hl: [...hl],
     lines: spin.wins.map((w) => w.line),
     pearls: spin.pearls,
+    haunted: spin.haunted,
     label: best
       ? spin.wins.length > 1
         ? `${plural(spin.wins.length, 'winning line')}`
@@ -401,35 +437,64 @@ export function buildScenes(res: SpinResponse, cfg: SlotConfig): Scene[] {
   const freeSpins = <T extends { units: number; awarded?: number; grid: Grid }>(
     base: Grid,
     spins: T[],
-    parts: (s: T) => Partial<Scene> & Pick<Scene, 'grid'>,
+    parts: (s: T) => (Partial<Scene> & Pick<Scene, 'grid'>)[],
     sub: string,
+    words: { name: string; one: string; done: string } = { name: 'Free Spins', one: 'Free spin', done: 'Free spins complete' },
   ) => {
     let count = cfg.free?.spins ?? spins.length;
+    const first = (spins[0] as { mult?: number }).mult;
     push({
       grid: base,
       enter: 'none',
       hl: cellsOf(base, cfg.scatter),
-      banner: { title: `${count} Free Spins`, sub },
+      banner: { title: `${count} ${words.name}`, sub },
       tone: 'free',
-      ms: 1700,
+      mult: first,
+      multAfter: first,
+      fx: first ? 'midnight' : undefined,
+      ms: first ? 2300 : 1700,
     });
+    let last: number | undefined = first;
     spins.forEach((f, i) => {
-      const caption = `Free spin ${i + 1} of ${count}`;
+      const mult = (f as { mult?: number }).mult;
+      const caption = `${words.one} ${i + 1} of ${count}${mult ? ` · wins ×${mult}` : ''}`;
       count += f.awarded ?? 0;
-      push({
-        ...parts(f),
-        units: f.units,
-        tone: 'free',
-        caption: f.awarded ? `${caption} · +${f.awarded} more!` : caption,
+      const step = cfg.free?.mult_step ?? 0;
+      const after = mult && f.units > 0 ? Math.min(mult + step, cfg.free?.mult_max ?? mult) : mult;
+      last = after;
+      const all = parts(f);
+      all.forEach((p, k) => {
+        const final = k === all.length - 1;
+        push({
+          ...p,
+          units: final ? f.units : 0,
+          tone: 'free',
+          mult,
+          multAfter: final ? after : mult,
+          caption: p.caption ?? (f.awarded && final ? `${caption} · +${f.awarded} more!` : caption),
+          ...(final && mult && f.units > 0 ? { ms: 1500 } : {}),
+        });
       });
     });
     push({
       grid: spins[spins.length - 1].grid,
       enter: 'none',
-      banner: { title: 'Free spins complete', chips: chips(spins.reduce((n, f) => n + f.units, 0)) },
+      banner: { title: words.done, chips: chips(spins.reduce((n, f) => n + f.units, 0)) },
       tone: 'free',
+      mult: last,
+      multAfter: last,
       ms: 2000,
     });
+  };
+
+  /** One payline spin as scenes: two when ghosts took cells (the reels as they landed, then the haunting). */
+  const lineScenes = (spin: LineSpin): (Partial<Scene> & Pick<Scene, 'grid'>)[] => {
+    const final = lineParts(spin, cfg, res.game);
+    if (!spin.before || !spin.haunted?.length) return [final];
+    return [
+      { grid: spin.before, caption: 'Something stirs in the manor…', fx: 'lightning', ms: 700 },
+      { ...final, enter: 'haunt', fx: 'ghosts', caption: `${plural(spin.haunted.length, 'ghost')} turned wild!` },
+    ];
   };
 
   if (r.kind === 'classic') {
@@ -442,7 +507,11 @@ export function buildScenes(res: SpinResponse, cfg: SlotConfig): Scene[] {
     });
   } else if (r.kind === 'lines') {
     const jackpot = res.jackpot_won > 0;
-    push({ ...lineParts(r.base, cfg, res.game), units: r.base.units, ms: jackpot ? 900 : r.base.units > 0 ? 1300 : 450 });
+    const baseScenes = lineScenes(r.base);
+    baseScenes.forEach((p, k) => {
+      const final = k === baseScenes.length - 1;
+      push({ ...p, units: final ? r.base.units : 0, ms: !final ? (p.ms ?? 700) : jackpot ? 900 : r.base.units > 0 ? 1300 : baseScenes.length > 1 ? 900 : 450 });
+    });
     if (jackpot) {
       push({
         grid: r.base.grid,
@@ -499,12 +568,20 @@ export function buildScenes(res: SpinResponse, cfg: SlotConfig): Scene[] {
       });
     }
     if (r.free?.length) {
-      freeSpins(r.base.grid, r.free, (f) => lineParts(f, cfg, res.game), `All wins ×${cfg.free?.mult ?? 1}`);
+      if (cfg.free?.mult_step) {
+        freeSpins(r.base.grid, r.free, lineScenes, `Every win raises the multiplier, up to ×${cfg.free.mult_max}`, {
+          name: 'Midnight Spins',
+          one: 'Midnight spin',
+          done: 'The clock strikes one',
+        });
+      } else {
+        freeSpins(r.base.grid, r.free, (f) => [lineParts(f, cfg, res.game)], `All wins ×${cfg.free?.mult ?? 1}`);
+      }
     }
   } else if (r.kind === 'ways') {
     push({ ...waysParts(r.base, cfg), units: r.base.units });
     if (r.free?.length) {
-      freeSpins(r.base.grid, r.free, (f) => waysParts(f, cfg), 'Full-height reels: 3,125 ways');
+      freeSpins(r.base.grid, r.free, (f) => [waysParts(f, cfg)], 'Full-height reels: 3,125 ways');
     }
   } else {
     const rows = cfg.rows ?? 5;

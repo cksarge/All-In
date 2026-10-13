@@ -60,6 +60,15 @@ function HowTo({ info }: { info: SlotInfo }) {
         <>More pyramids during free spins add {c.free?.spins} more, up to {c.free?.max}.</>,
       );
     }
+    if (c.haunt) {
+      items.push(
+        <><B>Hauntings:</B> on any spin, after the reels stop, ghosts may fly in and turn <B>2 to 4 symbols</B> on reels 2 to 5 into Wilds. The lines are paid on the reels as they stand afterwards.</>,
+        <><B>{c.free?.trigger} or more jack-o'-lanterns</B> anywhere pay a prize and start <B>{c.free?.spins} Midnight Spins</B>.</>,
+        <>Midnight Spins start at ×{c.free?.mult}. <B>Every spin that wins raises the multiplier by {c.free?.mult_step}</B> for the spins after it, up to ×{c.free?.mult_max}, and it never drops.</>,
+        <>More jack-o'-lanterns during Midnight Spins add {c.free?.spins} more, up to {c.free?.max}. Ghosts haunt the Midnight Spins too.</>,
+        <>This is a <B>seasonal machine</B>: it is only here for its month, and so are the season missions that go with it.</>,
+      );
+    }
     if (c.hold) {
       items.push(
         <>Every <B>pearl</B> shows a prize. Land <B>{c.hold.trigger} or more</B> in one spin to start Hold &amp; Win.</>,

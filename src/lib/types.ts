@@ -51,6 +51,8 @@ export interface GameRow {
   max_seats: number;
   sort_order: number;
   released: boolean;
+  /** A seasonal game: the one month it is open, as "2026-10" (UTC). */
+  season?: string | null;
 }
 
 export type TierKey = 'low' | 'mid' | 'high' | 'vip';

@@ -81,11 +81,12 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 9 | **Live-service features, in four parts (below)** | ✅ all four parts built on `main` |
 | 10 | **More games (the user's list, below), in four parts** | ✅ all four parts built on `main` |
 | 11 | **Reputation and typed chat** (`22_reputation_chat.sql`), Terms of Service and Privacy Policy | ✅ built on `main` |
-| 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | **Parts 1 and 2 built on `main`; part 3 next** |
+| 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | **Parts 1 to 3 built on `main`; part 4 next** |
 
-**User action pending for stage 12 part 2:** re-run `05_tables.sql`, `06_blackjack.sql`, `07_roulette.sql`,
-`08_craps.sql`, `09_poker.sql`, `21_racing_teen_patti.sql` and `22_reputation_chat.sql`, then run the new
-`23_social.sql`. No dashboard settings. Afterwards `supabase/maintenance/check_database.sql` should say OK.
+**User action pending for stage 12 part 3:** re-run `03_games_and_stakes.sql`, `10_slots.sql`, `13_progression.sql`,
+`14_tournaments.sql`, `16_missions_seasons.sql` and `18_tournaments_plus.sql` (in that order), then run the new
+`24_events.sql`. No dashboard settings. Afterwards `supabase/maintenance/check_database.sql` should say OK.
+(Part 2's SQL first, if not run yet: re-run `05`, `06`, `07`, `08`, `09`, `21`, `22`, then run `23_social.sql`.)
 (Phase 11's SQL first, if not run yet: re-run `13` and `15`, run `22`, then `maintenance/special_cosmetics.sql`.)
 
 ### Stage 12 plan (the user's list of 2026-10-12, split into four parts like stages 9 and 10)
@@ -94,8 +95,10 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
    top-up, a confirmation before leaving with chips in play, a Stats button on every game, a size setting.
 2. ✅ **Social:** direct messages between friends (in `22`), private tables with a waiting room (in `05`), watching a
    friend's game (`23_social.sql`).
-3. **Events and practice:** private tournaments, club events, practice modes ("as many as possible"), and a seasonal
-   game variant with **season-long missions worth up to 300 season points** tied to that season's game.
+3. ✅ **Events and practice:** private tournaments and club events (`24_events.sql`), seven practice drills
+   (`/practice`, browser only), the seasonal game **Haunted Manor** for October 2026 (in `03` and `10`) and three
+   **season-long missions worth 300 season points** tied to it (in `16`). **Each later month needs its own seasonal
+   game built** (the user wants a different one every month, and a slot must be special): see file 24's notes in §7.
 4. **Admin:** a site stats page, chat log search, scheduled site notices and maintenance, an appeal form.
 **The user's answers (2026-10-12):** direct messages are friends only and kept at most 3 days. Watching a friend
 works for tables and solo games, with a way to join when the game is live. The seasonal game is a **different game
@@ -131,8 +134,8 @@ Every part must come with its achievements, cosmetics and menu entries (standing
 
 ### Where things stand (2026-10-12)
 Everything planned has been built: stages 1 to 11. Nothing is designed or agreed beyond this. The site has
-**56 games** (15 table, 20 poker, 7 slots, 14 specialty; all released), **83 achievements**, 23 numbered SQL files
-making 71 tables (33 in Realtime), 20 SQL test files and 18 browser suites.
+**57 games** (15 table, 20 poker, 8 slots of which one is seasonal, 14 specialty; all released), **85 achievements**,
+24 numbered SQL files making 71 tables (33 in Realtime), 21 SQL test files and 19 browser suites.
 
 Stage 10's 23 games, for reference: Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four Card Poker,
 Teen Patti against the dealer (19); Bonus, Double Bonus and Joker video poker (11); Spanish 21, Blackjack Switch,
@@ -147,7 +150,7 @@ Badugi (09); horse racing and Teen Patti tables (21).
   standard published ones).
 - From the stage 9 brainstorm, not asked for: lucky wheel, private tournaments, shareable wins, profile showcase,
   fairness page, play reminders. **Not wanted:** installing as an app. (Music was not wanted at first; the user
-  asked for it on 2026-10-12 and it is built, as one looped track on every screen: see §8.)
+  asked for it on 2026-10-12 and it is built, as a shuffled playlist with a theme for the seasonal slot: see §8.)
 
 ## 6. Repository map
 
@@ -159,19 +162,19 @@ vite.config.ts                       VITE_BASE base path, spaFallback plugin (40
 scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
-scripts/e2e/                         local end-to-end harness: 18 suites (see §9)
-supabase/sql/01…23_*.sql             the database, applied in order (see §7)
+scripts/e2e/                         local end-to-end harness: 19 suites (see §9)
+supabase/sql/01…24_*.sql             the database, applied in order (see §7)
 supabase/maintenance/                run by hand, not numbered, not applied by test:sql:
                                      check_database.sql (is the live database up to date? generated),
                                      cleanup.sql (frees space), maintenance_off.sql (opens a site closed for maintenance),
                                      season_bonus_2026_10.sql, special_cosmetics.sql (the Developer items), email_logs.sql
 supabase/tests/00_supabase_stub.sql  fake auth schema/roles for local tests ONLY
-supabase/tests/NN_*_test.sql         20 test files: tests.ok / tests.throws helpers, run as role authenticated
+supabase/tests/NN_*_test.sql         21 test files: tests.ok / tests.throws helpers, run as role authenticated
 supabase/email-templates/            confirm-signup.html, reset-password.html (+ subjects in README)
 src/App.tsx                          routes: / signup login verify forgot-password how-chips-work terms privacy settings
                                      lounge lobby table/:id play/:gameKey join/:code
                                      profile profile/:username locker friends leaderboards clubs clubs/:id
-                                     missions inbox tournaments tournaments/:id admin *
+                                     missions inbox tournaments tournaments/:id practice practice/:drill admin *
                                      Wrapped in MaintenanceGate; connectors for progress, account and live data.
 src/lib/                             supabase client, errors (friendlyError), format, cards, sound (WebAudio),
                                      turnstile, validation, types, and per-game helpers: blackjack, roulette, craps, poker,
@@ -196,7 +199,8 @@ src/components/table/                TableHeader, PlayerStrip, PhaseBar, TimerRi
 src/components/{blackjack,roulette,craps,poker}/   one folder per game; *Table.tsx is the entry (PokerTable plays all nine
                                      poker games and every tournament table)
 src/components/teenpatti/            TeenPattiTable (its own engine; reuses PokerSeat and BringChipsModal)
-src/components/slots/                SlotMachine (the entry, all six machines), SlotReels, SlotSymbol, SlotRules, JackpotTicker
+src/components/slots/                SlotMachine (the entry, every machine), SlotReels, SlotSymbol, SlotRules, JackpotTicker,
+                                     HauntedFx (the seasonal machine's scenery, lightning and multiplier meter)
 src/components/solo/                 SoloShell (page frame, TierPicker, ChipRack, BetSpot, useSpotBets, BetStepper) and one
                                      file per game: Baccarat, VideoPoker (all five machines), ThreeCard, PaiGow, SicBo, Keno, Wheel
 src/components/more/                 stage 6.5, one file per game: DragonTiger, CasinoWar, UltimateHoldem, Plinko, Mines,
@@ -204,13 +208,13 @@ src/components/more/                 stage 6.5, one file per game: DragonTiger, 
 src/components/tablepoker/           TablePokerGame: the six dealer card games of file 19
 src/components/stage10/              BlackjackVariantGame (four variants), QuickGames (Red Dog, Hi-Lo, Andar Bahar,
                                      Chuck-a-Luck), HorseRacingGame
-src/components/tournaments/          SngBar (the strip on a tournament table), TournamentRules
+src/components/tournaments/          SngBar (the strip on a tournament table), TournamentRules, PrivateEvents
 src/components/account/              AccountGate (suspended / timeout / rename screens), ReportModal, MaintenanceGate
 src/components/onboarding/           the welcome tour and QuickStart (first-visit guide per game)
 src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
 src/components/progress/             ProgressCard (lounge), ProfileExtras, ReputationCard (own profile), and bits: LevelBadge, XpBar, PlayerLine
 src/components/layout/               SiteHeader (top bar, inbox bell), SectionNav, footer, balance pill, MusicPlayer
-src/assets/music/                    the game's one music track, README and CREDITS.txt (see §8)
+src/assets/music/                    the music: a shuffled playlist and game themes, README and CREDITS.txt (see §8)
 src/components/ui/Avatar.tsx         a player's picture and frame; src/components/table/SeatAvatar.tsx looks it up by user id
 src/components/cards/PlayingCard.tsx PlayingCard + CardFan (sizes xs/sm/md/lg, highlight, still, delay; 52 = joker)
 src/pages/                           one file per route: Profile, Locker, Friends, Leaderboard, Clubs, Missions, Inbox,
@@ -614,6 +618,46 @@ src/pages/LobbyPage.tsx              a picker with every game (by section); tabl
      the locker's "Reputation N+" tag, and "Reputation and chat" in the admin's player panel plus "Warn" and
      "False report" on each report.
 
+24. `24_events.sql` (stage 12 part 3), with the seasonal game in 03 and 10 and the season missions in 16.
+   - **Private tournaments and club events (24, with columns in 14):** `tournaments.host`, `invite_code`, `club_id`.
+     **`invite_code is not null` is what marks one** (the host column empties if the host's account goes), and
+     clients cannot select that column (column grants in 14; `events_state()` gives the code to the people already
+     in it). `sng_private_create(size, entry_fee, variant, club)` (the host takes the first seat; fees from
+     `private.events_cfg()`, 0 allowed; one waiting per host and per club; a club event needs an owner or officer and
+     3 or 6 players, and notifies the members with `club_event`), `sng_private_join(code)` or
+     `sng_private_join(null, tournament)` for a member of the club, `sng_private_cancel`, and the ordinary
+     `sng_unregister` for guests (the host must cancel). Unfilled after 2 hours: void and refunded
+     (`private.events_sweep`, run from these RPCs). Once full it is an ordinary Sit & Go from `private.sng_start`.
+     Its history row has `private: true` (and `club: true`): **13 gives no `tourney_wins` / `sng_wins`, 18 no trophy,
+     16 no tournament-mission credit**, because they are played among friends. Counters `tournaments_hosted` (bumped
+     for the host when one starts) and `club_event_wins` (three or more players) drive the achievements `host_first`
+     and `club_event_win` (titles The Host, Club Champion). The public queue, list and "being played" skip them.
+     Frontend: `PrivateEvents` on the Tournaments page (`/tournaments#events`).
+   - **Seasonal games (03, 10):** `games.season` ("2026-10", null = always open) and `private.game_in_season(game)`.
+     `slot_spin` raises `game_not_open` out of season and `slot_info.released` turns false; the lounge and lobby hide
+     such games (`inSeason` in `src/lib/games.ts`) and the lounge shows the current one in a banner. A seasonal game
+     is left out of the "play every game" metric and **has no achievements** (Completionist must stay reachable
+     after its month). A seasonal game that is not a slot needs the same `game_in_season` check in its own RPCs.
+   - **Haunted Manor (`slots_haunted`, October 2026):** a `lines` machine with two extras in the engine. `haunt`
+     (`odds`, `cells`): after the reels stop, one spin in `odds` has 2 to 4 cells on **reels 2 to 5** turned wild
+     (never reel 1: a line is read from its first symbol, so a wild there pays nothing) and the result carries
+     `before` and `haunted`. `free.mult_step` / `mult_max`: the free-spin multiplier climbs by one after every
+     winning free spin (each free spin carries its `mult`). **Every spin draws one extra random number for the
+     haunting right after its grid**, which matters when rigging tests. Return 94.9% measured over six million spins
+     (it swings a lot between runs of a million because of the multiplier). `slot_info` blanks `haunt`.
+     Frontend: `HauntedFx.tsx` (backdrop of moon, bats, fog and cobweb; `Lightning`; `MultiplierMeter`), scene fields
+     `haunted`, `mult`, `multAfter`, `fx` and the `haunt` entrance in `buildScenes` / `SlotReels`, sounds `thunder`,
+     `ghost`, `bell`, CSS classes `haunt-*` in `index.css`.
+   - **Season missions (16):** `private.season_game_cfg()` maps a month to its game and three missions (period
+     `season`, kinds `g_rounds`, `g_wins`, `g_feat` with `meta.feat` = the round summary's `feature`; 60 + 100 + 140
+     points). Dealt by `missions_ensure` once the month has begun, moved by the same trigger, and **only collectable
+     during their month**. `missions_state` returns them with `season_game`. A month with no entry has none.
+   - **Practice (no SQL):** `src/lib/practice.ts` (`DRILLS`: blackjack basic strategy, video poker holds through
+     `vpHint`, Hold'em showdowns, pot odds, craps bets, roulette payouts, baccarat's third card) and
+     `src/pages/PracticePage.tsx` (`/practice`, `/practice/:drill`). Nothing is bet, nothing reaches the server, the
+     score is kept per device with `useRemembered`, and so **practice earns nothing** (no XP or achievements: the
+     server could not check them). Linked from the lounge header and the account menu.
+
 23. `23_social.sql` (stage 12 part 2), with the other two thirds of that part in 05 and 22.
    - **Waiting rooms (in 05):** `game_tables.waiting`. `create_table(game, tier, private, variant, hosted)`: a private
      table opened with `hosted` waits. While it does, `private.assert_table_started(table)` (called first thing by
@@ -766,14 +810,17 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   and say so.** When either document changes, change `LEGAL.version` and `LEGAL.effective` (now October 12, 2026). If the game starts collecting
   something new or uses a new outside service, the Privacy Policy must say so. The copy guard applies to these
   pages too: the banned words only pass on a line that also contains a disclaimer such as "no purchases".
-- **Music** (2026-10-12): **one track, looped, on every screen.** `src/assets/music/Hard Boiled.mp3` (Kevin MacLeod,
-  CC BY 4.0; credit in `CREDITS.txt` beside it, shown in Settings minus its `#` lines). `src/lib/music.ts` finds the
-  file at build time with `import.meta.glob` (`MUSIC_TRACK`; with several files the first by name is used, so keep
-  one). `MusicPlayer` is mounted once in `App.tsx` above the routes with `loop`, so it carries on unbroken between
-  screens; it starts on the first click or key press (browsers require that) and pauses while the tab is hidden.
-  Settings has a Music switch and a volume slider (`musicOn`, `musicVolume`; on at 30% by default). The user tried
-  two other versions the same day and dropped both (several shuffled tracks; this track in the lounge only): don't
-  bring either back unasked.
+- **Music** (2026-10-12, the user's fourth and current version): **every track in `src/assets/music/` plays in a
+  random order on every screen, except a game's own theme, which loops on that game's screen.** Today the only
+  theme is `Fearless First` for Haunted Manor (`GAME_THEMES` in `src/lib/music.ts`: game key to file name without
+  its ending). `music.ts` finds the files at build time with `import.meta.glob` (`PLAYLIST`, `gameTheme(key)`,
+  `shuffledOrder`: each track once per round, never the same one twice in a row). `MusicPlayer` is mounted once in
+  `App.tsx` above the routes with two `<audio>` elements: the playlist is only paused while a theme plays on
+  `/play/<game>` and carries on where it was; the theme starts from its beginning each visit. Music starts on the
+  first click or key press (browsers require that) and pauses while the tab is hidden. Credits are in
+  `CREDITS.txt` beside the files (shown in Settings minus its `#` lines); the user adds tracks and credits
+  themselves. Settings has a Music switch and a volume slider (`musicOn`, `musicVolume`; on at 30% by default).
+  Earlier versions the user dropped: one track in the lounge only, and one track looped everywhere.
 - **Stage 12 part 1 (quality of life, all in the browser):**
   - `useRemembered(key, initial, valid)` (`src/hooks/useRemembered.ts`, localStorage `allin-mem:<key>`, plus `recall` /
     `remember`) keeps a choice on this device. Used for every single-bet game's bet (`bet:<game>`), Plinko rows and
@@ -835,6 +882,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage11.cjs /tmp/shots      # phase 11: room and table chat, the filter, reputation, a reported message, admin controls and reasons, notes, cosmetics (24 checks)
    node scripts/e2e/stage12a.cjs /tmp/shots     # stage 12 part 1: lounge search, music control, auto-play, remembered bets, stats, size, leave confirmation, sit out next hand, auto top-up (22 checks)
    node scripts/e2e/stage12b.cjs /tmp/shots     # stage 12 part 2: direct messages, a waiting-room table, watching a friend alone and at a table (16 checks)
+   node scripts/e2e/stage12c.cjs /tmp/shots     # stage 12 part 3: Haunted Manor, season missions, seven practice drills, a private tournament, a club event (39 checks; season missions need October 2026)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.
    Notes:

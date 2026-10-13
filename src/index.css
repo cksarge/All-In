@@ -173,3 +173,47 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-ink-500) transparent;
 }
+
+/* Haunted Manor (the October 2026 seasonal slot): scenery and symbol animations. */
+@keyframes haunt-bob {
+  0%, 100% { transform: translateY(4%); }
+  50% { transform: translateY(-6%); }
+}
+@keyframes haunt-flicker {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  42% { opacity: 0.86; filter: brightness(0.85); }
+  50% { opacity: 1; filter: brightness(1.25); }
+  63% { opacity: 0.92; filter: brightness(0.95); }
+}
+@keyframes haunt-twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.9; }
+}
+@keyframes haunt-bat {
+  0% { left: -8%; transform: translateY(0); }
+  25% { transform: translateY(14px); }
+  50% { transform: translateY(-8px); }
+  75% { transform: translateY(10px); }
+  100% { left: 108%; transform: translateY(0); }
+}
+@keyframes haunt-flap {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.55); }
+}
+@keyframes haunt-fog {
+  from { transform: translateX(0); }
+  to { transform: translateX(25%); }
+}
+.haunt-bob { display: inline-block; animation: haunt-bob 2.6s ease-in-out infinite; }
+.haunt-flicker { display: inline-block; animation: haunt-flicker 1.7s linear infinite; }
+.haunt-twinkle { animation: haunt-twinkle 4s ease-in-out infinite; }
+.haunt-bat { left: -8%; animation: haunt-bat 13s linear infinite; opacity: 0.75; }
+.haunt-flap { animation: haunt-flap 0.28s ease-in-out infinite; }
+.haunt-fog {
+  background:
+    radial-gradient(closest-side, rgba(200, 190, 255, 0.28), transparent) 0 0 / 25% 100% repeat-x,
+    radial-gradient(closest-side, rgba(255, 255, 255, 0.16), transparent) 12% 40% / 18% 80% repeat-x;
+  filter: blur(10px);
+  animation: haunt-fog 22s linear infinite alternate;
+}
+.haunt-fog-slow { animation-duration: 37s; animation-direction: alternate-reverse; }

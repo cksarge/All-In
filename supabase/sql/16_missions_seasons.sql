@@ -42,6 +42,9 @@ create table if not exists public.player_missions (
   claimed_at     timestamptz,
   primary key (user_id, period, period_start, slot)
 );
+-- Stage 12: a season has three missions of its own, for the whole month (period 'season').
+alter table public.player_missions drop constraint if exists player_missions_period_check;
+alter table public.player_missions add constraint player_missions_period_check check (period in ('daily', 'weekly', 'season'));
 create index if not exists player_missions_open_idx on public.player_missions (user_id, period_start) where claimed_at is null;
 
 create table if not exists public.player_seasons (
@@ -505,6 +508,34 @@ as $$
   ) as m(key, period, tier, kind, param, goal, chips, xp, points)
 $$;
 
+-- The game that is only here for one season, and the three season-long missions that go with it.
+-- They are worth 300 season points together (60 + 100 + 140), on top of the daily and weekly ones.
+-- kind: g_rounds | g_wins | g_feat (meta.feat = the feature in the round's summary); param = the game.
+-- A month with no entry simply has no season game and no season missions.
+create or replace function private.season_game_cfg()
+returns jsonb
+language sql
+immutable
+set search_path = ''
+as $$
+  select '{
+    "2026-10": {"game": "slots_haunted", "missions": [
+      {"key": "s_spins", "kind": "g_rounds", "goal": 150, "chips": 3000, "xp": 300, "points": 60},
+      {"key": "s_wins",  "kind": "g_wins",   "goal": 60,  "chips": 5000, "xp": 400, "points": 100},
+      {"key": "s_feat",  "kind": "g_feat",   "feat": "free", "goal": 5, "chips": 8000, "xp": 600, "points": 140}
+    ]}
+  }'::jsonb
+$$;
+
+create or replace function private.live_month()
+returns date
+language sql
+stable
+set search_path = ''
+as $$
+  select date_trunc('month', private.live_now() at time zone 'utc')::date
+$$;
+
 -- Deals one period's three missions: the easy one in slot 1, medium in 2, hard in 3.
 -- Which of each is fixed by the player and the date, so it can't be re-rolled.
 create or replace function private.missions_deal(p_user uuid, p_period text, p_start date)
@@ -541,6 +572,15 @@ begin
   if not exists (select 1 from public.player_missions where user_id = p_user and period = 'weekly' and period_start = v_week) then
     perform private.missions_deal(p_user, 'weekly', v_week);
   end if;
+  -- This month's season missions (only once the month has begun, like everything about a season).
+  insert into public.player_missions (user_id, period, period_start, slot, key, kind, param, goal, reward_chips, reward_xp, reward_points, meta)
+  select p_user, 'season', private.live_month(), m.n, m.v ->> 'key', m.v ->> 'kind', c ->> 'game', (m.v ->> 'goal')::bigint,
+         (m.v ->> 'chips')::bigint, (m.v ->> 'xp')::integer, (m.v ->> 'points')::integer,
+         jsonb_strip_nulls(jsonb_build_object('tier', 'season', 'feat', m.v ->> 'feat'))
+    from (select private.season_game_cfg() -> to_char(private.live_month(), 'YYYY-MM') as c) x,
+         jsonb_array_elements(x.c -> 'missions') with ordinality m(v, n)
+   where x.c is not null and private.season_current() is not null
+  on conflict do nothing;
 end $$;
 
 -- After every finished round of every game: move the player's missions along,
@@ -554,9 +594,11 @@ as $$
 declare
   v_day date := private.live_day();
   v_week date := private.live_week();
+  v_month date := private.live_month();
   v_cat text;
   v_done integer;
   v_weekly integer;
+  v_daily integer;
   s jsonb := coalesce(new.summary, '{}'::jsonb);
 begin
   if new.game_key in ('sng_poker', 'slot_showdown') then
@@ -582,15 +624,20 @@ begin
                      when 'games'    then (not coalesce(m2.meta -> 'seen', '[]'::jsonb) ? new.game_key)::integer
                      when 'multiple' then (new.wagered > 0 and new.returned >= new.wagered * m2.param::bigint)::integer
                      when 'net'      then greatest(new.returned - new.wagered, 0)
-                     when 'tourney'  then (new.game_key in ('sng_poker', 'slot_showdown'))::integer
+                     when 'tourney'  then (new.game_key in ('sng_poker', 'slot_showdown') and not s ? 'private')::integer
+                     when 'g_rounds' then (new.game_key = m2.param)::integer
+                     when 'g_wins'   then (new.game_key = m2.param and new.returned > new.wagered)::integer
+                     when 'g_feat'   then (new.game_key = m2.param and s ->> 'feature' = m2.meta ->> 'feat')::integer
                      else 0 end as inc
               from public.player_missions m2
              where m2.user_id = new.user_id and m2.completed_at is null
-               and ((m2.period = 'daily' and m2.period_start = v_day) or (m2.period = 'weekly' and m2.period_start = v_week))) x
+               and ((m2.period = 'daily' and m2.period_start = v_day) or (m2.period = 'weekly' and m2.period_start = v_week)
+                    or (m2.period = 'season' and m2.period_start = v_month))) x
      where m.user_id = new.user_id and m.period = x.period and m.period_start = x.period_start and m.slot = x.slot and x.inc > 0
     returning m.period, m.completed_at)
-  select count(*) filter (where completed_at is not null), count(*) filter (where completed_at is not null and period = 'weekly')
-    into v_done, v_weekly from moved;
+  select count(*) filter (where completed_at is not null), count(*) filter (where completed_at is not null and period = 'weekly'),
+         count(*) filter (where completed_at is not null and period = 'daily')
+    into v_done, v_weekly, v_daily from moved;
 
   if v_done > 0 then
     perform private.bump(new.user_id, 'missions_done', v_done);
@@ -598,7 +645,7 @@ begin
       perform private.bump(new.user_id, 'weeklies_done', v_weekly);
     end if;
     -- All three of today's, the last of them just now.
-    if v_done > v_weekly and not exists (select 1 from public.player_missions
+    if v_daily > 0 and not exists (select 1 from public.player_missions
                     where user_id = new.user_id and period = 'daily' and period_start = v_day and completed_at is null) then
       perform private.bump(new.user_id, 'daily_sweeps');
     end if;
@@ -621,6 +668,7 @@ declare
   v_uid uuid := private.require_uid();
   v_day date := private.live_day();
   v_week date := private.live_week();
+  v_month date := private.live_month();
   s jsonb := private.season_current();
   ps public.player_seasons;
   v_season jsonb := null;
@@ -653,12 +701,20 @@ begin
     'missions', (select coalesce(jsonb_agg(jsonb_build_object(
                    'period', m.period, 'slot', m.slot, 'key', m.key, 'kind', m.kind, 'param', m.param, 'goal', m.goal, 'progress', m.progress,
                    'chips', m.reward_chips, 'xp', m.reward_xp, 'points', m.reward_points, 'tier', m.meta ->> 'tier',
-                   'done', m.completed_at is not null, 'claimed', m.claimed_at is not null) order by m.period, m.slot), '[]'::jsonb)
+                   'done', m.completed_at is not null, 'claimed', m.claimed_at is not null,
+                   'feat', m.meta ->> 'feat') order by m.period, m.slot), '[]'::jsonb)
                    from public.player_missions m
-                  where m.user_id = v_uid and ((m.period = 'daily' and m.period_start = v_day) or (m.period = 'weekly' and m.period_start = v_week))),
+                  where m.user_id = v_uid and ((m.period = 'daily' and m.period_start = v_day) or (m.period = 'weekly' and m.period_start = v_week)
+                                               or (m.period = 'season' and m.period_start = v_month))),
     -- Finished missions waiting to be collected (the last two weeks' count too).
     'to_collect', (select count(*) from public.player_missions m
-                    where m.user_id = v_uid and m.completed_at is not null and m.claimed_at is null and m.period_start > v_day - 14),
+                    where m.user_id = v_uid and m.completed_at is not null and m.claimed_at is null
+                      and case when m.period = 'season' then m.period_start = v_month else m.period_start > v_day - 14 end),
+    -- The game that is only here this season, if there is one.
+    'season_game', (select jsonb_build_object('key', g.key, 'name', g.name)
+                      from public.games g
+                     where s is not null and g.released and g.season = to_char(v_month, 'YYYY-MM')
+                       and g.key = private.season_game_cfg() -> to_char(v_month, 'YYYY-MM') ->> 'game'),
     'season', v_season);
 end $$;
 
@@ -679,7 +735,9 @@ declare
 begin
   with c as (
     update public.player_missions set claimed_at = now()
-     where user_id = v_uid and completed_at is not null and claimed_at is null and period_start > private.live_day() - 14
+     where user_id = v_uid and completed_at is not null and claimed_at is null
+       -- A season's missions go with the season: they can only be collected during its month.
+       and case when period = 'season' then period_start = private.live_month() else period_start > private.live_day() - 14 end
     returning reward_chips, reward_xp, reward_points)
   select coalesce(sum(reward_chips), 0), coalesce(sum(reward_xp), 0), coalesce(sum(reward_points), 0), count(*)
     into v_chips, v_xp, v_points, v_n from c;

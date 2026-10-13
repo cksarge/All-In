@@ -1,31 +1,37 @@
 # Music
 
-The game has one piece of background music. It loops on every screen and carries on without a break as you move
-between them.
+Every audio file in this folder is part of the game's music. It is all found automatically when the site is built.
 
-The track is the audio file in this folder (`Hard Boiled.mp3`). It is found automatically when the site is built.
+- **The playlist:** the tracks play in a random order on every screen, each one once before any repeats, and the
+  music carries on without a break as you move between screens.
+- **A game's own theme:** a track can belong to one game instead. It is then left out of the playlist and loops for
+  as long as that game is open. Today `Fearless First` is the theme of the Haunted Manor slot machine.
 
-## Changing the track
+## Adding or removing music
 
-1. Replace the file in this folder with the new one. Keep **one** audio file here: if there are several, only the
-   first by name is played.
-2. Update `CREDITS.txt` with the new track's licence and credit (players can read it in Settings).
-3. Commit and push. The new track is in the game once the site has deployed.
+1. Put the audio file in this folder (or delete one).
+2. Add its licence and credit to `CREDITS.txt` (players can read it in Settings).
+3. Commit and push. The change is in the game once the site has deployed.
 
-Delete the file to have no music at all (Settings then says so).
+To give a game its own theme, add a line to `GAME_THEMES` in `src/lib/music.ts`: the game's key and the file's name
+without its ending, for example `slots_haunted: 'Fearless First'`.
+
+With no audio files here there is no music at all (Settings then says so).
 
 ## What works
 
 - **Formats:** `.mp3` is the safest (every browser plays it). `.ogg`, `.oga`, `.opus`, `.m4a`, `.aac`, `.wav`, `.flac`
   and `.webm` are picked up too, but not every browser plays every one.
-- **Size:** about 3 to 6 MB is plenty (an MP3 at 128 to 160 kbps). It is downloaded only when it first plays.
-- **Only music you are allowed to use.** The repository is public, so the file can be downloaded by anyone. Use a
-  track whose licence allows that, and keep its attribution in `CREDITS.txt`.
+- **Size:** about 3 to 6 MB a track is plenty (an MP3 at 128 to 160 kbps). A track is downloaded only when it is
+  about to play.
+- **Only music you are allowed to use.** The repository is public, so the files can be downloaded by anyone. Use
+  tracks whose licence allows that, and keep their attribution in `CREDITS.txt`.
 
 ## How it plays
 
-- It loops for as long as the site is open, on every screen, and pauses while the tab is in the background.
+- It pauses while the tab is in the background.
 - Browsers do not let a page start sound by itself, so the music begins with the visitor's first click or key press.
-- Players switch it on or off, and set its volume, in Settings. It is separate from the sound effects.
+- Players switch it on or off, and set its volume, in Settings or from the music button in the top bar. It is
+  separate from the sound effects.
 
-The player is `src/components/layout/MusicPlayer.tsx`; the track is picked up in `src/lib/music.ts`.
+The player is `src/components/layout/MusicPlayer.tsx`; the files are picked up in `src/lib/music.ts`.

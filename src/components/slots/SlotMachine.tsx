@@ -29,6 +29,7 @@ import { prefersReducedMotion, useSettings } from '@/stores/settingsStore';
 import { toast } from '@/stores/toastStore';
 import { useWallet } from '@/stores/walletStore';
 import { JackpotTicker, useJackpot } from './JackpotTicker';
+import { HauntedBackdrop, Lightning, MultiplierMeter } from './HauntedFx';
 import { describeGrid, SlotReels } from './SlotReels';
 import { SlotRulesModal } from './SlotRules';
 
@@ -57,6 +58,8 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
   // Auto-spin: how many spins are left to play by themselves (0 = off).
   const [autoLeft, setAutoLeft] = useState(0);
   const [statsOpen, setStatsOpen] = useState(false);
+  // Haunted Manor: each change strikes lightning once.
+  const [flash, setFlash] = useState(0);
   const spinRef = useRef<(() => Promise<void>) | null>(null);
   const balance = useWallet((s) => s.status?.balance ?? 0);
   const reduced = prefersReducedMotion(useSettings((s) => s.motion));
@@ -133,6 +136,25 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
     );
   }
   if (!info || !cfg || !idle) return <FullPageLoader label="Warming up the reels…" />;
+  const seasonName = info.season
+    ? new Date(`${info.season}-15T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    : null;
+  if (info.season && !info.released) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16">
+        <div className="surface p-8 text-center">
+          <h1 className="font-display text-2xl font-bold text-ivory">{info.name}</h1>
+          <p className="mt-3 text-sm text-cream/80">
+            This was a seasonal machine, here for {seasonName} only. Its season is over. Every month brings a new seasonal game:
+            look for it at the top of the lounge.
+          </p>
+          <Button className="mt-6" variant="outline" size="sm" onClick={() => navigate('/lounge')}>
+            Back to the lounge
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const theme = THEMES[gameKey] ?? THEMES.slots_classic;
   const reels = reelCount(cfg);
@@ -145,6 +167,8 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
   const canRaise = Boolean(nextBet) && !nextLocked && nextBet <= balance;
   const shown = scene ?? idle;
   const busy = phase !== 'idle';
+  // Haunted Manor's midnight spins: the cabinet darkens and the multiplier meter shows.
+  const midnight = Boolean(cfg.free?.mult_step) && phase === 'playing' && shown.tone === 'free';
 
   const spin = async () => {
     if (busy || running.current) return;
@@ -206,13 +230,17 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
       } else {
         setSpinning(Array(reels).fill(false));
         setScene(sc);
-        if (sc.enter !== 'none') await sleep(380 * speed);
+        if (sc.fx === 'ghosts') playSound('ghost');
+        if (sc.enter !== 'none') await sleep((sc.enter === 'haunt' ? 1050 : 380) * speed);
       }
       if (!alive() || skip.current) break;
       setLanded(true);
       setWon(sc.won);
       wallet.setDisplayBalance(start - bet + sc.won);
-      if (sc.tone === 'jackpot') {
+      if (sc.fx === 'lightning' || sc.fx === 'midnight') {
+        playSound(sc.fx === 'midnight' ? 'bell' : 'thunder');
+        if (!reduced) setFlash((n) => n + 1);
+      } else if (sc.tone === 'jackpot') {
         playSound('jackpot');
         setBurst((b) => b + 1);
       } else if (sc.banner && !sc.units) playSound('feature');
@@ -267,6 +295,11 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
         </Button>
         <h1 className="font-display text-xl font-bold text-ivory sm:text-2xl">{info.name}</h1>
         {tier && <TierBadge tier={tier.tier} />}
+        {seasonName && (
+          <span className="rounded-full border border-[#ffb057]/50 bg-[#ffb057]/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-[#ffb057]">
+            Seasonal · {seasonName}
+          </span>
+        )}
         <div className="ml-auto flex gap-1">
           <Button size="sm" variant="ghost" onClick={() => setRulesOpen(true)}>
             Rules
@@ -292,15 +325,24 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
         className="relative mt-4 rounded-3xl border border-gold-500/30 p-3 shadow-card sm:p-5"
         style={{ background: theme.cabinet }}
       >
+        {cfg.haunt && (
+          <>
+            <HauntedBackdrop midnight={midnight} />
+            <Lightning n={flash} />
+          </>
+        )}
         <p
           key={status}
-          className="mb-3 min-h-6 text-center font-display text-base font-bold sm:text-lg"
+          className="relative mb-3 min-h-6 text-center font-display text-base font-bold sm:text-lg"
           style={{ color: theme.accent }}
           aria-live="polite"
         >
           {status}
         </p>
 
+        {midnight && shown.mult !== undefined && cfg.free?.mult_max && (
+          <MultiplierMeter value={(landed ? shown.multAfter : shown.mult) ?? shown.mult} max={cfg.free.mult_max} />
+        )}
         <div className={cn('relative mx-auto', WIDTH[cfg.kind])}>
           <SlotReels game={gameKey} cfg={cfg} scene={shown} landed={landed} spinning={spinning} bet={bet} />
           <p className="sr-only" aria-live="polite">
@@ -332,7 +374,7 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
           {burst > 0 && <ChipBurst key={burst} count={shown.tone === 'jackpot' ? 36 : 18} />}
         </div>
 
-        <div className="mt-3 flex items-center justify-center gap-6 text-sm">
+        <div className="relative mt-3 flex items-center justify-center gap-6 text-sm">
           <span className="text-cream/70">
             Bet <ChipAmount value={bet} className="ml-1 font-semibold text-ivory" iconClassName="h-4 w-4" />
           </span>

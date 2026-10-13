@@ -26,15 +26,19 @@ It builds to a static site.
 
 ## What's in it
 
-- **56 games.** Live tables for blackjack, roulette, craps, nine kinds of poker and Teen Patti; live rooms for Crash,
-  Bingo and horse racing; six slot machines with a shared jackpot; and about thirty solo games against the house
+- **57 games.** Live tables for blackjack, roulette, craps, nine kinds of poker and Teen Patti; live rooms for Crash,
+  Bingo and horse racing; seven slot machines with a shared jackpot, one of them a seasonal machine that changes with the month; and about thirty solo games against the house
   (baccarat, video poker, dealer poker games, blackjack variants, keno, Plinko, Mines and more).
-- **Tournaments:** Sit & Go poker, a multi-table Main Event, Slot Showdowns and a Daily Freeroll.
-- **Progress:** XP and 100 levels, 83 achievements, earned cosmetics, daily and weekly missions, monthly seasons.
+- **Tournaments:** Sit & Go poker, a multi-table Main Event, Slot Showdowns, a Daily Freeroll, and private
+  tournaments and club events you set up yourself.
+- **Practice:** seven free drills (blackjack strategy, video poker holds, poker showdowns and pot odds, craps,
+  roulette, baccarat) that bet nothing.
+- **Progress:** XP and 100 levels, 85 achievements, earned cosmetics, daily and weekly missions, monthly seasons.
 - **Social:** friends, clubs, leaderboards, profiles with records, and chat: typed (filtered, with a reputation that
   good and bad behaviour moves) and quick preset phrases.
 - **Moderation:** reports, blocks, an admin page, and a site maintenance switch.
-- **Music:** one track looped on every screen (`src/assets/music/`, with its licence in `CREDITS.txt`).
+- **Music:** a playlist shuffled on every screen, and a theme of its own for the seasonal slot (`src/assets/music/`,
+  with the licences in `CREDITS.txt`).
 - **Terms of Service and Privacy Policy** at `/terms` and `/privacy`, agreed to at sign-up (their shared facts,
   such as the contact address and effective date, are in `src/lib/legal.ts`).
 
@@ -53,7 +57,7 @@ It builds to a static site.
 │   └── e2e/                 local two-browser end-to-end tests (see CLAUDE.md)
 ├── src/
 │   ├── App.tsx, main.tsx, index.css (design tokens)
-│   ├── assets/music/        the game's music track, and its licence in CREDITS.txt
+│   ├── assets/music/        the game's music, and its licences in CREDITS.txt
 │   ├── components/
 │   │   ├── ui/, layout/, auth/, economy/, onboarding/, settings/, account/
 │   │   ├── table/           what every live table shares (header, timers, quick chat, seats)
@@ -66,7 +70,7 @@ It builds to a static site.
 │   ├── routes/              auth guards
 │   └── stores/              auth, wallet, progress, account, live data, settings, toasts
 └── supabase/
-    ├── sql/                 23 numbered, re-runnable SQL files and their README
+    ├── sql/                 24 numbered, re-runnable SQL files and their README
     ├── maintenance/         scripts run by hand: database check, cleanup, maintenance off
     ├── email-templates/     confirm-signup.html, reset-password.html (+ subjects)
     └── tests/               local-only Supabase stub and 20 SQL test files

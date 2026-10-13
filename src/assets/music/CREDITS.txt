@@ -1,18 +1,20 @@
-# Music credits and licences.
-#
-# Players can read this file in Settings, under "Music credits".
-# Lines that start with # (like these) are notes for you and are NOT shown.
-# Everything else is shown exactly as you write it, so plain text works best.
-#
-# Keep the entry for the track in this folder up to date. What each licence asks for differs, but this covers most:
-#
-#   "Track title" by Artist Name
-#   Source: https://example.com/where-you-got-it
-#   Licence: Creative Commons Attribution 4.0 (https://creativecommons.org/licenses/by/4.0/)
-#   Changes: none (or say what you changed, e.g. "shortened and looped")
-#
-# Replace the entry when you replace the track.
-
 "Hard Boiled" Kevin MacLeod (incompetech.com)
 Licensed under Creative Commons: By Attribution 4.0 License
 http://creativecommons.org/licenses/by/4.0/
+
+"Bossa Antigua" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+http://creativecommons.org/licenses/by/4.0/
+
+"Smooth Lovin" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+http://creativecommons.org/licenses/by/4.0/
+
+"Fearless First" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+http://creativecommons.org/licenses/by/4.0/
+
+"Big Band Swingin"
+"Mellow Mind"
+by Eric Matyas
+www.soundimage.org

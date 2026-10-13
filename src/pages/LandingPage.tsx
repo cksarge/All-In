@@ -10,7 +10,7 @@ const GAME_GROUPS = [
   { key: 'blackjack', title: 'Blackjack', body: 'Up to five players against the dealer. Split, double, insurance and surrender.' },
   { key: 'roulette', title: 'Roulette', body: 'European and American wheels on a shared table, with hot and cold numbers.' },
   { key: 'craps', title: 'Craps', body: 'A rotating shooter, the full layout, and a beginner mode for the simple bets.' },
-  { key: 'slots_classic', title: 'Slots', body: 'Six machines with their own themes, paytables and a shared progressive jackpot.' },
+  { key: 'slots_classic', title: 'Slots', body: 'Slot machines with their own themes, paytables and a shared progressive jackpot.' },
   { key: 'keno', title: 'And more', body: 'Baccarat, video poker, Three Card Poker, Pai Gow, Sic Bo, Keno and the Big Six wheel.' },
 ];
 

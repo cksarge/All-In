@@ -66,6 +66,8 @@ export default function MissionsPage() {
 
   const daily = data.missions.filter((m) => m.period === 'daily');
   const weekly = data.missions.filter((m) => m.period === 'weekly');
+  const seasonal = data.missions.filter((m) => m.period === 'season');
+  const game = data.season_game ?? null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:py-10">
@@ -91,6 +93,31 @@ export default function MissionsPage() {
 
       {data.season && <SeasonTrack season={data.season} now={now} busy={busy === 'season_claim'} onClaim={() => void claim('season_claim')} />}
 
+      {data.season && seasonal.length > 0 && (
+        <section className="surface mt-8 p-5" aria-label="Season missions" style={{ borderColor: `${data.season.accent}55` }}>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl font-bold text-ivory">Season missions</h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted">
+                Three missions for the whole month, worth {seasonal.reduce((n, m) => n + m.points, 0)} season points together.
+                {game ? ` They are all about ${game.name}, the game that is only here this season.` : ''} They end with the season, so collect
+                them before it does.
+              </p>
+            </div>
+            {game && (
+              <ButtonLink to={`/play/${game.key}`} size="sm">
+                Play {game.name}
+              </ButtonLink>
+            )}
+          </div>
+          <ul className="mt-3 grid gap-3 lg:grid-cols-3">
+            {seasonal.map((m) => (
+              <MissionRow key={`season-${m.slot}`} m={m} season game={game?.name} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <MissionList title="Today" resets={`New missions in ${until(new Date(data.daily_ends_at).getTime() - now)}`} missions={daily} season={Boolean(data.season)} />
         <MissionList title="This week" resets={`New missions in ${until(new Date(data.weekly_ends_at).getTime() - now)}`} missions={weekly} season={Boolean(data.season)} />
@@ -115,9 +142,15 @@ function MissionList({ title, resets, missions, season }: { title: string; reset
   );
 }
 
-const TIER_STYLE = { easy: 'border-felt-400/50 text-felt-300', medium: 'border-gold-500/50 text-gold-200', hard: 'border-ruby-400/60 text-ruby-200' } as const;
+const TIER_STYLE = {
+  easy: 'border-felt-400/50 text-felt-300',
+  medium: 'border-gold-500/50 text-gold-200',
+  hard: 'border-ruby-400/60 text-ruby-200',
+  season: 'border-[#ffb057]/60 text-[#ffb057]',
+} as const;
 
-export function MissionRow({ m, season, compact }: { m: Mission; season: boolean; compact?: boolean }) {
+export function MissionRow({ m, season, compact, game }: { m: Mission; season: boolean; compact?: boolean; game?: string }) {
+  const text = missionText(m, game);
   const pct = Math.round((Math.min(m.progress, m.goal) / m.goal) * 100);
   return (
     <li className={cn('rounded-xl border p-3', m.done ? 'border-gold-500/40 bg-gold-500/[0.07]' : 'border-white/[0.07]')}>
@@ -126,7 +159,7 @@ export function MissionRow({ m, season, compact }: { m: Mission; season: boolean
           {m.tier && (
             <span className={cn('mr-2 rounded-full border px-1.5 py-0.5 align-middle text-[0.6rem] font-bold uppercase tracking-wider', TIER_STYLE[m.tier])}>{m.tier}</span>
           )}
-          {missionText(m)}
+          {text}
         </p>
         <span className="shrink-0 text-xs font-semibold text-gold-200">{m.claimed ? 'Collected ✓' : m.done ? 'Done ✓' : `${formatChips(m.progress)} / ${formatChips(m.goal)}`}</span>
       </div>
@@ -136,7 +169,7 @@ export function MissionRow({ m, season, compact }: { m: Mission; season: boolean
         aria-valuemin={0}
         aria-valuemax={m.goal}
         aria-valuenow={Math.min(m.progress, m.goal)}
-        aria-label={missionText(m)}
+        aria-label={text}
       >
         <div className={cn('h-full rounded-full transition-all', m.done ? 'bg-gold-400' : 'bg-felt-400')} style={{ width: `${pct}%` }} />
       </div>

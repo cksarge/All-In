@@ -23,6 +23,7 @@ import LogInPage from '@/pages/LogInPage';
 import InboxPage from '@/pages/InboxPage';
 import LobbyPage from '@/pages/LobbyPage';
 import MissionsPage from '@/pages/MissionsPage';
+import PracticePage from '@/pages/PracticePage';
 import LoungePage from '@/pages/LoungePage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import PlayPage from '@/pages/PlayPage';
@@ -62,6 +63,7 @@ const TITLES: Record<string, string> = {
   '/tournaments': 'Tournaments · All In',
   '/admin': 'All In',
   '/missions': 'Missions · All In',
+  '/practice': 'Practice · All In',
   '/clubs': 'Clubs · All In',
   '/inbox': 'Inbox · All In',
 };
@@ -287,6 +289,8 @@ export default function App() {
               <Route path="settings" element={<SettingsPage />} />
               <Route path="lounge" element={<RequireAuth><LoungePage /></RequireAuth>} />
               <Route path="lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
+              <Route path="practice" element={<RequireAuth><PracticePage /></RequireAuth>} />
+              <Route path="practice/:drill" element={<RequireAuth><PracticePage /></RequireAuth>} />
               <Route path="table/:id" element={<RequireAuth><TablePage /></RequireAuth>} />
               <Route path="play/:gameKey" element={<RequireAuth><PlayPage /></RequireAuth>} />
               <Route path="profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />

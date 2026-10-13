@@ -175,6 +175,35 @@ as $fn$
       "hold": {"symbol": "PEARL", "trigger": 6, "respins": 3, "land_bp": 700, "grand": 100000, "values": [[100, 40], [200, 25], [300, 15], [500, 10], [1000, 6], [2500, 3], [10000, 1]]},
       "rtp": 95.3
     },
+    "slots_haunted": {
+      "kind": "lines",
+      "reels": 5,
+      "rows": 3,
+      "lines": 20,
+      "wild": "WILD",
+      "scatter": "SCATTER",
+      "weights": [
+        {"VAMPIRE": 2, "WITCH": 3, "SKULL": 4, "BAT": 5, "A": 7, "K": 8, "Q": 9, "J": 10, "SCATTER": 2},
+        {"VAMPIRE": 2, "WITCH": 3, "SKULL": 4, "BAT": 5, "A": 7, "K": 8, "Q": 9, "J": 10, "SCATTER": 2, "WILD": 2},
+        {"VAMPIRE": 2, "WITCH": 3, "SKULL": 4, "BAT": 5, "A": 7, "K": 8, "Q": 9, "J": 10, "SCATTER": 2, "WILD": 2},
+        {"VAMPIRE": 2, "WITCH": 3, "SKULL": 4, "BAT": 5, "A": 7, "K": 8, "Q": 9, "J": 10, "SCATTER": 2, "WILD": 2},
+        {"VAMPIRE": 2, "WITCH": 3, "SKULL": 4, "BAT": 5, "A": 7, "K": 8, "Q": 9, "J": 10, "SCATTER": 2}
+      ],
+      "pays": {
+        "VAMPIRE": {"2": 30, "3": 220, "4": 1100, "5": 7500},
+        "WITCH": {"3": 130, "4": 450, "5": 2500},
+        "SKULL": {"3": 90, "4": 320, "5": 1500},
+        "BAT": {"3": 60, "4": 220, "5": 1000},
+        "A": {"3": 50, "4": 130, "5": 400},
+        "K": {"3": 40, "4": 110, "5": 300},
+        "Q": {"3": 30, "4": 100, "5": 250},
+        "J": {"3": 20, "4": 90, "5": 200}
+      },
+      "scatter_pays": {"3": 200, "4": 1000, "5": 5000},
+      "free": {"trigger": 3, "spins": 8, "mult": 1, "mult_step": 1, "mult_max": 10, "max": 40},
+      "haunt": {"odds": 15, "cells": [[2, 60], [3, 30], [4, 10]]},
+      "rtp": 94.9
+    },
     "slots_progressive": {
       "kind": "lines",
       "reels": 5,
@@ -279,6 +308,9 @@ begin
   end if;
   if c ? 'hold' then
     c := c || jsonb_build_object('value_bag', private.slot_pair_bag(c #> '{hold,values}'));
+  end if;
+  if c ? 'haunt' then
+    c := c || jsonb_build_object('haunt_bag', private.slot_pair_bag(c #> '{haunt,cells}'));
   end if;
   return c;
 end $$;
@@ -426,6 +458,9 @@ end $$;
 
 -- One spin of a payline machine: grid, line wins and (if the machine has one)
 -- scatter pays. Scatters count anywhere on the grid.
+-- Haunted Manor's haunting: on some spins, a few cells (never a scatter or a wild) turn wild
+-- after the reels stop, and the lines are scored on the grid as it then stands. The spin
+-- carries the grid as it landed (`before`) and which cells were taken (`haunted`: reel * 3 + row; reels 2 to 5 only).
 create or replace function private.slot_spin_lines(p_cfg jsonb)
 returns jsonb
 language plpgsql
@@ -434,12 +469,35 @@ set search_path = ''
 as $$
 declare
   g jsonb := private.slot_draw_grid(p_cfg, 3);
-  e jsonb := private.slot_eval_lines(p_cfg, g);
-  v_units bigint := (e ->> 'units')::bigint;
-  v_res jsonb := jsonb_build_object('grid', g, 'wins', e -> 'wins');
+  e jsonb;
+  v_units bigint;
+  v_res jsonb := '{}'::jsonb;
   v_sc integer;
   v_su bigint;
+  v_before jsonb;
+  v_want integer;
+  v_free integer[];
+  v_cells integer[] := '{}';
+  k integer;
 begin
+  if p_cfg ? 'haunt' and private.random_int((p_cfg #>> '{haunt,odds}')::integer) = 0 then
+    v_before := g;
+    v_want := private.slot_pick(p_cfg -> 'haunt_bag')::integer;
+    -- Never the first reel: a line is read from its first symbol, so a wild there would pay nothing.
+    select array_agg(c order by c) into v_free from generate_series(3, 14) c
+     where (g -> (c / 3) ->> (c % 3)) not in (p_cfg ->> 'wild', coalesce(p_cfg ->> 'scatter', ''));
+    while v_want > 0 and coalesce(cardinality(v_free), 0) > 0 loop
+      k := v_free[private.random_int(cardinality(v_free)) + 1];
+      v_free := array_remove(v_free, k);
+      v_cells := v_cells || k;
+      g := jsonb_set(g, array[(k / 3)::text, (k % 3)::text], to_jsonb(p_cfg ->> 'wild'));
+      v_want := v_want - 1;
+    end loop;
+    v_res := jsonb_build_object('before', v_before, 'haunted', to_jsonb(v_cells));
+  end if;
+  e := private.slot_eval_lines(p_cfg, g);
+  v_units := (e ->> 'units')::bigint;
+  v_res := v_res || jsonb_build_object('grid', g, 'wins', e -> 'wins');
   if p_cfg ? 'scatter' then
     v_sc := private.slot_count(g, p_cfg ->> 'scatter');
     v_su := coalesce((p_cfg -> 'scatter_pays' ->> least(v_sc, 5)::text)::bigint, 0);
@@ -474,15 +532,21 @@ declare
   v_landed jsonb;
   v_hu     bigint;
   v_grand  boolean;
+  v_mult   integer;
 begin
   -- Free spins: every win is multiplied; more scatters add more spins, up to a cap.
+  -- With `mult_step` the multiplier climbs after every winning free spin (up to `mult_max`) and never drops.
   if v_free is not null and (v_base ->> 'scatters')::integer >= (v_free ->> 'trigger')::integer then
     v_left := (v_free ->> 'spins')::integer;
+    v_mult := (v_free ->> 'mult')::integer;
     while v_left > 0 loop
       v_left := v_left - 1;
       v_played := v_played + 1;
-      f := private.slot_spin_lines(p_cfg);
-      fu := (f ->> 'units')::bigint * (v_free ->> 'mult')::integer;
+      f := private.slot_spin_lines(p_cfg) || jsonb_build_object('mult', v_mult);
+      fu := (f ->> 'units')::bigint * v_mult;
+      if fu > 0 and v_free ? 'mult_step' then
+        v_mult := least(v_mult + (v_free ->> 'mult_step')::integer, (v_free ->> 'mult_max')::integer);
+      end if;
       v_more := 0;
       if (f ->> 'scatters')::integer >= (v_free ->> 'trigger')::integer then
         v_more := least(v_left + (v_free ->> 'spins')::integer, (v_free ->> 'max')::integer - v_played) - v_left;
@@ -869,6 +933,10 @@ begin
   end if;
 
   c := c - 'weights' - 'heights';
+  -- (That the manor is haunted is on show; how often, and how many cells, is not.)
+  if c ? 'haunt' then
+    c := jsonb_set(c, '{haunt}', '{}'::jsonb);
+  end if;
   if c ? 'lines' then
     c := c || jsonb_build_object('line_defs', (
       select jsonb_agg(x.v order by x.ord) from jsonb_array_elements(private.slot_lines()) with ordinality as x(v, ord)
@@ -882,7 +950,8 @@ begin
   return jsonb_build_object(
     'game', g.key,
     'name', g.name,
-    'released', g.released,
+    'released', g.released and private.game_in_season(g.key),
+    'season', g.season,
     'config', c,
     'bets', (select coalesce(jsonb_agg(b order by b), '[]'::jsonb) from unnest(private.slot_bets()) b
               where exists (select 1 from public.stake_tiers t where t.game_key = p_game and b between t.min_bet and t.max_bet)),
@@ -925,6 +994,9 @@ begin
   end if;
   if not exists (select 1 from public.games where key = p_game and released) then
     raise exception 'game_not_open';
+  end if;
+  if not private.game_in_season(p_game) then
+    raise exception 'game_not_open' using hint = 'This game is only here during its season.';
   end if;
   if p_bet is null or p_bet <= 0 or p_bet % 10 <> 0 then
     raise exception 'invalid_amount';
@@ -972,7 +1044,10 @@ begin
                     when jsonb_array_length(coalesce(v_res -> 'steps', '[]'::jsonb)) > 1 then 'cascade'
                end;
   perform private.record_round(v_uid, p_game, null, v_round, p_bet, v_win + v_jack,
-                               jsonb_build_object('units', v_units, 'feature', v_feature, 'jackpot', nullif(v_jack, 0)));
+                               jsonb_strip_nulls(jsonb_build_object('units', v_units, 'feature', v_feature, 'jackpot', nullif(v_jack, 0),
+                                 -- Haunted Manor: was a spin haunted, and how high did the midnight multiplier climb?
+                                 'haunted', case when v_res #> '{base,haunted}' is not null then true end,
+                                 'top_mult', (select max((f ->> 'mult')::integer) from jsonb_array_elements(v_res -> 'free') f))));
 
   return jsonb_build_object(
     'round_id', v_round,

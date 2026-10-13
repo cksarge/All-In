@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/components/ui/cn';
-import { MUSIC_TRACK } from '@/lib/music';
+import { HAS_MUSIC } from '@/lib/music';
 import { useSettings } from '@/stores/settingsStore';
 
 /** The music button in the top bar: a click opens a small panel with the switch and the volume. */
@@ -22,7 +22,7 @@ export function MusicControl() {
     };
   }, [open]);
 
-  if (!MUSIC_TRACK) return null;
+  if (!HAS_MUSIC) return null;
   return (
     // The top bar has no room for it on a narrow phone: there the switch is in Settings.
     <div ref={box} className="relative hidden min-[430px]:block">

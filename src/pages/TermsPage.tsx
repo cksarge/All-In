@@ -189,7 +189,7 @@ const sections: LegalSection[] = [
         </p>
         <ul>
           <li>we may change how they are earned, what they do or how many there are, and we may add, change, reset or remove them;</li>
-          <li>seasonal rewards are available only during their season and are gone when it ends;</li>
+          <li>seasonal rewards, seasonal games and their missions are available only during their season and are gone when it ends;</li>
           <li>reputation cosmetics are held only while your reputation is high enough, and are taken away when it is not;</li>
           <li>balances, progress and items may be lost through a fault, a correction or the closing of the game, and we owe nothing for them;</li>
           <li>nothing is owed to you for chips, progress or items when an account is closed, by you or by us.</li>
@@ -233,7 +233,7 @@ const sections: LegalSection[] = [
             show and review them as part of running and moderating the game.
           </li>
           <li>
-            The music in the game belongs to its creator and is used under licence, which is shown under Music credits in Settings.
+            The music in the game belongs to its creators and is used under their licences, which are shown under Music credits in Settings.
           </li>
           <li>If you send us ideas or feedback, we may use them without owing you anything.</li>
         </ul>

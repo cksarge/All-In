@@ -70,7 +70,8 @@ declare
   v_players integer;
   v_kind text;
 begin
-  if new.game_key not in ('sng_poker', 'slot_showdown') then
+  -- No trophies for private tournaments and club events: they are played among friends.
+  if new.game_key not in ('sng_poker', 'slot_showdown') or (new.summary ->> 'private')::boolean then
     return new;
   end if;
   v_place := (new.summary ->> 'place')::integer;

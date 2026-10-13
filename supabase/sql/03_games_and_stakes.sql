@@ -24,6 +24,9 @@ create table if not exists public.games (
   created_at     timestamptz not null default now()
 );
 
+-- A seasonal game is only open during its month ("2026-10"). Null = always open.
+alter table public.games add column if not exists season text check (season ~ '^[0-9]{4}-[0-9]{2}$');
+
 insert into public.games (key, name, category, tagline, multiplayer, min_seats, max_seats, stake_profile, sort_order) values
   ('blackjack',          'Blackjack',            'table',     'Beat the dealer to 21. Up to 5 seats.',            true,  1, 5, 'table',     10),
   ('roulette',           'Roulette',             'table',     'European and American wheels, shared table.',     true,  1, 8, 'table',     20),
@@ -58,6 +61,7 @@ insert into public.games (key, name, category, tagline, multiplayer, min_seats, 
   ('mississippi_stud',   'Mississippi Stud',     'poker',     'No dealer hand: bet up to three times as the cards turn.', false, 1, 1, 'table', 104),
   ('four_card_poker',    'Four Card Poker',      'poker',     'Five cards to make your best four. The dealer gets six.', false, 1, 1, 'table', 105),
   ('teen_patti_live',    'Teen Patti Tables',    'poker',     'Three cards, played blind or seen, against other players.', true, 2, 6, 'poker', 135),
+  ('slots_haunted',      'Haunted Manor',        'slots',     'October only. Ghosts turn symbols wild, and midnight spins climb to ×10.', false, 1, 1, 'slots', 59),
   ('horse_racing',       'Horse Racing',         'specialty', 'Six runners, one race for the whole room. Back a winner.', false, 1, 1, 'slots', 79),
   ('teen_patti',         'Teen Patti',           'poker',     'Three cards against the dealer, where a trail beats everything.', false, 1, 1, 'table', 106),
   ('sng_poker',          'Sit & Go Poker',       'poker',     'Knockout Hold''em tournaments. Last one standing wins.', false, 2, 6, 'poker', 58),
@@ -91,6 +95,21 @@ on conflict (key) do update set
   stake_profile = excluded.stake_profile,
   sort_order    = excluded.sort_order;
 -- Note: `released` is intentionally NOT overwritten so later phases stay released.
+
+-- Seasonal games: each is open for one month, and a different game takes its place the next.
+update public.games set season = '2026-10' where key = 'slots_haunted';
+
+-- Is this game open right now? (Always, unless it is a seasonal game outside its month.)
+create or replace function private.game_in_season(p_game text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((select g.season is null or g.season = to_char(now() at time zone 'utc', 'YYYY-MM')
+                     from public.games g where g.key = p_game), false)
+$$;
 
 -- -----------------------------------------------------------------------------
 -- stake_tiers: min/max bet and minimum bankroll to enter, per game per tier.

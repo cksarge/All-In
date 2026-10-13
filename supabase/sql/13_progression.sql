@@ -197,6 +197,8 @@ insert into public.cosmetics (key, kind, name, unlock_level, sort_order) values
   ('title_pillar',       'title', 'Pillar of the Lounge', null, 182),
   ('avatar_dove',        'avatar', 'Dove',          null, 183),
   ('frame_exemplary',    'frame', 'Exemplary',      null, 184),
+  ('title_host',         'title', 'The Host',       null, 185),
+  ('title_club_champion', 'title', 'Club Champion', null, 186),
   ('title_grandmaster',  'title', 'Grandmaster',    null, 998),
   ('title_completionist', 'title', 'Completionist', null, 999),
   ('title_field_marshal', 'title', 'Field Marshal', null, 167),
@@ -304,6 +306,8 @@ insert into public.achievements (key, name, description, category, metric, goal,
   ('razz_wheel',      'The Bicycle',       'Win a Razz pot with 5-4-3-2-A.',                        'feats', 'razz_wheels', 1, 2500, 300, 'avatar_bicycle',      589),
   ('number_one',      'Number One',        'Win a 2-7 Triple Draw pot with 7-5-4-3-2.',             'feats', 'number_ones', 1, 5000, 500, 'title_number_one',    5891),
   ('badugi_made',     'Badugi!',           'Win a Badugi pot with a four-card badugi.',             'feats', 'badugis',     1, 1000, 150, 'back_four_suits',     5892),
+  ('host_first',      'Master of Ceremonies', 'Host a private tournament that gets played.',       'tournaments', 'tournaments_hosted', 1, 1000, 150, 'title_host',          5901),
+  ('club_event_win',  'Club Champion',     'Win a club event with three or more players.', 'tournaments', 'club_event_wins',    1, 2500, 300, 'title_club_champion', 5902),
   ('rep_75',          'In Good Standing',  'Reach a reputation of 75.',                             'social', 'reputation_best', 75,  2500,  300,  null,            5899),
   ('rep_100',         'Model Citizen',     'Reach a reputation of 100, the highest there is.',      'social', 'reputation_best', 100, 10000, 1000, null,            5900),
   ('race_winner',     'First Past the Post', 'Back the winner of a horse race.',                    'feats', 'race_winners',   1,  500,  75,  null,                  5893),
@@ -437,7 +441,13 @@ begin
   -- Tournaments (14_tournaments.sql) record one round per player when they end.
   if r.game_key in ('sng_poker', 'slot_showdown') then
     v_bump := array_append(v_bump, 'tourney_played');
-    if (s ->> 'place')::integer = 1 and (s ->> 'players')::integer >= 2 then
+    -- A private tournament or club event (24_events.sql) is played among friends, so winning one
+    -- is not a tournament win: it has its own counter.
+    if (s ->> 'private')::boolean then
+      if (s ->> 'club')::boolean and (s ->> 'place')::integer = 1 and (s ->> 'players')::integer >= 3 then
+        v_bump := array_append(v_bump, 'club_event_wins');
+      end if;
+    elsif (s ->> 'place')::integer = 1 and (s ->> 'players')::integer >= 2 then
       v_bump := array_append(v_bump, 'tourney_wins');
       if s ->> 'kind' = 'sng' then v_bump := array_append(v_bump, 'sng_wins'); end if;
       if s ->> 'kind' = 'mtt' then v_bump := array_append(v_bump, 'mtt_wins'); end if;
@@ -467,7 +477,8 @@ as $$
     'rounds', coalesce(s.rounds, 0),
     'games', coalesce(s.games, 0),
     -- 1 once every released game has been played (so the goal doesn't change as games are added)
-    'games_left', case when coalesce(s.games, 0) >= (select count(*) from public.games where released) then 1 else 0 end,
+    -- (Seasonal games come and go, so they are not part of it.)
+    'games_left', case when coalesce(s.games, 0) >= (select count(*) from public.games where released and season is null) then 1 else 0 end,
     'biggest_win', coalesce(s.biggest_win, 0),
     'rounds_table', coalesce(s.rounds_table, 0),
     'rounds_poker', coalesce(s.rounds_poker, 0),
@@ -485,7 +496,7 @@ as $$
     left join public.wallets w on w.user_id = u.id
     left join lateral (
       select sum(st.rounds_played) as rounds,
-             count(*) filter (where st.rounds_played > 0) as games,
+             count(*) filter (where st.rounds_played > 0 and g.season is null) as games,
              max(st.biggest_win) as biggest_win,
              sum(st.rounds_played) filter (where g.category = 'table') as rounds_table,
              sum(st.rounds_played) filter (where g.category = 'poker') as rounds_poker,

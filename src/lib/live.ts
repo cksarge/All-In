@@ -4,10 +4,10 @@ import { ordinal } from './tournaments';
 
 /** Missions, seasons and the inbox (16_missions_seasons.sql). */
 export interface Mission {
-  period: 'daily' | 'weekly';
+  period: 'daily' | 'weekly' | 'season';
   slot: number;
   key: string;
-  kind: 'rounds' | 'wins' | 'wager' | 'category' | 'games' | 'multiple' | 'net' | 'tourney';
+  kind: 'rounds' | 'wins' | 'wager' | 'category' | 'games' | 'multiple' | 'net' | 'tourney' | 'g_rounds' | 'g_wins' | 'g_feat';
   param: string | null;
   goal: number;
   progress: number;
@@ -15,7 +15,9 @@ export interface Mission {
   xp: number;
   points: number;
   /** easy, medium or hard: harder missions give more of everything. Absent on missions dealt before this existed. */
-  tier?: 'easy' | 'medium' | 'hard' | null;
+  tier?: 'easy' | 'medium' | 'hard' | 'season' | null;
+  /** Season missions of kind g_feat: which feature of the season's game counts. */
+  feat?: string | null;
   done: boolean;
   claimed: boolean;
 }
@@ -45,6 +47,8 @@ export interface MissionsState {
   weekly_ends_at: string;
   missions: Mission[];
   to_collect: number;
+  /** The game that is only here this season, which the season missions are about. */
+  season_game?: { key: string; name: string } | null;
   season: Season | null;
 }
 
@@ -59,7 +63,7 @@ export interface InboxItem {
 const CATEGORY: Record<string, string> = { slots: 'slot spins', table: 'rounds of table games', poker: 'hands of poker', specialty: 'rounds of specialty games' };
 
 /** A mission in words, e.g. "Win 8 rounds". */
-export function missionText(m: Pick<Mission, 'kind' | 'param' | 'goal'>): string {
+export function missionText(m: Pick<Mission, 'kind' | 'param' | 'goal'>, game = 'the season’s game'): string {
   const n = formatChips(m.goal);
   switch (m.kind) {
     case 'rounds':
@@ -78,6 +82,12 @@ export function missionText(m: Pick<Mission, 'kind' | 'param' | 'goal'>): string
       return `Win ${n} chips in total`;
     case 'tourney':
       return `Finish ${n} tournaments`;
+    case 'g_rounds':
+      return `Play ${n} rounds of ${game}`;
+    case 'g_wins':
+      return `Win ${n} rounds of ${game}`;
+    case 'g_feat':
+      return `Trigger the bonus spins on ${game} ${n} times`;
     default:
       return 'Mission';
   }
@@ -97,6 +107,13 @@ export function inboxText(n: InboxItem): { title: string; body?: string; to?: st
       return { title: `${from} sent you a friend request`, to: '/friends', action: 'Answer' };
     case 'friend_accepted':
       return { title: `${from} accepted your friend request`, to: `/profile/${from}`, action: 'See profile' };
+    case 'club_event':
+      return {
+        title: `${from} set up a club event`,
+        body: `${String(d.club ?? 'Your club')} · ${Number(d.size)} players · ${Number(d.entry_fee) > 0 ? `entry ${formatChips(Number(d.entry_fee))} chips` : 'free entry'}`,
+        to: '/tournaments#events',
+        action: 'Join',
+      };
     case 'table_invite':
       return {
         title: `${from} invited you to their table`,

@@ -88,6 +88,9 @@ function UserMenu() {
             Missions
             {rewards > 0 && <span className="ml-2 text-xs text-gold-300">rewards waiting</span>}
           </Link>
+          <Link role="menuitem" to="/practice" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
+            Practice
+          </Link>
           <Link role="menuitem" to="/inbox" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/[0.06]">
             Inbox
             {unread > 0 && <span className="ml-2 rounded-full bg-gold-500 px-1.5 text-xs font-bold text-ink-950">{unread}</span>}

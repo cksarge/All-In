@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/components/ui/cn';
-import { MUSIC_TRACK, MUSIC_CREDITS } from '@/lib/music';
+import { HAS_MUSIC, MUSIC_CREDITS } from '@/lib/music';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/stores/authStore';
 import { useSettings, type MotionPreference } from '@/stores/settingsStore';
@@ -74,29 +74,29 @@ export function SettingsModal() {
           <div>
             <p className="font-medium text-cream" id="music-label">Music</p>
             <p className="text-sm text-muted">
-              {MUSIC_TRACK ? 'One track, on a loop, on every screen.' : 'No music has been added to the game yet.'}
+              {HAS_MUSIC ? 'A playlist in a random order on every screen. Some games have a theme of their own.' : 'No music has been added to the game yet.'}
             </p>
           </div>
           <button
             role="switch"
             aria-checked={musicOn}
             aria-labelledby="music-label"
-            disabled={!MUSIC_TRACK}
+            disabled={!HAS_MUSIC}
             onClick={() => setMusicOn(!musicOn)}
             className={cn(
               'relative h-7 w-12 shrink-0 rounded-full border transition disabled:opacity-40',
-              musicOn && MUSIC_TRACK ? 'border-gold-500 bg-gold-500' : 'border-white/20 bg-ink-950',
+              musicOn && HAS_MUSIC ? 'border-gold-500 bg-gold-500' : 'border-white/20 bg-ink-950',
             )}
           >
             <span
               className={cn(
                 'absolute top-0.5 h-5.5 w-5.5 rounded-full bg-ivory shadow transition-all',
-                musicOn && MUSIC_TRACK ? 'left-[calc(100%-1.5rem)]' : 'left-0.5',
+                musicOn && HAS_MUSIC ? 'left-[calc(100%-1.5rem)]' : 'left-0.5',
               )}
             />
           </button>
         </div>
-        {MUSIC_TRACK && (
+        {HAS_MUSIC && (
           <label className="mt-3 flex items-center gap-3 text-sm text-muted">
             <span className="shrink-0">Music volume</span>
             <input

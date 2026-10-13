@@ -49,6 +49,7 @@ export function SlotReels({
   const reels = reelCount(cfg);
   const hl = useMemo(() => new Set(landed ? scene.hl : []), [landed, scene.hl]);
   const fresh = useMemo(() => new Set(scene.fresh ?? []), [scene.fresh]);
+  const haunted = useMemo(() => new Set(scene.haunted ?? []), [scene.haunted]);
   const pearlSym = cfg.hold?.symbol;
   const showLines = landed && cfg.line_defs ? scene.lines : [];
 
@@ -75,6 +76,8 @@ export function SlotReels({
                     const empty = scene.holdMode && !isPearl;
                     const won = hl.has(key);
                     const fall = scene.enter === 'drop' ? (scene.shift?.[c]?.[r] ?? 0) : 0;
+                    const ghost = haunted.has(c * 3 + r);
+                    const taken = ghost && scene.enter === 'haunt';
                     const initial =
                       scene.enter === 'spin'
                         ? { y: '-35%', opacity: 0.4 }
@@ -82,27 +85,43 @@ export function SlotReels({
                           ? { y: `${-fall * 100}%`, opacity: 0.9 }
                           : scene.enter === 'hold' && fresh.has(cell)
                             ? { scale: 0, opacity: 0 }
-                            : false;
+                            : taken
+                              ? { rotateY: 90, scale: 0.7, opacity: 0 }
+                              : false;
                     return (
                       <motion.div
                         key={`${scene.id}-${key}`}
                         initial={initial}
-                        animate={{ y: 0, scale: 1, opacity: 1 }}
+                        animate={{ y: 0, scale: 1, opacity: 1, rotateY: 0 }}
                         transition={
                           fall > 0
                             ? { duration: 0.28 + fall * 0.05, ease: [0.3, 0, 0.6, 1.25] }
-                            : { type: 'spring', stiffness: 420, damping: 22 }
+                            : taken
+                              ? { duration: 0.45, delay: 0.35, ease: 'easeOut' }
+                              : { type: 'spring', stiffness: 420, damping: 22 }
                         }
                         className={cn(
                           'min-h-0 flex-1 p-[4%] transition-opacity duration-300',
                           hl.size > 0 && !won && 'opacity-35',
-                          won && 'relative z-10',
+                          (won || ghost) && 'relative z-10',
                         )}
                       >
+                        {taken && (
+                          <motion.span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center text-4xl sm:text-5xl"
+                            initial={{ y: '90%', opacity: 0, scale: 0.5 }}
+                            animate={{ y: ['90%', '0%', '-110%'], opacity: [0, 1, 0], scale: [0.5, 1.5, 2] }}
+                            transition={{ duration: 0.95, times: [0, 0.45, 1], ease: 'easeOut' }}
+                          >
+                            👻
+                          </motion.span>
+                        )}
                         <div
                           className={cn(
                             'h-full w-full rounded-[14%]',
                             won && 'animate-slot-win shadow-[0_0_0_2px_#f0d688,0_0_18px_rgba(240,214,136,0.55)]',
+                            ghost && !won && 'shadow-[0_0_0_2px_#b78cff,0_0_18px_rgba(183,140,255,0.6)]',
                           )}
                         >
                           {empty ? (

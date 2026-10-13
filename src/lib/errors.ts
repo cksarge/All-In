@@ -91,7 +91,7 @@ const RPC_MESSAGES: Record<string, string> = {
 };
 
 /** Errors whose server hint is already player-friendly. */
-const USE_HINT = new Set(['action_not_allowed', 'slow_down', 'betting_closed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack', 'invalid_hand', 'insufficient_chips', 'not_enough_chips', 'chat_banned', 'table_waiting']);
+const USE_HINT = new Set(['action_not_allowed', 'slow_down', 'betting_closed', 'bet_out_of_range', 'tier_locked', 'below_min_stack', 'above_max_stack', 'invalid_hand', 'insufficient_chips', 'not_enough_chips', 'chat_banned', 'table_waiting', 'unknown_tournament', 'game_not_open']);
 
 /**
  * Turns any Supabase/auth/RPC/network error into a short, friendly sentence.

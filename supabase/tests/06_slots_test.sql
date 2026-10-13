@@ -73,7 +73,7 @@ update public.jackpots set pool_hundredths = seed * 100, last_winner = null, las
 -- ----------------------------------------------------------------------------
 -- Setup and maths
 -- ----------------------------------------------------------------------------
-select tests.ok((select count(*) from public.games where key like 'slots\_%' and released) = 6, 'six machines released');
+select tests.ok((select count(*) from public.games where key like 'slots\_%' and released) = 7, 'seven machines released (one of them seasonal)');
 select tests.ok((select amount from public.jackpots where key = 'grand') = 100000, 'jackpot seeded');
 select tests.ok(private.slot_cfg('blackjack') is null, 'no config for other games');
 select tests.ok(not exists (

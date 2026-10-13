@@ -6,7 +6,8 @@ import { useSettings } from '@/stores/settingsStore';
  */
 export type SoundName =
   | 'click' | 'chip' | 'coins' | 'success' | 'error' | 'whoosh' | 'card' | 'flip' | 'win' | 'lose' | 'turn' | 'pop'
-  | 'spin' | 'reel' | 'feature' | 'jackpot' | 'dice' | 'wheel' | 'tick' | 'levelup' | 'achievement';
+  | 'spin' | 'reel' | 'feature' | 'jackpot' | 'dice' | 'wheel' | 'tick' | 'levelup' | 'achievement'
+  | 'thunder' | 'ghost' | 'bell';
 
 let ctx: AudioContext | null = null;
 
@@ -145,6 +146,26 @@ export function playSound(name: SoundName) {
       tone(c, { freq: 880, dur: 0.14, type: 'triangle', gain: 0.07 });
       tone(c, { freq: 1318.5, start: 0.11, dur: 0.16, type: 'triangle', gain: 0.07 });
       tone(c, { freq: 1760, start: 0.24, dur: 0.34, type: 'sine', gain: 0.07 });
+      break;
+    case 'thunder':
+      // A crack, then a low rumble that rolls away.
+      noise(c, { dur: 0.09, freq: 2400, gain: 0.2 });
+      for (let i = 0; i < 6; i++) noise(c, { start: 0.08 + i * 0.11, dur: 0.22, freq: 190 - i * 18, gain: 0.2 - i * 0.025 });
+      tone(c, { freq: 70, start: 0.05, dur: 0.8, type: 'sine', gain: 0.1, slide: 38 });
+      break;
+    case 'ghost':
+      // A wavering "oooh" sliding up and back down.
+      tone(c, { freq: 310, dur: 0.45, type: 'sine', gain: 0.07, slide: 620 });
+      tone(c, { freq: 620, start: 0.42, dur: 0.5, type: 'sine', gain: 0.06, slide: 260 });
+      tone(c, { freq: 316, dur: 0.45, type: 'triangle', gain: 0.03, slide: 632 });
+      break;
+    case 'bell':
+      // A church bell tolling: a struck tone with a few detuned partials.
+      for (let i = 0; i < 3; i++) {
+        tone(c, { freq: 196, start: i * 0.55, dur: 1.1, type: 'sine', gain: 0.1 });
+        tone(c, { freq: 392.6, start: i * 0.55, dur: 0.8, type: 'sine', gain: 0.05 });
+        tone(c, { freq: 587, start: i * 0.55, dur: 0.5, type: 'triangle', gain: 0.03 });
+      }
       break;
     case 'jackpot':
       for (let r = 0; r < 3; r++) {

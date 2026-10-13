@@ -35,7 +35,7 @@ export default function HowChipsWorkPage() {
     setError(null);
     const [c, g, t] = await Promise.all([
       supabase.from('economy_config').select('*').maybeSingle(),
-      supabase.from('games').select('key, name').order('sort_order'),
+      supabase.from('games').select('*').order('sort_order'),
       supabase.from('stake_tiers').select('*').order('tier_rank'),
     ]);
     const err = c.error ?? g.error ?? t.error;

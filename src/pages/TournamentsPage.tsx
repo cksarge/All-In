@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { QuickStart } from '@/components/onboarding/QuickStart';
+import { PrivateEvents } from '@/components/tournaments/PrivateEvents';
 import { TournamentRules } from '@/components/tournaments/TournamentRules';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
@@ -407,6 +408,8 @@ export default function TournamentsPage() {
           </p>
         )}
       </section>
+
+      <PrivateEvents sizes={data.config.sng.sizes} variants={variants} inPoker={inPoker} onChanged={() => void load()} />
 
       <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section aria-labelledby="live-h" className="surface p-5">

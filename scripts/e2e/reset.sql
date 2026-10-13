@@ -32,3 +32,6 @@ delete from public.player_notes;
 delete from public.dm_reads;
 update public.player_activity set game_key = null, game_at = null, watchable = true;
 delete from public.game_tables where is_private;
+-- The seasonal game is "this month's" whenever the suites run.
+update public.games set season = to_char(now() at time zone 'utc', 'YYYY-MM') where season is not null;
+delete from public.player_missions where period = 'season';

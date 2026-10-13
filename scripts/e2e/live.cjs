@@ -56,7 +56,7 @@ async function login(browser, email, vp) {
   await ann.screenshot({ path: `${SHOTS}/l-lounge.png`, fullPage: true });
   await ann.getByRole('link', { name: 'Collect 3 rewards' }).click();
   await ann.waitForURL('**/missions');
-  await ann.getByRole('heading', { name: 'Missions' }).waitFor();
+  await ann.getByRole('heading', { name: 'Missions', exact: true }).waitFor();
   const season = await ann.locator('#season-h').waitFor({ timeout: 3000 }).then(() => true, () => false);
   await ann.getByRole('button', { name: 'Collect 3 rewards' }).click();
   await ann.getByText('Mission rewards collected').waitFor();
@@ -119,7 +119,7 @@ async function login(browser, email, vp) {
   await ben.waitForTimeout(600);
   ok(Number((await q(`select count(*) as n from public.notifications where user_id = $1 and read_at is null`, [benId])).n) === 0, 'mark all read');
   await ben.goto(`${BASE}/missions`);
-  await ben.getByRole('heading', { name: 'Missions' }).waitFor();
+  await ben.getByRole('heading', { name: 'Missions', exact: true }).waitFor();
   ok(await fits(ben), 'phone: the missions page fits 390px');
   await ben.screenshot({ path: `${SHOTS}/l-missions-phone.png`, fullPage: true });
   // The bell on a wide screen

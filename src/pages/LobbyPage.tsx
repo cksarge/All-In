@@ -12,7 +12,7 @@ import { cn } from '@/components/ui/cn';
 import { useLobbyTables, type LobbyTable } from '@/hooks/useLobby';
 import { friendlyError } from '@/lib/errors';
 import { formatChips } from '@/lib/format';
-import { CATEGORIES, gameHref, gameMode } from '@/lib/games';
+import { CATEGORIES, gameHref, gameMode, inSeason } from '@/lib/games';
 import { playSound } from '@/lib/sound';
 import { isPokerGame, stackRangeLabel, stakesLabel } from '@/lib/poker';
 import { supabase } from '@/lib/supabase';
@@ -43,13 +43,13 @@ export default function LobbyPage() {
   useEffect(() => {
     void (async () => {
       const [g, t] = await Promise.all([
-        supabase.from('games').select('key, name, category, tagline, multiplayer, max_seats, sort_order, released').order('sort_order'),
+        supabase.from('games').select('*').order('sort_order'),
         supabase.from('stake_tiers').select('*').order('tier_rank'),
       ]);
       const err = g.error ?? t.error;
       if (err) setLoadError(friendlyError(err));
       else {
-        setGames(g.data as GameRow[]);
+        setGames((g.data as GameRow[]).filter(inSeason));
         setTiers(t.data as StakeTier[]);
       }
     })();
