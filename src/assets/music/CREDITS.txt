@@ -1,20 +1,15 @@
-"Hard Boiled" Kevin MacLeod (incompetech.com)
-Licensed under Creative Commons: By Attribution 4.0 License
+"Bossa Antigua", "Fearless First", "Hard Boiled",
+"Lobby Time", "Smooth Lovin", "Whiskey on the Mississippi"
+Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0
 http://creativecommons.org/licenses/by/4.0/
 
-"Bossa Antigua" Kevin MacLeod (incompetech.com)
-Licensed under Creative Commons: By Attribution 4.0 License
-http://creativecommons.org/licenses/by/4.0/
-
-"Smooth Lovin" Kevin MacLeod (incompetech.com)
-Licensed under Creative Commons: By Attribution 4.0 License
-http://creativecommons.org/licenses/by/4.0/
-
-"Fearless First" Kevin MacLeod (incompetech.com)
-Licensed under Creative Commons: By Attribution 4.0 License
-http://creativecommons.org/licenses/by/4.0/
-
-"Big Band Swingin"
-"Mellow Mind"
+"Big Band Swingin", "Mellow Mind"
 by Eric Matyas
 www.soundimage.org
+
+"Dixieland Sunny Cafe Bright Trad Jazz",
+"Big Band Rainy Night Slow Swing Ballad"
+Alex Morgan (freemusicarchive.org)
+Licensed under Creative Commons: By Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
