@@ -96,7 +96,7 @@ function Counter({ info, call }: { info: SoloInfo<Config>; call: ReturnType<type
       controls={
         <>
           <BetStepper label="Card price" bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy || scratching} tiers={info.tiers} />
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex items-center gap-2">
             {scratching && (
               <Button variant="outline" onClick={() => reveal(Array(9).fill(true))}>
                 Scratch all

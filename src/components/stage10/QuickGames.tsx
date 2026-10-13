@@ -362,7 +362,8 @@ function AndarBahar({ info, call }: { info: SoloInfo<{ commission_pct: number }>
     return (
       <div className="flex items-center gap-2">
         <p className={cn('w-14 shrink-0 text-right text-xs font-semibold uppercase tracking-wider', after?.winner === k ? 'text-gold-200' : 'text-cream/75')}>{name}</p>
-        <div className="flex min-h-[3.7rem] flex-1 flex-wrap items-center gap-0.5 overflow-hidden">
+        {/* No clipping here: the winning card is lifted and glows, and that must not be cut off. */}
+        <div className="flex min-h-[3.7rem] flex-1 flex-wrap items-center gap-1 py-1">
           {cards.slice(-9).map((c, i, list) => (
             <PlayingCard key={`${result?.round_id}-${k}-${c}`} card={c} size="sm" index={0} highlight={finished && result?.winner === k && i === list.length - 1} />
           ))}
@@ -397,10 +398,10 @@ function AndarBahar({ info, call }: { info: SoloInfo<{ commission_pct: number }>
         </>
       }
     >
-      <div className="mx-auto flex max-w-xl flex-col gap-2">
+      <div className="mx-auto flex max-w-xl flex-col gap-1 pt-2">
         <div className="flex items-center gap-2">
           <p className="w-14 shrink-0 text-right text-xs font-semibold uppercase tracking-wider text-gold-300">Joker</p>
-          <div className="min-h-[3.7rem]">{result && <PlayingCard key={`${result.round_id}-j`} card={result.joker} size="sm" index={0} highlight />}</div>
+          <div className="min-h-[3.7rem] py-1">{result && <PlayingCard key={`${result.round_id}-j`} card={result.joker} size="sm" index={0} highlight />}</div>
         </div>
         {row('andar', 'Andar')}
         {row('bahar', 'Bahar')}

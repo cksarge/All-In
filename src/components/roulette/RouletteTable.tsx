@@ -396,7 +396,7 @@ export function RouletteTable({ tableId }: { tableId: string }) {
               <div className="text-sm text-cream/85">
                 Your bets: <ChipAmount value={myTotal} className="font-bold text-ivory" iconClassName="h-4 w-4" />
               </div>
-              <div className="ml-auto flex flex-wrap gap-2">
+              <div className="ml-auto flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="ghost" disabled={!canBet || myBets.length === 0} onClick={() => void run('undo', () => call('rl_undo_bet', { p_all: false }))}>
                   Undo
                 </Button>

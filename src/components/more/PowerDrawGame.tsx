@@ -148,7 +148,7 @@ function Ticket({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeo
       controls={
         <>
           <BetStepper label="Ticket price" bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy} tiers={info.tiers} />
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button size="sm" variant="ghost" disabled={busy} onClick={quickPick}>
               Quick pick
             </Button>

@@ -76,7 +76,7 @@ export function SoloShell({
         </Button>
         <h1 className="font-display text-xl font-bold text-ivory sm:text-2xl">{info.name}</h1>
         {tier && <TierBadge tier={tier} />}
-        <div className="ml-auto flex gap-1">
+        <div className="ml-auto flex items-center gap-1">
           <Button size="sm" variant="ghost" onClick={() => setRulesOpen(true)}>
             Rules
           </Button>
@@ -323,7 +323,7 @@ export function SpotControls({
       <div className="text-sm text-cream/85">
         Bet <ChipAmount value={s.total} className="font-bold text-ivory" iconClassName="h-4 w-4" />
       </div>
-      <div className="ml-auto flex flex-wrap gap-2">
+      <div className="ml-auto flex flex-wrap items-center gap-2">
         <Button size="sm" variant="ghost" disabled={busy || s.total === 0} onClick={s.clear}>
           Clear
         </Button>

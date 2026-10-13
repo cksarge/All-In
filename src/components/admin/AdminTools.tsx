@@ -490,7 +490,7 @@ function AppealRow({ a, onOpen, onDone }: { a: Appeal; onOpen: (userId: string) 
               and sets reputation to
               <input value={rep} onChange={(e) => setRep(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" placeholder="as is" aria-label="Reputation to set when accepting" className={cn(input, 'w-20 py-1')} />
             </label>
-            <span className="ml-auto flex gap-2">
+            <span className="ml-auto flex items-center gap-2">
               <Button size="sm" variant="felt" loading={busy} onClick={() => void answer(true)}>
                 Accept
               </Button>

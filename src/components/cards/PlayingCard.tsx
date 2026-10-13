@@ -13,6 +13,9 @@ const sizes = {
 
 export type CardSize = keyof typeof sizes;
 
+/** The big suit in the middle of a card, sized so it clears the two corners on every size of card. */
+const PIP = { xs: 'text-[1em]', sm: 'text-[1.3em]', md: 'text-[1.6em]', lg: 'text-[1.9em]' } as const;
+
 /** The back of a card, in the design the player has equipped (`back` overrides it, for previews). */
 export function CardBack({ className, back }: { className?: string; back?: string }) {
   const equipped = useProgress((s) => s.me?.loadout.card_back);
@@ -95,17 +98,20 @@ export function PlayingCard({
             </div>
           )}
           {faceUp && !joker && (
-            <div className={cn('flex h-full flex-col justify-between p-[0.28em] font-bold leading-none', red ? 'text-ruby-600' : 'text-ink-900')}>
-              <span className="flex flex-col items-start">
-                <span>{cardRank(card)}</span>
-                <span className="text-[0.85em]">{cardSuit(card)}</span>
+            // Each piece is pinned to its own place, so nothing can be pushed off the card at any size:
+            // the rank over its suit in two opposite corners (the lower one upside down), and one big suit
+            // in the middle. The corners are the same width whatever the rank, so they line up from card to card.
+            <div className={cn('absolute inset-0 overflow-hidden rounded-[inherit] font-bold leading-none', red ? 'text-ruby-600' : 'text-ink-900')}>
+              <span className="absolute left-[0.22em] top-[0.26em] flex w-[1.25em] flex-col items-center gap-[0.06em]">
+                <span className="tracking-[-0.06em]">{cardRank(card)}</span>
+                <span className="text-[0.8em] leading-none">{cardSuit(card)}</span>
               </span>
-              <span className="self-center text-[1.9em] leading-none" aria-hidden="true">
+              <span className={cn('absolute inset-0 flex items-center justify-center leading-none', PIP[size])} aria-hidden="true">
                 {cardSuit(card)}
               </span>
-              <span className="flex rotate-180 flex-col items-start">
-                <span>{cardRank(card)}</span>
-                <span className="text-[0.85em]">{cardSuit(card)}</span>
+              <span className="absolute bottom-[0.26em] right-[0.22em] flex w-[1.25em] rotate-180 flex-col items-center gap-[0.06em]" aria-hidden="true">
+                <span className="tracking-[-0.06em]">{cardRank(card)}</span>
+                <span className="text-[0.8em] leading-none">{cardSuit(card)}</span>
               </span>
             </div>
           )}

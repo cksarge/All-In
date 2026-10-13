@@ -346,7 +346,7 @@ export function CrapsTable({ tableId }: { tableId: string }) {
                       won <ChipAmount value={b.payout} iconClassName="h-3 w-3" /> so far
                     </span>
                   )}
-                  <span className="ml-auto flex gap-1.5">
+                  <span className="ml-auto flex items-center gap-1.5">
                     {canOdds && chip && (
                       <Button size="sm" variant="felt" onClick={() => void run(`odds-${b.id}`, () => call('cr_add_odds', { p_bet: b.id, p_amount: Math.min(chip, b.amount * state.rules.max_odds_multiple - b.odds) }), 'chip')}>
                         + Odds

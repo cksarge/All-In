@@ -158,7 +158,7 @@ function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
             <p className="text-sm text-cream/85">
               Ante <ChipAmount value={round.ante} className="font-bold text-ivory" iconClassName="h-4 w-4" />
             </p>
-            <div className="ml-auto flex flex-wrap gap-2">
+            <div className="ml-auto flex flex-wrap items-center gap-2">
               {ACTIONS[round.stage].map((a) => (
                 <Button key={a.key} variant={a.primary ? 'gold' : 'outline'} disabled={busy} className={a.primary ? 'min-w-28' : undefined} onClick={() => void act(a.key, a.mult)}>
                   {a.label}

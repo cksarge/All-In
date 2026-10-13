@@ -825,6 +825,10 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
   `layout` prop: `layout` re-measures on every render (the table re-renders twice a second), so whenever anything
   else on the page shifted (the betting controls appearing on your turn, a banner) the button came loose from its
   seat and glided back. Don't put `layout` on anything positioned on the felt.
+- **Playing cards** (`PlayingCard`): the rank and suit in the two corners and the big suit in the middle are each
+  pinned in place (absolute, inside an `overflow-hidden` face), so nothing can spill off a card at any size; the
+  middle suit has a size per card size (`PIP`). A row that shows a highlighted card (it lifts and glows) must not
+  clip: no `overflow-hidden` on it. Rows of buttons in a game's controls use `items-center` so their text lines up.
 - Table pages share `TableHeader`: a single "← Leave table" / "← Lobby" button that leaves the seat, plus
   Rules, History, Sit out, an `extra` slot and an optional `stakes` label.
 - Stage 8 polish: `QuickStart` (first-visit guide per game, text in `src/lib/quickstart.ts`, mounted once in

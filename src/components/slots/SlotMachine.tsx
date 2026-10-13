@@ -300,7 +300,7 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
             Seasonal · {seasonName}
           </span>
         )}
-        <div className="ml-auto flex gap-1">
+        <div className="ml-auto flex items-center gap-1">
           <Button size="sm" variant="ghost" onClick={() => setRulesOpen(true)}>
             Rules
           </Button>

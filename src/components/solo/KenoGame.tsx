@@ -119,7 +119,7 @@ function Board({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
       controls={
         <>
           <BetStepper bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy} tiers={info.tiers} />
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button size="sm" variant="ghost" disabled={busy} onClick={quickPick}>
               Quick pick
             </Button>

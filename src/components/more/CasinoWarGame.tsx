@@ -138,7 +138,7 @@ function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
             <p className="text-sm text-cream/85">
               War costs another <ChipAmount value={round.ante} className="font-bold text-ivory" iconClassName="h-4 w-4" />
             </p>
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex items-center gap-2">
               <Button variant="outline" disabled={busy} onClick={() => void act(false)}>
                 Surrender
               </Button>

@@ -414,7 +414,7 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
                   ×2
                 </Button>
               </div>
-              <div className="ml-auto flex gap-2">
+              <div className="ml-auto flex items-center gap-2">
                 {myBetHand && draft === myBetHand.bet ? (
                   <Button size="sm" variant="felt" onClick={() => void run('deal', () => t.dealNow(), 'card')} loading={busy === 'deal'}>
                     Deal now
