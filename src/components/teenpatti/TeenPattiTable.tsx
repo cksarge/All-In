@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTurnAlert } from '@/hooks/useTurnAlert';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CardFan } from '@/components/cards/PlayingCard';
@@ -184,6 +185,7 @@ export function TeenPattiTable({ tableId }: { tableId: string }) {
   useEffect(() => {
     if (myTurnKey) playSound('turn');
   }, [myTurnKey]);
+  useTurnAlert(myTurnKey);
   useEffect(() => {
     if (myTurnKey && secondsLeft !== null && secondsLeft > 0 && secondsLeft <= 5) playSound('tick');
   }, [myTurnKey, secondsLeft]);
@@ -429,25 +431,25 @@ export function TeenPattiTable({ tableId }: { tableId: string }) {
             <div className="flex flex-1 flex-wrap items-center justify-end gap-2" role="group" aria-label="Your move">
               {options.short && <p className="mr-auto text-xs text-cream/75">You can’t cover a bet: show your cards with what you have left, or pack.</p>}
               {me?.can_see && (
-                <Button size="sm" variant="outline" loading={busy === 'see'} onClick={() => act('see')}>
+                <Button size="sm" variant="outline" loading={busy === 'see'} onClick={() => act('see')} hotkey="s">
                   See cards
                 </Button>
               )}
-              <Button size="sm" variant="ruby" loading={busy === 'pack'} disabled={busy !== null} onClick={() => act('pack')}>
+              <Button size="sm" variant="ruby" loading={busy === 'pack'} disabled={busy !== null} onClick={() => act('pack')} hotkey="p">
                 Pack
               </Button>
               {options.can_show && (
-                <Button size="sm" variant="outline" loading={busy === 'show'} disabled={busy !== null} onClick={() => act('show')}>
+                <Button size="sm" variant="outline" loading={busy === 'show'} disabled={busy !== null} onClick={() => act('show')} hotkey="w">
                   Show · {formatChips(options.show_cost)}
                 </Button>
               )}
               {options.can_bet && (
-                <Button size="sm" variant="felt" loading={busy === 'bet'} disabled={busy !== null} onClick={() => act('bet')}>
+                <Button size="sm" variant="felt" loading={busy === 'bet'} disabled={busy !== null} onClick={() => act('bet')} hotkey="c">
                   {me?.seen ? 'Chaal' : 'Blind'} · {formatChips(options.bet)}
                 </Button>
               )}
               {options.can_raise && options.raise !== null && (
-                <Button size="sm" loading={busy === 'raise'} disabled={busy !== null} onClick={() => act('raise')}>
+                <Button size="sm" loading={busy === 'raise'} disabled={busy !== null} onClick={() => act('raise')} hotkey="r">
                   Raise · {formatChips(options.raise)}
                 </Button>
               )}
@@ -471,7 +473,7 @@ export function TeenPattiTable({ tableId }: { tableId: string }) {
               <p className="text-sm text-cream/80">{waitingLine(state, viewHand, userId)}</p>
               {/* Not your turn: you may still look at your cards. */}
               {me?.can_see && viewHand?.phase === 'betting' && (
-                <Button size="sm" variant="outline" loading={busy === 'see'} onClick={() => act('see')}>
+                <Button size="sm" variant="outline" loading={busy === 'see'} onClick={() => act('see')} hotkey="s">
                   See cards
                 </Button>
               )}

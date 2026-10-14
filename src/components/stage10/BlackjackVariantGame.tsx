@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { BetSpot, Outcome, SoloGate, SoloShell, SpotControls, useSpotBets } from '@/components/solo/SoloShell';
+import { ACTION_KEYS } from '@/lib/hotkeys';
 import { Button } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { cn } from '@/components/ui/cn';
@@ -255,7 +256,7 @@ function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
         live ? (
           <div className="flex w-full flex-wrap items-center justify-end gap-2">
             {live.actions.map((a) => (
-              <Button key={a.key} variant={a.key === 'hit' || a.key === 'stand' ? 'gold' : 'outline'} disabled={busy} onClick={() => void act(a.key, a.cost)}>
+              <Button key={a.key} variant={a.key === 'hit' || a.key === 'stand' ? 'gold' : 'outline'} disabled={busy} onClick={() => void act(a.key, a.cost)} hotkey={ACTION_KEYS[a.key]} hotkeyLabel={label(a.key)}>
                 {label(a.key)}{' '}
                 {a.cost > 0 ? (
                   <ChipAmount value={a.cost} className="ml-1" iconClassName="h-3.5 w-3.5" />

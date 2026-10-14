@@ -127,10 +127,10 @@ function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
               Play costs <ChipAmount value={round.ante} className="font-bold text-ivory" iconClassName="h-4 w-4" />
             </p>
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" disabled={busy} onClick={() => void act(false)}>
+              <Button variant="outline" disabled={busy} onClick={() => void act(false)} hotkey="f">
                 Fold
               </Button>
-              <Button className="min-w-28" loading={busy} onClick={() => void act(true)}>
+              <Button className="min-w-28" loading={busy} onClick={() => void act(true)} hotkey="space">
                 Play
               </Button>
             </div>

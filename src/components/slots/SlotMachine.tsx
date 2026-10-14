@@ -1,4 +1,5 @@
 import { GameStatsModal } from '@/components/table/GameStatsModal';
+import { KeysButton } from '@/components/hotkeys/HotkeyHost';
 import { useRemembered } from '@/hooks/useRemembered';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -310,6 +311,7 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
           <Button size="sm" variant="ghost" onClick={() => setStatsOpen(true)}>
             Stats
           </Button>
+          <KeysButton />
         </div>
         <GameStatsModal open={statsOpen} onClose={() => setStatsOpen(false)} game={gameKey} name={info.name} />
       </div>
@@ -399,6 +401,7 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
               size="sm"
               variant="outline"
               aria-label="Lower bet"
+              hotkey="-"
               disabled={busy || betIndex === 0}
               onClick={() => {
                 setBetIndex((i) => Math.max(0, i - 1));
@@ -415,6 +418,7 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
               size="sm"
               variant="outline"
               aria-label="Raise bet"
+              hotkey="+"
               disabled={busy || !canRaise}
               onClick={() => {
                 setBetIndex((i) => i + 1);
@@ -425,11 +429,11 @@ export function SlotMachine({ gameKey }: { gameKey: string }) {
             </Button>
           </div>
           {phase === 'playing' ? (
-            <Button size="lg" variant="outline" className="min-w-36" onClick={onSkip}>
+            <Button size="lg" variant="outline" className="min-w-36" onClick={onSkip} hotkey="space">
               Skip
             </Button>
           ) : (
-            <Button size="lg" className="min-w-36" loading={phase === 'waiting'} disabled={balance < bet} onClick={() => void spin()}>
+            <Button size="lg" className="min-w-36" loading={phase === 'waiting'} disabled={balance < bet} onClick={() => void spin()} hotkey="space">
               Spin
             </Button>
           )}

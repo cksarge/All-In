@@ -210,11 +210,11 @@ function Room({ info }: { info: SoloInfo<Config> }) {
             />
           </label>
           {canCollect ? (
-            <Button size="lg" variant="felt" className="ml-auto min-w-44" loading={busy} onClick={() => void collect()}>
+            <Button size="lg" variant="felt" className="ml-auto min-w-44" loading={busy} onClick={() => void collect()} hotkey="space" hotkeyLabel="Collect">
               Collect {Math.floor(mine!.amount * mult).toLocaleString('en-US')}
             </Button>
           ) : (
-            <Button size="lg" className="ml-auto min-w-44" loading={busy} disabled={round.phase !== 'betting' || Boolean(mine) || balance < bet} onClick={() => void place()}>
+            <Button size="lg" className="ml-auto min-w-44" loading={busy} disabled={round.phase !== 'betting' || Boolean(mine) || balance < bet} onClick={() => void place()} hotkey="space" hotkeyLabel="Bet">
               {round.phase === 'betting' ? (mine ? 'Bet placed' : 'Bet') : 'Next round soon'}
             </Button>
           )}

@@ -137,7 +137,7 @@ function Field({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
             <p className="text-sm text-cream/85">
               Next tile: <ChipAmount value={chipsFor(round.bet, round.next_units)} className="font-bold text-ivory" iconClassName="h-4 w-4" />
             </p>
-            <Button size="lg" className="ml-auto min-w-44" loading={busy} disabled={round.picked.length === 0} onClick={() => void collect()}>
+            <Button size="lg" className="ml-auto min-w-44" loading={busy} disabled={round.picked.length === 0} onClick={() => void collect()} hotkey="c" hotkeyLabel="Collect">
               {round.picked.length === 0 ? 'Collect' : `Collect ${chipsFor(round.bet, round.units).toLocaleString('en-US')}`}
             </Button>
           </>
@@ -164,7 +164,7 @@ function Field({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
                 </button>
               ))}
             </div>
-            <Button size="lg" className="ml-auto min-w-32" loading={busy} disabled={balance < bet} onClick={() => void start()}>
+            <Button size="lg" className="ml-auto min-w-32" loading={busy} disabled={balance < bet} onClick={() => void start()} hotkey="space">
               Start
             </Button>
           </>

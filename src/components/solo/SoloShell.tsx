@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { KeysButton } from '@/components/hotkeys/HotkeyHost';
+import { BetPresets, presetSummary } from '@/components/table/BetPresets';
 import { GameHistoryModal } from '@/components/table/GameHistoryModal';
 import { GameStatsModal } from '@/components/table/GameStatsModal';
 import { chipColorFor, ChipStack } from '@/components/table/ChipStack';
@@ -13,6 +15,7 @@ import { ChatBox } from '@/components/chat/ChatBox';
 import { cn } from '@/components/ui/cn';
 import { useChat } from '@/hooks/useChat';
 import { useRemembered } from '@/hooks/useRemembered';
+import { useHotkeys } from '@/lib/hotkeys';
 import { chipDenominations } from '@/lib/blackjack';
 import { formatChips, formatChipsCompact } from '@/lib/format';
 import { historyLine, type SoloInfo, type SoloTier, type Spots } from '@/lib/solo';
@@ -86,6 +89,7 @@ export function SoloShell({
           <Button size="sm" variant="ghost" onClick={() => setStatsOpen(true)}>
             Stats
           </Button>
+          <KeysButton />
         </div>
       </div>
       <GameStatsModal open={statsOpen} onClose={() => setStatsOpen(false)} game={info.game} name={info.name} />
@@ -166,9 +170,22 @@ export function TierPicker({
 /** Chip values for a stake level. */
 export function ChipRack({ tier, value, onChange, disabled }: { tier: SoloTier; value: number; onChange: (v: number) => void; disabled?: boolean }) {
   const balance = useWallet((s) => s.status?.balance ?? 0);
+  const denoms = chipDenominations(tier.min_bet, tier.max_bet);
+  // 1, 2, 3… pick a chip.
+  useHotkeys(
+    denoms.map((d, i) => ({
+      key: String(i + 1),
+      label: `${formatChips(d)} chip`,
+      run: () => {
+        onChange(d);
+        playSound('chip');
+      },
+      enabled: () => !disabled && d <= balance,
+    })),
+  );
   return (
     <div className="flex gap-1.5" role="radiogroup" aria-label="Chip value">
-      {chipDenominations(tier.min_bet, tier.max_bet).map((d) => (
+      {denoms.map((d) => (
         <button
           key={d}
           type="button"
@@ -251,6 +268,25 @@ export function useSpotBets(tiers: SoloTier[], game?: string) {
     l === null || (typeof l === 'object' && Object.values(l).every((v) => typeof v === 'number' && v > 0 && v <= tier.max_bet)),
   );
   const total = Object.values(bets).reduce((n, v) => n + v, 0);
+  // Up to three favourite layouts per stake level, kept on this device.
+  const [allPresets, setAllPresets] = useRemembered<Partial<Record<TierKey, (Spots | null)[]>>>(mem && `${mem}:presets`, {}, (p) => typeof p === 'object' && p !== null && !Array.isArray(p));
+  const presets = [0, 1, 2].map((i) => {
+    const p = allPresets[tierKey]?.[i];
+    return p && typeof p === 'object' && Object.values(p).every((v) => typeof v === 'number' && v > 0 && v <= tier.max_bet) && Object.keys(p).length > 0 ? p : null;
+  });
+  const setPreset = (i: number, value: Spots | null) => setAllPresets((all) => ({ ...all, [tierKey]: [0, 1, 2].map((k) => (k === i ? value : (all[tierKey]?.[k] ?? null))) }));
+  const savePreset = (i: number) => {
+    if (total === 0) return;
+    setPreset(i, bets);
+    toast.success(`Saved as preset ${i + 1}`);
+  };
+  const loadPreset = (i: number) => {
+    const p = presets[i];
+    if (!p) return;
+    if (Object.values(p).reduce((n, v) => n + v, 0) > balance) return toast.info('Not enough chips for that preset');
+    setBets(p);
+    playSound('chip');
+  };
 
   const add = (spot: string) => {
     const next = (bets[spot] ?? 0) + chip;
@@ -276,7 +312,7 @@ export function useSpotBets(tiers: SoloTier[], game?: string) {
     setBets(last);
     playSound('chip');
   };
-  return { tier, tierKey, changeTier, chip, setChip, bets, setBets, add, clear, total, last, remember, rebet, balance };
+  return { tier, tierKey, changeTier, chip, setChip, bets, setBets, add, clear, total, last, remember, rebet, balance, presets, savePreset, loadPreset, clearPreset: (i: number) => setPreset(i, null), canPreset: Boolean(mem) };
 }
 
 /** Clear / Rebet / the main action, shared by the games with betting spots. */
@@ -324,12 +360,22 @@ export function SpotControls({
         Bet <ChipAmount value={s.total} className="font-bold text-ivory" iconClassName="h-4 w-4" />
       </div>
       <div className="ml-auto flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="ghost" disabled={busy || s.total === 0} onClick={s.clear}>
+        <Button size="sm" variant="ghost" disabled={busy || s.total === 0} onClick={s.clear} hotkey="c">
           Clear
         </Button>
-        <Button size="sm" variant="ghost" disabled={busy || !s.last || s.total > 0} onClick={s.rebet}>
+        <Button size="sm" variant="ghost" disabled={busy || !s.last || s.total > 0} onClick={s.rebet} hotkey="r">
           Rebet
         </Button>
+        {s.canPreset && (
+          <BetPresets
+            slots={s.presets.map((p) => (p ? { summary: presetSummary(Object.values(p)) } : null))}
+            canSave={s.total > 0 && !busy}
+            disabled={busy || autoLeft > 0}
+            onSave={s.savePreset}
+            onLoad={s.loadPreset}
+            onClear={s.clearPreset}
+          />
+        )}
         {auto &&
           (autoLeft > 0 ? (
             <Button size="sm" variant="outline" onClick={() => setAutoLeft(0)}>
@@ -345,7 +391,7 @@ export function SpotControls({
               ))}
             </span>
           ))}
-        <Button className="min-w-28" disabled={s.total === 0 || autoLeft > 0} loading={busy} onClick={onAction}>
+        <Button className="min-w-28" disabled={s.total === 0 || autoLeft > 0} loading={busy} onClick={onAction} hotkey="space">
           {action}
         </Button>
       </div>
@@ -386,14 +432,14 @@ export function BetStepper({ bets, index, onChange, disabled, tiers, label = 'Be
   };
   return (
     <div className="flex items-center gap-2" role="group" aria-label={label}>
-      <Button size="sm" variant="outline" aria-label={`Lower ${label.toLowerCase()}`} disabled={disabled || index === 0} onClick={() => step(-1)}>
+      <Button size="sm" variant="outline" aria-label={`Lower ${label.toLowerCase()}`} disabled={disabled || index === 0} onClick={() => step(-1)} hotkey="-">
         −
       </Button>
       <div className="min-w-24 text-center">
         <p className="text-[0.65rem] uppercase tracking-wider text-muted">{label}</p>
         <ChipAmount value={bets[index]} className="font-bold text-ivory" iconClassName="h-4 w-4" />
       </div>
-      <Button size="sm" variant="outline" aria-label={`Raise ${label.toLowerCase()}`} disabled={disabled || !canRaise} onClick={() => step(1)}>
+      <Button size="sm" variant="outline" aria-label={`Raise ${label.toLowerCase()}`} disabled={disabled || !canRaise} onClick={() => step(1)} hotkey="+">
         +
       </Button>
     </div>

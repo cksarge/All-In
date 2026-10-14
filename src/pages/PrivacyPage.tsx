@@ -108,8 +108,8 @@ const sections: LegalSection[] = [
         </p>
         <ul>
           <li>your sign-in session, so you stay logged in;</li>
-          <li>your settings (sound, motion, guides you have seen), your favourite games and the last games you opened;</li>
-          <li>small conveniences such as your last bet at a table;</li>
+          <li>your settings (sound, motion, keyboard shortcuts, turn alerts, guides you have seen), your favourite games and the last games you opened;</li>
+          <li>small conveniences such as your last bet at a table and the bet presets you save;</li>
           <li>your scores in the practice drills, which never leave your device.</li>
         </ul>
         <p>

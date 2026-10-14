@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { BetPresets, presetSummary, useStoredPresets } from '@/components/table/BetPresets';
+import { useTurnAlert } from '@/hooks/useTurnAlert';
+import { useHotkeys } from '@/lib/hotkeys';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChipBurst } from '@/components/economy/ChipBurst';
@@ -66,6 +69,25 @@ export function CrapsTable({ tableId }: { tableId: string }) {
   useEffect(() => {
     if (state && chip === null) setChip(state.table.min_bet);
   }, [state, chip]);
+
+  // Presets: favourite sets of bets for tables at these stakes.
+  const [presets, setPreset] = useStoredPresets<{ type: CrBetType; number: number | null; amount: number }>(state ? `craps:${state.table.min_bet}` : null);
+  // 1, 2, 3… pick a chip.
+  const chipKeys = state ? chipDenominations(state.table.min_bet, state.table.max_bet) : [];
+  useHotkeys(
+    chipKeys.map((d, i) => ({
+      key: String(i + 1),
+      label: `${d.toLocaleString('en-US')} chip`,
+      run: () => {
+        setChip(d);
+        playSound('chip');
+      },
+      enabled: () => Boolean(mySeat) && d <= balance,
+    })),
+  );
+  // The dice are yours and you are in another tab.
+  const myRoll = state && state.state.shooter_user === userId && state.state.phase === 'betting' ? `roll-${state.state.roll_no}` : null;
+  useTurnAlert(myRoll, 'Your roll', true);
 
   useEffect(() => {
     try {
@@ -172,6 +194,31 @@ export function CrapsTable({ tableId }: { tableId: string }) {
   const onBet = (spot: { type: CrBetType; number: number | null }) => {
     if (!chip) return;
     void run('bet', () => call('cr_place_bet', { p_type: spot.type, p_number: spot.number, p_amount: chip }), 'chip');
+  };
+
+  const savePreset = (i: number) => {
+    if (myBets.length === 0) return;
+    setPreset(i, myBets.map((b) => ({ type: b.bet_type, number: b.number, amount: b.amount })));
+    toast.success(`Saved as preset ${i + 1}`);
+  };
+  // Puts down every bet of the preset that can be made on this roll (a Pass bet cannot once a point is set).
+  const loadPreset = (i: number) => {
+    const p = presets[i];
+    if (!p || !mySeat) return;
+    const now = p.filter((b) => allowed(b) === null);
+    if (now.length === 0) return toast.info('None of those bets can be made right now', 'Line bets go down on the come-out roll, Come bets once a point is set.');
+    void run(
+      'preset',
+      async () => {
+        for (const b of now) {
+          const err = await call('cr_place_bet', { p_type: b.type, p_number: b.number, p_amount: b.amount });
+          if (err) return err;
+        }
+        return null;
+      },
+      'chip',
+    );
+    if (now.length < p.length) toast.info(`${p.length - now.length} of the bets could not be made on this roll`);
   };
 
   const leave = async () => {
@@ -291,7 +338,7 @@ export function CrapsTable({ tableId }: { tableId: string }) {
           </div>
 
           {iAmShooter && (
-            <Button size="lg" onClick={() => void run('roll', () => call('cr_roll'))} disabled={!canRoll} loading={busy === 'roll'}>
+            <Button size="lg" onClick={() => void run('roll', () => call('cr_roll'))} disabled={!canRoll} loading={busy === 'roll'} hotkey="space" hotkeyLabel="Roll the dice">
               🎲 {gapLeft > 0 ? 'Hold on…' : s.phase === 'idle' ? 'Bet to roll' : 'Roll the dice'}
             </Button>
           )}
@@ -402,6 +449,16 @@ export function CrapsTable({ tableId }: { tableId: string }) {
               <p className="text-xs text-muted">
                 {beginner ? 'Beginner mode: Pass, Don’t Pass, Field and Place 6/8 are highlighted.' : 'Tap a spot to bet the selected chip.'}
               </p>
+              <div className="ml-auto">
+                <BetPresets
+                  slots={presets.map((x) => (x ? { summary: presetSummary(x.map((b) => b.amount)) } : null))}
+                  canSave={myBets.length > 0}
+                  disabled={busy !== null}
+                  onSave={savePreset}
+                  onLoad={loadPreset}
+                  onClear={(i) => setPreset(i, null)}
+                />
+              </div>
             </>
           )}
         </div>

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { BetPresets, presetSummary, useStoredPresets } from '@/components/table/BetPresets';
+import { useHotkeys } from '@/lib/hotkeys';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChipBurst } from '@/components/economy/ChipBurst';
@@ -76,6 +78,22 @@ export function RouletteTable({ tableId }: { tableId: string }) {
   const animateLanding = round ? spunRounds.current.has(round.id) : false;
   const [landedRound, setLandedRound] = useState<string | null>(null);
   const shownStats = useRef<RlState['stats'] | null>(null);
+
+  // Presets: favourite layouts of bets for tables of this wheel and these stakes.
+  const [presets, setPreset] = useStoredPresets<{ type: string; selection: string; amount: number }>(state ? `roulette:${state.table.variant}:${state.table.min_bet}` : null);
+  // 1, 2, 3… pick a chip.
+  const chipKeys = state ? chipDenominations(state.table.min_bet, state.table.max_bet) : [];
+  useHotkeys(
+    chipKeys.map((d, i) => ({
+      key: String(i + 1),
+      label: `${d.toLocaleString('en-US')} chip`,
+      run: () => {
+        setChip(d);
+        playSound('chip');
+      },
+      enabled: () => Boolean(mySeat) && d <= balance,
+    })),
+  );
 
   // Default chip = table minimum.
   useEffect(() => {
@@ -166,6 +184,33 @@ export function RouletteTable({ tableId }: { tableId: string }) {
     }
     if (!chip) return;
     void run('bet', () => call('rl_place_bet', { p_type: z.type, p_selection: z.selection, p_amount: chip }), 'chip');
+  };
+
+  const savePreset = (i: number) => {
+    // One entry per spot, however many chips were put there one at a time.
+    const spots = new Map<string, { type: string; selection: string; amount: number }>();
+    for (const b of myBets) {
+      const k = `${b.bet_type}|${b.selection}`;
+      spots.set(k, { type: b.bet_type, selection: b.selection, amount: (spots.get(k)?.amount ?? 0) + b.amount });
+    }
+    if (spots.size === 0) return;
+    setPreset(i, [...spots.values()]);
+    toast.success(`Saved as preset ${i + 1}`);
+  };
+  const loadPreset = (i: number) => {
+    const p = presets[i];
+    if (!p || !canBet) return;
+    void run(
+      'preset',
+      async () => {
+        for (const b of p) {
+          const err = await call('rl_place_bet', { p_type: b.type, p_selection: b.selection, p_amount: b.amount });
+          if (err) return err;
+        }
+        return null;
+      },
+      'chip',
+    );
   };
 
   const leave = async () => {
@@ -397,15 +442,23 @@ export function RouletteTable({ tableId }: { tableId: string }) {
                 Your bets: <ChipAmount value={myTotal} className="font-bold text-ivory" iconClassName="h-4 w-4" />
               </div>
               <div className="ml-auto flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="ghost" disabled={!canBet || myBets.length === 0} onClick={() => void run('undo', () => call('rl_undo_bet', { p_all: false }))}>
+                <Button size="sm" variant="ghost" disabled={!canBet || myBets.length === 0} onClick={() => void run('undo', () => call('rl_undo_bet', { p_all: false }))} hotkey="u">
                   Undo
                 </Button>
-                <Button size="sm" variant="ghost" disabled={!canBet || myBets.length === 0} onClick={() => void run('clear', () => call('rl_undo_bet', { p_all: true }))}>
+                <Button size="sm" variant="ghost" disabled={!canBet || myBets.length === 0} onClick={() => void run('clear', () => call('rl_undo_bet', { p_all: true }))} hotkey="c">
                   Clear
                 </Button>
-                <Button size="sm" variant="felt" disabled={!canBet || myBets.length > 0} loading={busy === 'rebet'} onClick={() => void run('rebet', () => call('rl_rebet'), 'chip')}>
+                <Button size="sm" variant="felt" disabled={!canBet || myBets.length > 0} loading={busy === 'rebet'} onClick={() => void run('rebet', () => call('rl_rebet'), 'chip')} hotkey="r">
                   Rebet
                 </Button>
+                <BetPresets
+                  slots={presets.map((x) => (x ? { summary: presetSummary(x.map((b) => b.amount)) } : null))}
+                  canSave={myBets.length > 0}
+                  disabled={!canBet || busy !== null}
+                  onSave={savePreset}
+                  onLoad={loadPreset}
+                  onClear={(i) => setPreset(i, null)}
+                />
               </div>
             </>
           )}

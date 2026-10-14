@@ -4,6 +4,7 @@ import { BalanceCard } from '@/components/economy/BalanceCard';
 import { DailyBonusCard } from '@/components/economy/DailyBonusCard';
 import { RecentActivity } from '@/components/economy/RecentActivity';
 import { RefillCard } from '@/components/economy/RefillCard';
+import { FriendsStrip } from '@/components/lounge/FriendsStrip';
 import { BigWinTicker } from '@/components/lounge/BigWinTicker';
 import { MissionsCard } from '@/components/lounge/MissionsCard';
 import { GameGrid } from '@/components/lounge/GameGrid';
@@ -76,6 +77,7 @@ export default function LoungePage() {
       </header>
       <ReturnToTable />
       <BigWinTicker />
+      <FriendsStrip />
 
       {walletError && (
         <div className="surface mb-6">

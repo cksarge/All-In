@@ -179,7 +179,7 @@ function Board({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
             <Segmented label="Risk" options={RISKS} value={risk} onChange={setRisk} disabled={busy} />
             <Segmented label="Balls" options={BALL_COUNTS} value={count} onChange={setCount} />
           </div>
-          <Button size="lg" className="ml-auto min-w-32" disabled={balance < bet && !busy} onClick={() => void drop()}>
+          <Button size="lg" className="ml-auto min-w-32" disabled={balance < bet && !busy} onClick={() => void drop()} hotkey="space">
             {count > 1 ? `Drop ${count}` : 'Drop'}
           </Button>
         </>

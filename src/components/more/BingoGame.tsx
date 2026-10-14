@@ -206,7 +206,7 @@ function Hall({ info }: { info: SoloInfo<Config> }) {
               </button>
             ))}
           </div>
-          <Button size="lg" className="ml-auto min-w-40" loading={busy} disabled={!canTake || room <= 0} onClick={() => void takeCards()}>
+          <Button size="lg" className="ml-auto min-w-40" loading={busy} disabled={!canTake || room <= 0} onClick={() => void takeCards()} hotkey="space" hotkeyLabel="Take cards">
             {phase === 'calling' ? 'Round in play' : phase === 'done' && waitLeft > 0 ? `Next round in ${waitLeft}s` : `Take ${Math.min(count, Math.max(room, 1))} card${Math.min(count, room) === 1 ? '' : 's'}`}
           </Button>
         </>

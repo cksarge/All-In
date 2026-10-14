@@ -32,6 +32,12 @@ interface SettingsState {
   setTipsOn: (on: boolean) => void;
   markTipSeen: (key: string) => void;
   resetTips: () => void;
+  /** Keyboard shortcuts in the games. */
+  hotkeysOn: boolean;
+  setHotkeysOn: (on: boolean) => void;
+  /** A sound and a flashing tab title when it is your turn at a table you are not looking at. */
+  turnAlerts: boolean;
+  setTurnAlerts: (on: boolean) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -59,6 +65,10 @@ export const useSettings = create<SettingsState>()(
       setTipsOn: (tipsOn) => set({ tipsOn }),
       markTipSeen: (key) => set((s) => ({ tipsSeen: { ...s.tipsSeen, [key]: true } })),
       resetTips: () => set({ tipsOn: true, tipsSeen: {} }),
+      hotkeysOn: true,
+      setHotkeysOn: (hotkeysOn) => set({ hotkeysOn }),
+      turnAlerts: true,
+      setTurnAlerts: (turnAlerts) => set({ turnAlerts }),
     }),
     { name: 'allin-settings', version: 1 },
   ),

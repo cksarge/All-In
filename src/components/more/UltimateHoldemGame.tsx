@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { BetSpot, Outcome, SoloGate, SoloShell, SpotControls, useSpotBets } from '@/components/solo/SoloShell';
+import { ACTION_KEYS } from '@/lib/hotkeys';
 import { Button } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { HAND_NAMES, holdBalance, releaseBalance, settleBalance, sleep, useSoloGame, type SoloInfo } from '@/lib/solo';
@@ -160,7 +161,7 @@ function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
             </p>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               {ACTIONS[round.stage].map((a) => (
-                <Button key={a.key} variant={a.primary ? 'gold' : 'outline'} disabled={busy} className={a.primary ? 'min-w-28' : undefined} onClick={() => void act(a.key, a.mult)}>
+                <Button key={a.key} variant={a.primary ? 'gold' : 'outline'} disabled={busy} className={a.primary ? 'min-w-28' : undefined} onClick={() => void act(a.key, a.mult)} hotkey={ACTION_KEYS[a.key]}>
                   {a.label}
                 </Button>
               ))}

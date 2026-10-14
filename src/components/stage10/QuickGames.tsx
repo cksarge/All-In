@@ -110,17 +110,17 @@ function RedDog({ info, call }: { info: SoloInfo<{ pays: Record<string, number>;
       controls={
         live ? (
           <div className="flex w-full flex-wrap items-center justify-end gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => void act(false)}>
+            <Button variant="outline" disabled={busy} onClick={() => void act(false)} hotkey="s">
               Stand
             </Button>
-            <Button disabled={busy || balance < live.bet} onClick={() => void act(true)}>
+            <Button disabled={busy || balance < live.bet} onClick={() => void act(true)} hotkey="r">
               Raise <ChipAmount value={live.bet} className="ml-1.5" iconClassName="h-3.5 w-3.5" />
             </Button>
           </div>
         ) : (
           <>
             <BetStepper bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy} tiers={info.tiers} />
-            <Button size="lg" className="ml-auto min-w-36" loading={busy} disabled={balance < bet} onClick={() => void deal()}>
+            <Button size="lg" className="ml-auto min-w-36" loading={busy} disabled={balance < bet} onClick={() => void deal()} hotkey="space">
               Deal
             </Button>
           </>
@@ -234,20 +234,20 @@ function HiLo({ info, call }: { info: SoloInfo<{ edge_pct: number; max_units: nu
       controls={
         live ? (
           <div className="flex w-full flex-wrap items-center justify-end gap-2">
-            <Button variant="outline" disabled={busy || live.steps === 0} onClick={() => void run('hilo_collect', {}, 'coins')}>
+            <Button variant="outline" disabled={busy || live.steps === 0} onClick={() => void run('hilo_collect', {}, 'coins')} hotkey="c" hotkeyLabel="Collect">
               Collect <ChipAmount value={live.collect} className="ml-1.5" iconClassName="h-3.5 w-3.5" />
             </Button>
-            <Button disabled={busy || live.lo === null} onClick={() => void run('hilo_guess', { p_dir: 'lo' }, 'card')}>
+            <Button disabled={busy || live.lo === null} onClick={() => void run('hilo_guess', { p_dir: 'lo' }, 'card')} hotkey="l" hotkeyLabel="Lower">
               Lower {live.lo !== null && <span className="ml-1.5 text-xs opacity-80">{times(live.lo)}</span>}
             </Button>
-            <Button disabled={busy || live.hi === null} onClick={() => void run('hilo_guess', { p_dir: 'hi' }, 'card')}>
+            <Button disabled={busy || live.hi === null} onClick={() => void run('hilo_guess', { p_dir: 'hi' }, 'card')} hotkey="h" hotkeyLabel="Higher">
               Higher {live.hi !== null && <span className="ml-1.5 text-xs opacity-80">{times(live.hi)}</span>}
             </Button>
           </div>
         ) : (
           <>
             <BetStepper bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy} tiers={info.tiers} />
-            <Button size="lg" className="ml-auto min-w-36" loading={busy} disabled={balance < bet} onClick={start}>
+            <Button size="lg" className="ml-auto min-w-36" loading={busy} disabled={balance < bet} onClick={start} hotkey="space">
               Start
             </Button>
           </>

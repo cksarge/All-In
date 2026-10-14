@@ -1,4 +1,5 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { keyLabel, useHotkeys } from '@/lib/hotkeys';
 import { Link, type LinkProps } from 'react-router-dom';
 import { cn } from './cn';
 import { Spinner } from './Spinner';
@@ -34,16 +35,37 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
   block?: boolean;
   icon?: ReactNode;
+  /** A key that presses this button while it is on screen and enabled (see lib/hotkeys). */
+  hotkey?: string | null;
+  /** What the shortcut list calls it, when the button's own text will not do. */
+  hotkeyLabel?: string;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'gold', size = 'md', loading, block, icon, className, children, disabled, type = 'button', ...rest },
+  { variant = 'gold', size = 'md', loading, block, icon, className, children, disabled, type = 'button', hotkey, hotkeyLabel, title, ...rest },
   ref,
 ) {
+  const own = useRef<HTMLButtonElement | null>(null);
+  const usable = () => Boolean(own.current && !own.current.disabled && own.current.offsetParent !== null);
+  useHotkeys([
+    {
+      key: hotkey,
+      // Listed whenever the button is on screen, even while it cannot be pressed (Deal, before a bet).
+      label: () => (own.current && own.current.offsetParent !== null ? (hotkeyLabel ?? own.current?.getAttribute('aria-label') ?? own.current?.textContent ?? '') : ''),
+      run: () => own.current?.click(),
+      enabled: usable,
+    },
+  ]);
   return (
     <button
-      ref={ref}
+      ref={(el) => {
+        own.current = el;
+        if (typeof ref === 'function') ref(el);
+        else if (ref) ref.current = el;
+      }}
       type={type}
+      title={title ?? (hotkey ? `Shortcut: ${keyLabel(hotkey)}` : undefined)}
+      aria-keyshortcuts={hotkey ? keyLabel(hotkey).replace(/ /g, '') : undefined}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(base, variants[variant], sizes[size], block && 'w-full', className)}

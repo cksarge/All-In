@@ -120,13 +120,14 @@ function Board({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
         <>
           <BetStepper bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy} tiers={info.tiers} />
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="ghost" disabled={busy} onClick={quickPick}>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={quickPick} hotkey="q">
               Quick pick
             </Button>
             <Button
               size="sm"
               variant="ghost"
               disabled={busy || picks.length === 0}
+              hotkey="c"
               onClick={() => {
                 setPicks([]);
                 setResult(null);
@@ -135,7 +136,7 @@ function Board({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeof
             >
               Clear
             </Button>
-            <Button className="min-w-28" loading={busy} disabled={picks.length === 0 || balance < bet} onClick={() => void play()}>
+            <Button className="min-w-28" loading={busy} disabled={picks.length === 0 || balance < bet} onClick={() => void play()} hotkey="space">
               Play
             </Button>
           </div>

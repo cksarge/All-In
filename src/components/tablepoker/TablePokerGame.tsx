@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { BetSpot, Outcome, SoloGate, SoloShell, SpotControls, useSpotBets } from '@/components/solo/SoloShell';
+import { ACTION_KEYS } from '@/lib/hotkeys';
 import { Button } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
 import { cn } from '@/components/ui/cn';
@@ -308,6 +309,8 @@ function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
                 variant={a.key === 'fold' || a.key === 'pull' ? 'outline' : 'gold'}
                 disabled={busy}
                 onClick={() => void act(a.key, a.cost)}
+                hotkey={ACTION_KEYS[a.key]}
+                hotkeyLabel={ACTION_LABEL[a.key] ?? a.key}
                 className={a.cost > 0 ? 'min-w-24' : undefined}
               >
                 {ACTION_LABEL[a.key] ?? a.key}

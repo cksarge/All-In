@@ -36,6 +36,7 @@ import TournamentsPage from '@/pages/TournamentsPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import { GuestOnly, RequireAuth } from '@/routes/guards';
 import { useOnlinePresence } from '@/hooks/useLobby';
+import { HotkeyHost } from '@/components/hotkeys/HotkeyHost';
 import { TwoStepGate } from '@/components/account/TwoStep';
 import { useAccount } from '@/stores/accountStore';
 import { useDm } from '@/stores/dmStore';
@@ -266,6 +267,7 @@ export default function App() {
     <MotionConfig reducedMotion={motionPref === 'system' ? 'user' : reduced ? 'always' : 'never'}>
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
         <MusicPlayer />
+        <HotkeyHost />
         {/* Nothing below is shown until the server says the site is open (or that this is the admin). */}
         <MaintenanceGate>
           <RouteEffects />

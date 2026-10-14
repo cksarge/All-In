@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { KeysButton } from '@/components/hotkeys/HotkeyHost';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useLeaveWarning } from '@/hooks/useLeaveWarning';
@@ -139,6 +140,7 @@ export function TableHeader({
             Stats
           </Button>
         )}
+        <KeysButton />
         {mySeat && onSitOut && (
           <Button size="sm" variant="ghost" onClick={onSitOut}>
             {mySeat.status === 'sitting_out' ? "I'm back" : 'Sit out'}

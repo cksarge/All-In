@@ -149,13 +149,14 @@ function Ticket({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeo
         <>
           <BetStepper label="Ticket price" bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy} tiers={info.tiers} />
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="ghost" disabled={busy} onClick={quickPick}>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={quickPick} hotkey="q">
               Quick pick
             </Button>
             <Button
               size="sm"
               variant="ghost"
               disabled={busy || (picks.length === 0 && power === null)}
+              hotkey="c"
               onClick={() => {
                 setPicks([]);
                 setPower(null);
@@ -164,7 +165,7 @@ function Ticket({ info, call }: { info: SoloInfo<Config>; call: ReturnType<typeo
             >
               Clear
             </Button>
-            <Button className="min-w-28" loading={busy} disabled={!ready || balance < bet} onClick={() => void play()}>
+            <Button className="min-w-28" loading={busy} disabled={!ready || balance < bet} onClick={() => void play()} hotkey="space">
               Draw
             </Button>
           </div>

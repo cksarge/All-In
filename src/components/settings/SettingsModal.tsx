@@ -91,7 +91,7 @@ function TwoStepSetting() {
 /** Settings popup. Opened from the gear in the top bar, the account menu, the footer, or /settings. */
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUi();
-  const { textSize, setTextSize, soundOn, setSoundOn, musicOn, setMusicOn, musicVolume, setMusicVolume, motion, setMotion, setTourSeen, tipsOn, setTipsOn, resetTips } = useSettings();
+  const { hotkeysOn, setHotkeysOn, turnAlerts, setTurnAlerts, textSize, setTextSize, soundOn, setSoundOn, musicOn, setMusicOn, musicVolume, setMusicVolume, motion, setMotion, setTourSeen, tipsOn, setTipsOn, resetTips } = useSettings();
   const { status, user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -253,6 +253,34 @@ export function SettingsModal() {
             ))}
           </div>
         </fieldset>
+      </section>
+
+      <div className="gold-rule my-6" />
+
+      <section aria-labelledby="play-h">
+        <h3 id="play-h" className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-400">Playing</h3>
+        {(
+          [
+            ['keys', 'Keyboard shortcuts', 'Space to deal or spin, number keys for chips, and more. Press ? in any game to see its keys.', hotkeysOn, setHotkeysOn],
+            ['turn', 'Tell me when it is my turn', 'When you are in another tab: the tab title flashes and the turn sound plays again.', turnAlerts, setTurnAlerts],
+          ] as const
+        ).map(([id, label, hint, value, set]) => (
+          <div key={id} className="mt-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium text-cream" id={`${id}-label`}>{label}</p>
+              <p className="text-sm text-muted">{hint}</p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={value}
+              aria-labelledby={`${id}-label`}
+              onClick={() => set(!value)}
+              className={cn('relative h-7 w-12 shrink-0 rounded-full border transition', value ? 'border-gold-500 bg-gold-500' : 'border-white/20 bg-ink-950')}
+            >
+              <span className={cn('absolute top-0.5 h-5.5 w-5.5 rounded-full bg-ivory shadow transition-all', value ? 'left-[calc(100%-1.5rem)]' : 'left-0.5')} />
+            </button>
+          </div>
+        ))}
       </section>
 
       <div className="gold-rule my-6" />

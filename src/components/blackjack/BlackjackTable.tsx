@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTurnAlert } from '@/hooks/useTurnAlert';
+import { hotkeysOn, useHotkeyDocs } from '@/lib/hotkeys';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CardFan } from '@/components/cards/PlayingCard';
@@ -146,10 +148,27 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
 
   // ---- Keyboard shortcuts --------------------------------------------------
   const actions = myTurnHand ? availableActions(myTurnHand, myHands.length, balance) : null;
+  useTurnAlert(myTurnHand?.id ?? null);
+  // This table has its own listener (below); these lines only put its keys in the "?" list.
+  useHotkeyDocs(
+    actions
+      ? (Object.entries({ h: 'Hit', s: 'Stand', d: 'Double', p: 'Split', r: 'Surrender' }) as [string, string][]).filter(([, l]) => actions[l.toLowerCase() as BjAction])
+      : myInsuranceOpen
+        ? [
+            ['y', 'Take insurance'],
+            ['n', 'No insurance'],
+          ]
+        : canBet
+          ? [
+              ['1', 'Add a chip to your bet (1, 2, 3… for each chip)'],
+              ['enter', 'Place your bet'],
+            ]
+          : [],
+  );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (el.closest('input, textarea, select, [role="dialog"]') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!hotkeysOn() || el.closest('input, textarea, select, [role="dialog"]') || e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (actions) {
         const map: Record<string, BjAction> = { h: 'hit', s: 'stand', d: 'double', p: 'split', r: 'surrender' };
@@ -163,6 +182,17 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
       } else if (canBet && k === 'enter' && draft > 0 && el.tagName !== 'BUTTON') {
         e.preventDefault();
         placeBet();
+      }
+      // 1, 2, 3… add a chip to the bet being built.
+      const tb = state?.table;
+      if (canBet && tb && /^[1-9]$/.test(k)) {
+        const d = chipDenominations(tb.min_bet, tb.max_bet)[Number(k) - 1];
+        const max = Math.min(tb.max_bet, balance + (myBetHand?.bet ?? 0));
+        if (d) {
+          e.preventDefault();
+          playSound('chip');
+          setDraft((v) => Math.min(max, Math.max(v, 0) + d));
+        }
       }
     };
     window.addEventListener('keydown', onKey);

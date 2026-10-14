@@ -154,10 +154,10 @@ function Table({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnType
       controls={
         round ? (
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => setLow(round.house_way)}>
+            <Button variant="outline" disabled={busy} onClick={() => setLow(round.house_way)} hotkey="h">
               House way
             </Button>
-            <Button className="min-w-32" loading={busy} disabled={low.length !== 2} onClick={() => void set()}>
+            <Button className="min-w-32" loading={busy} disabled={low.length !== 2} onClick={() => void set()} hotkey="space">
               Set hands
             </Button>
           </div>

@@ -98,11 +98,11 @@ function Counter({ info, call }: { info: SoloInfo<Config>; call: ReturnType<type
           <BetStepper label="Card price" bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy || scratching} tiers={info.tiers} />
           <div className="ml-auto flex items-center gap-2">
             {scratching && (
-              <Button variant="outline" onClick={() => reveal(Array(9).fill(true))}>
+              <Button variant="outline" onClick={() => reveal(Array(9).fill(true))} hotkey="s">
                 Scratch all
               </Button>
             )}
-            <Button size="lg" className="min-w-32" loading={busy} disabled={scratching || balance < bet} onClick={() => void take()}>
+            <Button size="lg" className="min-w-32" loading={busy} disabled={scratching || balance < bet} onClick={() => void take()} hotkey="space">
               New card
             </Button>
           </div>

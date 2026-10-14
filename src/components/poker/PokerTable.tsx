@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTurnAlert } from '@/hooks/useTurnAlert';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PlayingCard } from '@/components/cards/PlayingCard';
@@ -163,6 +164,7 @@ export function PokerTable({ tableId }: { tableId: string }) {
   useEffect(() => {
     if (myTurnKey) playSound('turn');
   }, [myTurnKey]);
+  useTurnAlert(myTurnKey);
 
   // The last five seconds of your turn tick.
   useEffect(() => {

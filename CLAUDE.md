@@ -83,6 +83,7 @@ Mac has Postgres.app 16 and no Homebrew). On Windows use WSL. When run as root i
 | 10 | **More games (the user's list, below), in four parts** | ✅ all four parts built on `main` |
 | 11 | **Reputation and typed chat** (`22_reputation_chat.sql`), Terms of Service and Privacy Policy | ✅ built on `main` |
 | 12 | **Quality of life, social, events, practice, admin tools (the user's list, below), in four parts** | ✅ all four parts built on `main` |
+| 13 | **Keyboard shortcuts everywhere, bet presets, friends online on the lounge, turn alerts** (no SQL; §8) | ✅ built on `main` |
 
 **User action pending for two-step verification (2026-10-13):** re-run `15_moderation.sql`, and in the dashboard
 paste `supabase/email-templates/verify-identity.html` into Authentication → Emails → **Magic Link** (subject in
@@ -142,8 +143,8 @@ Every part must come with its achievements, cosmetics and menu entries (standing
 ### Where things stand (2026-10-12)
 Everything planned has been built: stages 1 to 11. Nothing is designed or agreed beyond this. The site has
 **57 games** (15 table, 20 poker, 8 slots of which one is seasonal, 14 specialty; all released), **85 achievements**,
-25 numbered SQL files making 74 tables (33 in Realtime), 23 SQL test files and 21 browser suites. Stage 12 is
-finished; nothing further is designed or agreed.
+25 numbered SQL files making 74 tables (33 in Realtime), 23 SQL test files and 22 browser suites. Stages 12 and 13
+are finished; nothing further is designed or agreed (the brainstorm of 2026-10-13 is listed below).
 
 Stage 10's 23 games, for reference: Caribbean Stud, Casino Hold'em, Let It Ride, Mississippi Stud, Four Card Poker,
 Teen Patti against the dealer (19); Bonus, Double Bonus and Joker video poker (11); Spanish 21, Blackjack Switch,
@@ -151,6 +152,11 @@ Free Bet Blackjack, Pontoon, Red Dog, Hi-Lo, Andar Bahar, Chuck-a-Luck (20); Sho
 Badugi (09); horse racing and Teen Patti tables (21).
 
 ### Ideas mentioned but never built (only if the user asks)
+- From the brainstorm of 2026-10-13 (the user picked four, built as stage 13). Large: a solo career mode, a lounge
+  of your own to decorate, club wars, a poker hand replayer, **house bots at empty poker tables** (my first pick),
+  prestige after level 100, a daily seeded challenge, a watchable final table. Small: a session summary, a shareable
+  win card, a fairness page, a statistics page, colour-blind and four-colour decks, "recently played with", private
+  notes on opponents.
 - Showing which solo game an online friend is in (only table seats are known to the server).
 - A weekly reward for the weekly leaderboard.
 - Auto-play for solo games other than the slots.
@@ -171,7 +177,7 @@ scripts/check-copy.mjs               copy guard (currency symbols, banned words)
 scripts/check-icons.mjs              every game in file 3 has its own icon in GameIcon.tsx, and no two are the same
 scripts/test-sql.sh                  SQL test runner (also fails when check_database.sql is stale)
 scripts/gen-db-check.sh              regenerates supabase/maintenance/check_database.sql (run after ANY SQL change)
-scripts/e2e/                         local end-to-end harness: 21 suites (see §9)
+scripts/e2e/                         local end-to-end harness: 22 suites (see §9)
 supabase/sql/01…25_*.sql             the database, applied in order (see §7)
 supabase/maintenance/                run by hand, not numbered, not applied by test:sql:
                                      check_database.sql (is the live database up to date? generated),
@@ -187,7 +193,7 @@ src/App.tsx                          routes: / signup login verify forgot-passwo
                                      missions inbox tournaments tournaments/:id practice practice/:drill practice/learn/:lesson admin *
                                      Wrapped in MaintenanceGate; connectors for progress, account and live data.
 src/lib/                             supabase client, errors (friendlyError), format, cards, sound (WebAudio),
-                                     turnstile, validation, types, and per-game helpers: blackjack, roulette, craps, poker,
+                                     turnstile, validation, types, hotkeys (keyboard shortcuts), and per-game helpers: blackjack, roulette, craps, poker,
                                      slots (result types, symbol art, themes, and buildScenes: result -> playback),
                                      solo (useSoloGame, holdBalance/settleBalance, hand names, history lines),
                                      games (the four lounge sections; gameMode: tables / live room / solo / tournament; gameHref),
@@ -200,12 +206,15 @@ src/stores/                          zustand: auth, wallet (balance, ledger, dis
                                      reputation (your own standing: may you chat?)
 src/hooks/useLiveTable.ts            shared live-table plumbing (see §8); useBlackjackTable / usePokerTable wrap it
 src/hooks/useLobby.ts                lobby table list + online presence
+src/hooks/useTurnAlert.ts            flashes the tab title when it is your turn at a table in a background tab
+src/components/hotkeys/HotkeyHost.tsx the one keyboard listener, the "?" list of shortcuts, and the Keys button
 src/hooks/useChat.ts                 typed chat for one channel (chat_fetch / chat_send, a content-free realtime ping, a slow poll)
 src/components/chat/ChatBox.tsx      the message list and input every typed chat uses
 src/hooks/useLiveRoom.ts             a shared room with no tables or seats (Crash, Bingo, horse racing): polls its
                                      state RPC, listens to Realtime
 src/components/table/                TableHeader, PlayerStrip, PhaseBar, TimerRing(+useSecondsLeft), ReactionBar,
-                                     ChipStack, InfoModal(+TabButtons), GameHistoryModal, InviteModal, SeatAvatar (+SeatTitle)
+                                     ChipStack, InfoModal(+TabButtons), GameHistoryModal, InviteModal, SeatAvatar (+SeatTitle),
+                                     BetPresets (the Presets menu and its storage)
 src/components/{blackjack,roulette,craps,poker}/   one folder per game; *Table.tsx is the entry (PokerTable plays all nine
                                      poker games and every tournament table)
 src/components/teenpatti/            TeenPattiTable (its own engine; reuses PokerSeat and BringChipsModal)
@@ -224,6 +233,7 @@ src/components/account/              AccountGate (suspended / timeout / rename s
 src/components/admin/AdminTools.tsx  the admin page's Appeals, Chat and Stats tabs and the schedule panel
 src/components/onboarding/           the welcome tour and QuickStart (first-visit guide per game)
 src/components/lounge/GameGrid.tsx   the lounge's game list in four sections, each card tagged Live or Solo
+src/components/lounge/FriendsStrip.tsx friends who are on the site now: join, watch or message from the lounge
 src/components/progress/             ProgressCard (lounge), ProfileExtras, ReputationCard (own profile), and bits: LevelBadge, XpBar, PlayerLine
 src/components/layout/               SiteHeader (top bar, inbox bell), SectionNav, footer, balance pill, MusicPlayer
 src/assets/music/                    the music: a shuffled playlist and game themes, README and CREDITS.txt (see §8)
@@ -927,6 +937,32 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
     because the top bar has no room (the header must fit 360px).
   - **Size** (Settings): compact / normal / large set the page's base font size (`TEXT_SCALE`; everything is in rem).
     Large is 106.25% instead of 112.5% under 430px wide, so the 360px layouts still fit.
+- **Stage 13 (2026-10-13, all in the browser, no SQL):**
+  - **Keyboard shortcuts** (`src/lib/hotkeys.ts`): a screen registers keys with `useHotkeys([...])`, or simply with
+    **`hotkey="space"` on a `Button`** (it presses the button while it is on screen and enabled; `hotkeyLabel` names
+    it when the button's text will not do). One listener lives in `HotkeyHost` (mounted in `App.tsx`); **"?"** and the
+    **Keys** button in every game's header list what is registered on that screen. Conventions: **Space** = the main
+    action (Deal, Spin, Roll, Drop, Draw), **1, 2, 3…** = chips (or holds in video poker, or Bet 1× to 4×), **C**
+    clear / call / collect, **R** rebet / raise, **− and +** the bet stepper, **Shift + 1 to 3** bet presets; the card
+    games' decisions come from `ACTION_KEYS` (H hit, S stand, D double, P split, F fold…). Keys do nothing while
+    typing or while any popup is open, and can be switched off in Settings (`hotkeysOn`). Poker (`PokerActions`) and
+    the blackjack table keep their own older listeners and only describe their keys with `useHotkeyDocs`.
+    **A button clicked with the mouse is blurred** (in `HotkeyHost`), or Space would press it again (another chip
+    on the same spot) instead of dealing; keyboard users are not affected. **A new game should put `hotkey` on its
+    main button and decisions.** To hide a hotkey button on phones use `max-md:hidden`, not `hidden md:…` (the
+    Button's own `inline-flex` wins over `hidden`).
+  - **Bet presets** (`BetPresets`): three slots per game and stake level, kept on the device. Every game on
+    `SpotControls` has them through `useSpotBets` (`presets`, `savePreset`, `loadPreset`); roulette and craps keep
+    theirs with `useStoredPresets` and replay a preset as ordinary `rl_place_bet` / `cr_place_bet` calls (craps
+    skips the bets that cannot be made on that roll). On phones the menu opens as a sheet over the controls bar.
+  - **Friends online** (`FriendsStrip`, on the lounge under the big-win ticker): friends who are in the presence
+    list, at a table or with a game open, each with Join / Watch / Message. Hidden when there are none. It reads
+    `friends_list()` and `friends_activity()` and reuses `WatchModal` and `DmModal`.
+  - **Turn alerts** (`useTurnAlert(turnKey, words, ring)`): poker, Teen Patti, blackjack and the craps shooter. With
+    the tab in the background the title flashes "Your turn!" until you return or the turn passes, and the turn
+    sound plays again after 8 seconds. Settings switch `turnAlerts`. No browser notifications (they need a
+    permission prompt; not asked for).
+  - No achievements came with this stage: it is how the games are operated, not something to earn.
 - Styling: Tailwind with custom colours (`ink`, `felt`, `ruby`, `gold`, `cream`, `ivory`), the `.felt` and
   `.surface` classes, Playfair Display headings and Inter body text. Sounds come from `playSound(...)` in
   `src/lib/sound.ts`.
@@ -970,6 +1006,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage12b.cjs /tmp/shots     # stage 12 part 2: direct messages, a waiting-room table, watching a friend alone and at a table (16 checks)
    node scripts/e2e/stage12d.cjs /tmp/shots     # stage 12 part 4: practice walkthroughs, site stats, chat log search, a scheduled notice and closure, an appeal (37 checks)
    node scripts/e2e/twostep.cjs /tmp/shots      # two-step verification: the offer after sign-up, "Verify your identity" at login, the Settings switch, the admin's off switch (26 checks)
+   node scripts/e2e/stage13.cjs /tmp/shots      # stage 13: shortcuts in six games, presets (solo, roulette, craps, phone), turn alert, the lounge's friends strip (29 checks)
    node scripts/e2e/stage12c.cjs /tmp/shots     # stage 12 part 3: Haunted Manor, season missions, seven practice drills, a private tournament, a club event (39 checks; season missions need October 2026)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.

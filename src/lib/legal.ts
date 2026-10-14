@@ -1,7 +1,7 @@
 /** Facts the Terms of Service and the Privacy Policy share. Change the version when either document changes. */
 export const LEGAL = {
   /** Recorded with each new account, so it is known which documents a player agreed to. */
-  version: '2026-10-13',
+  version: '2026-10-13b',
   effective: 'October 13, 2026',
   operator: 'Carter K',
   place: 'Arizona, United States',

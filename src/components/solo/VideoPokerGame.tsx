@@ -12,6 +12,7 @@ import { suggestHolds } from '@/lib/vpHint';
 import { toast } from '@/stores/toastStore';
 import { useWallet } from '@/stores/walletStore';
 import { BetStepper, Outcome, SoloGate, SoloShell } from './SoloShell';
+import { useHotkeys } from '@/lib/hotkeys';
 
 interface Config {
   /** What a 1-chip bet gets back for each hand. */
@@ -119,6 +120,8 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
     setHolds((h) => h.map((v, k) => (k === i ? !v : v)));
     playSound('click');
   };
+  // 1 to 5 hold or let go of a card.
+  useHotkeys([0, 1, 2, 3, 4].map((i) => ({ key: String(i + 1), label: `Hold card ${i + 1}`, run: () => toggle(i), enabled: () => Boolean(round) && !busy })));
 
   const hand = round?.hand ?? final?.hand ?? null;
   const made = round ? round.made : final ? final.made : null;
@@ -142,11 +145,11 @@ function Machine({ info, call }: { info: SoloInfo<Config, Round>; call: ReturnTy
         <>
           <BetStepper bets={info.bets} index={betIndex} onChange={setBetIndex} disabled={busy || Boolean(round)} tiers={info.tiers} />
           {round && !joker && (
-            <Button variant="outline" disabled={busy} onClick={showHint}>
+            <Button variant="outline" disabled={busy} onClick={showHint} hotkey="h">
               Hint
             </Button>
           )}
-          <Button size="lg" className="ml-auto min-w-36" loading={busy} disabled={!round && balance < bet} onClick={() => void (round ? draw() : deal())}>
+          <Button size="lg" className="ml-auto min-w-36" loading={busy} disabled={!round && balance < bet} onClick={() => void (round ? draw() : deal())} hotkey="space">
             {round ? 'Draw' : 'Deal'}
           </Button>
         </>

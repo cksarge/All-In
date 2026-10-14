@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { hotkeysOn, useHotkeyDocs } from '@/lib/hotkeys';
 import { PlayingCard } from '@/components/cards/PlayingCard';
 import { Button } from '@/components/ui/Button';
 import { ChipAmount } from '@/components/ui/ChipAmount';
@@ -53,11 +54,17 @@ export function BettingControls({
     if (config.limit === 'nl') add('All in', options.max_to);
   }
 
-  // Keyboard: F fold, C check/call, R bet/raise, A all in (no limit).
+  // Keyboard: F fold, C check/call, R bet/raise, A all in (no limit). Listed under "?" too.
+  useHotkeyDocs([
+    ['f', 'Fold'],
+    ['c', options.can_check ? 'Check' : 'Call'],
+    ...(options.can_raise ? ([['r', 'Bet or raise the amount shown']] as [string, string][]) : []),
+    ...(options.can_raise && config.limit === 'nl' ? ([['a', 'All in']] as [string, string][]) : []),
+  ]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (el.closest('input, textarea, select, [role="dialog"]') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!hotkeysOn() || el.closest('input, textarea, select, [role="dialog"]') || e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (k === 'f') onAct('fold');
       else if (k === 'c') onAct(options.can_check ? 'check' : 'call');
