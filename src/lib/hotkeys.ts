@@ -56,8 +56,12 @@ export function useHotkeyDocs(list: [key: string, label: string][]) {
 /** The name of the key that was pressed, or null for one we never use. */
 export function keyName(e: KeyboardEvent): string | null {
   if (e.metaKey || e.ctrlKey || e.altKey) return null;
-  const digit = /^(?:Digit|Numpad)(\d)$/.exec(e.code);
-  if (digit) return (e.shiftKey ? 'shift+' : '') + digit[1];
+  // A digit is whatever key types one: on a French keyboard that is Shift and the top row, and on the
+  // number pad only with Num Lock on. So the character decides, never the key's position.
+  if (/^[0-9]$/.test(e.key)) return e.key;
+  // Shift and a top-row key that typed something else ("!" on a US keyboard): the presets.
+  const top = /^Digit(\d)$/.exec(e.code);
+  if (top && e.shiftKey) return `shift+${top[1]}`;
   if (e.key === ' ' || e.code === 'Space') return 'space';
   if (e.key === 'Enter') return 'enter';
   if (e.key === '+' || e.key === '=') return '+';
@@ -67,11 +71,15 @@ export function keyName(e: KeyboardEvent): string | null {
   return null;
 }
 
-/** Typing, or a popup is open: keys belong to that, not to the game. */
+/**
+ * Typing, or a popup has the screen: keys belong to that, not to the game. Only a popup that covers
+ * the page counts (`Modal`, marked aria-modal). The chat panel at a table and the music control are
+ * small panels beside the game: they take the keys only while the keyboard is inside them.
+ */
 export function typingOrDialog(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
-  if (el?.closest?.('input, textarea, select, [contenteditable="true"]')) return true;
-  return document.querySelector('[role="dialog"]') !== null;
+  if (el?.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return true;
+  return document.querySelector('[role="dialog"][aria-modal="true"]') !== null;
 }
 
 /** Are shortcuts switched on (Settings)? The screens with their own listeners ask this too. */
@@ -84,10 +92,14 @@ export function runHotkey(e: KeyboardEvent): boolean {
   if (!key) return false;
   // Space and Enter already press whatever button the keyboard is on: leave that alone.
   if ((key === 'space' || key === 'enter') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [role="switch"], [role="radio"], [role="tab"], summary')) return false;
-  // The newest registration wins: it belongs to whatever was put on screen last.
-  const match = [...registry.values()].reverse().find((h) => h.key === key && !h.docOnly && (h.enabled?.() ?? true));
-  if (!match) return false;
+  const mine = [...registry.values()].reverse().filter((h) => h.key === key && !h.docOnly);
+  if (mine.length === 0) return false;
+  // The key is this screen's even when it can do nothing right now (Deal before a bet, Spin while the
+  // reels turn): the browser must not act on it instead. Space would scroll the game out of view.
   e.preventDefault();
+  // The newest registration wins: it belongs to whatever was put on screen last.
+  const match = mine.find((h) => h.enabled?.() ?? true);
+  if (!match) return false;
   match.run();
   return true;
 }

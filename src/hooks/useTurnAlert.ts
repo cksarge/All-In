@@ -12,12 +12,20 @@ export function useTurnAlert(turn: string | null, words = 'Your turn', ring = fa
   const on = useSettings((s) => s.turnAlerts);
   useEffect(() => {
     if (!turn || !on) return;
+    const alert = `🔔 ${words}!`;
     let flash: number | null = null;
     let remind: number | null = null;
+    // The page's own title, shown between flashes and put back at the end.
     let title = '';
+    // The page may be given a new title while this runs (you were moved to another table, or the
+    // tournament ended and the page changed): that one is the title to keep, not the one we began with.
+    const adopt = () => {
+      if (document.title !== alert) title = document.title;
+    };
     const stop = () => {
       if (flash !== null) {
         window.clearInterval(flash);
+        adopt();
         document.title = title;
       }
       if (remind !== null) window.clearTimeout(remind);
@@ -27,10 +35,11 @@ export function useTurnAlert(turn: string | null, words = 'Your turn', ring = fa
       if (flash !== null || !document.hidden) return;
       title = document.title;
       let lit = true;
-      document.title = `🔔 ${words}!`;
+      document.title = alert;
       flash = window.setInterval(() => {
+        adopt();
         lit = !lit;
-        document.title = lit ? `🔔 ${words}!` : title;
+        document.title = lit ? alert : title;
       }, 1000);
       remind = window.setTimeout(() => playSound('turn'), 8000);
     };

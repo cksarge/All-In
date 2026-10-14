@@ -945,7 +945,13 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
     action (Deal, Spin, Roll, Drop, Draw), **1, 2, 3…** = chips (or holds in video poker, or Bet 1× to 4×), **C**
     clear / call / collect, **R** rebet / raise, **− and +** the bet stepper, **Shift + 1 to 3** bet presets; the card
     games' decisions come from `ACTION_KEYS` (H hit, S stand, D double, P split, F fold…). Keys do nothing while
-    typing or while any popup is open, and can be switched off in Settings (`hotkeysOn`). Poker (`PokerActions`) and
+    typing or while a popup covers the page (a `Modal`, which is `aria-modal`; the table chat panel and the music
+    control are small `role="dialog"` panels beside the game and only take the keys while the keyboard is inside
+    them), and can be switched off in Settings (`hotkeysOn`). A key the screen has registered is always kept from
+    the browser, even when its button is disabled, or Space would scroll the page. **Digits are read from the
+    character typed** (`e.key`), not the key's position, so French keyboards and the number pad work; Shift + a
+    top-row key that types something else is a preset. Only a `Button` with `hotkey` runs any shortcut code
+    (`HotkeyButton`); the rest are a plain button. Poker (`PokerActions`) and
     the blackjack table keep their own older listeners and only describe their keys with `useHotkeyDocs`.
     **A button clicked with the mouse is blurred** (in `HotkeyHost`), or Space would press it again (another chip
     on the same spot) instead of dealing; keyboard users are not affected. **A new game should put `hotkey` on its
@@ -953,11 +959,17 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
     Button's own `inline-flex` wins over `hidden`).
   - **Bet presets** (`BetPresets`): three slots per game and stake level, kept on the device. Every game on
     `SpotControls` has them through `useSpotBets` (`presets`, `savePreset`, `loadPreset`); roulette and craps keep
-    theirs with `useStoredPresets` and replay a preset as ordinary `rl_place_bet` / `cr_place_bet` calls (craps
-    skips the bets that cannot be made on that roll). On phones the menu opens as a sheet over the controls bar.
+    theirs with `useStoredPresets` and replay a preset as ordinary `rl_place_bet` / `cr_place_bet` calls, one per
+    spot. Because that is not one step on the server: **roulette** only places a preset on an empty table, with the
+    chips for all of it and at least 4 seconds left, and takes back what went down (`rl_undo_bet`) if a bet is
+    refused, so it is all or nothing; **craps**, where bets stay up between rolls, places only the bets that are not
+    already on the table and can be made on that roll (pressing twice changes nothing), saves a moved Come bet as
+    a Come bet, and leaves odds out. On phones the menu opens as a sheet over the controls bar.
   - **Friends online** (`FriendsStrip`, on the lounge under the big-win ticker): friends who are in the presence
     list, at a table or with a game open, each with Join / Watch / Message. Hidden when there are none. It reads
-    `friends_list()` and `friends_activity()` and reuses `WatchModal` and `DmModal`.
+    `friends_list()` and `friends_activity()` through `loadFriends()` (`src/lib/friends.ts`, shared with the Friends
+    page) when the lounge opens, every half minute, and when a **friend** joins or leaves the presence list (not
+    on every change to that list: it holds everyone on the site). It reuses `WatchModal` and `DmModal`.
   - **Turn alerts** (`useTurnAlert(turnKey, words, ring)`): poker, Teen Patti, blackjack and the craps shooter. With
     the tab in the background the title flashes "Your turn!" until you return or the turn passes, and the turn
     sound plays again after 8 seconds. Settings switch `turnAlerts`. No browser notifications (they need a
@@ -1006,7 +1018,7 @@ crash_bets, bingo_rounds, player_progress, player_achievements, friendships. Pos
    node scripts/e2e/stage12b.cjs /tmp/shots     # stage 12 part 2: direct messages, a waiting-room table, watching a friend alone and at a table (16 checks)
    node scripts/e2e/stage12d.cjs /tmp/shots     # stage 12 part 4: practice walkthroughs, site stats, chat log search, a scheduled notice and closure, an appeal (37 checks)
    node scripts/e2e/twostep.cjs /tmp/shots      # two-step verification: the offer after sign-up, "Verify your identity" at login, the Settings switch, the admin's off switch (26 checks)
-   node scripts/e2e/stage13.cjs /tmp/shots      # stage 13: shortcuts in six games, presets (solo, roulette, craps, phone), turn alert, the lounge's friends strip (29 checks)
+   node scripts/e2e/stage13.cjs /tmp/shots      # stage 13: shortcuts in six games, presets (solo, roulette, craps, phone), turn alert, the lounge's friends strip (33 checks)
    node scripts/e2e/stage12c.cjs /tmp/shots     # stage 12 part 3: Haunted Manor, season missions, seven practice drills, a private tournament, a club event (39 checks; season missions need October 2026)
    ```
    Run `reset.sql` before each script: they assume fresh players and the jackpot at its seed.

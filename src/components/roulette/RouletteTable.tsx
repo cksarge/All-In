@@ -199,13 +199,23 @@ export function RouletteTable({ tableId }: { tableId: string }) {
   };
   const loadPreset = (i: number) => {
     const p = presets[i];
-    if (!p || !canBet) return;
+    if (!p || !canBet || busy) return;
+    // A preset is a whole layout, placed one bet at a time. So it only goes down on an empty table
+    // (on top of other chips a spot could pass its limit half-way, and pressing twice would double it),
+    // with the chips for all of it and the time to finish. If a bet is refused all the same, the ones
+    // already down are taken back: all of the layout rides on the spin, or none of it.
+    if (myBets.length > 0) return toast.info('Clear your bets first', 'A preset puts down a whole layout, so it needs an empty table.');
+    if (p.reduce((n, b) => n + b.amount, 0) > balance) return toast.info('Not enough chips for that preset');
+    if (round?.phase === 'betting' && !nextReady && secondsLeft !== null && secondsLeft < 4) return toast.info('Too late for this spin', 'Use the preset when the next round opens.');
     void run(
       'preset',
       async () => {
         for (const b of p) {
           const err = await call('rl_place_bet', { p_type: b.type, p_selection: b.selection, p_amount: b.amount });
-          if (err) return err;
+          if (err) {
+            await call('rl_undo_bet', { p_all: true });
+            return `${err} The preset was not placed.`;
+          }
         }
         return null;
       },

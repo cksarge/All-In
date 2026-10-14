@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { create } from 'zustand';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -10,7 +10,9 @@ const useKeysOpen = create<{ open: boolean; set: (open: boolean) => void }>()((s
 /** Mounted once: listens for shortcuts everywhere, and shows the list of them when "?" is pressed. */
 export function HotkeyHost() {
   const { open, set } = useKeysOpen();
-  const [list, setList] = useState<{ key: string; label: string }[]>([]);
+  // Read as the list opens, so its first frame is already right. While it fades out it keeps what it showed.
+  const shown = useRef<{ key: string; label: string }[]>([]);
+  const list = useMemo(() => (open ? (shown.current = listHotkeys()) : shown.current), [open]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -35,10 +37,6 @@ export function HotkeyHost() {
       document.removeEventListener('click', onClick);
     };
   }, [set]);
-
-  useEffect(() => {
-    if (open) setList(listHotkeys());
-  }, [open]);
 
   return (
     <Modal open={open} onClose={() => set(false)} title="Keyboard shortcuts" className="max-w-md">

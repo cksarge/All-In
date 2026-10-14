@@ -1,17 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DmModal, WatchModal } from '@/components/progress/FriendPanels';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button, ButtonLink } from '@/components/ui/Button';
-import type { PlayerCard } from '@/lib/progress';
-import { supabase } from '@/lib/supabase';
+import { loadFriends, type Friend, type FriendsPlaying } from '@/lib/friends';
 import { useDm } from '@/stores/dmStore';
 import { usePresence } from '@/stores/presenceStore';
 
-interface Friend extends PlayerCard {
-  /** Where they are sitting. `id` is null for a private table. */
-  table: { id: string | null; game_key: string; game: string; name: string; private: boolean; full: boolean } | null;
-}
 type Who = { user_id: string; username: string };
 
 /**
@@ -22,22 +17,36 @@ export function FriendsStrip() {
   const online = usePresence((s) => s.online);
   const threads = useDm((s) => s.threads);
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [playing, setPlaying] = useState<Record<string, { game_key: string; game: string }>>({});
+  const [playing, setPlaying] = useState<FriendsPlaying>({});
   const [dm, setDm] = useState<Who | null>(null);
   const [watch, setWatch] = useState<Who | null>(null);
 
   const load = useCallback(async () => {
-    const [list, act] = await Promise.all([supabase.rpc('friends_list'), supabase.rpc('friends_activity')]);
-    if (!list.error) setFriends((list.data as { friends: Friend[] }).friends ?? []);
-    if (!act.error) setPlaying((act.data as { playing: Record<string, { game_key: string; game: string }> }).playing ?? {});
+    const f = await loadFriends();
+    if (f.list) setFriends(f.list.friends ?? []);
+    if (f.playing) setPlaying(f.playing);
   }, []);
-  // Who is online arrives live; where they are is asked again when that changes, and every half minute.
-  const onlineKey = online.map((o) => o.user_id).sort().join(',');
+  // Asked when the lounge opens and every half minute.
   useEffect(() => {
     void load();
     const id = window.setInterval(() => document.visibilityState === 'visible' && void load(), 30_000);
     return () => window.clearInterval(id);
-  }, [load, onlineKey]);
+  }, [load]);
+  // And when a FRIEND comes or goes. The live list holds everyone on the site, so it changes all the
+  // time: only the friends in it matter here, or every stranger's arrival would ask the server again.
+  const friendsOnline = friends
+    .filter((f) => online.some((o) => o.user_id === f.user_id))
+    .map((f) => f.user_id)
+    .sort()
+    .join(',');
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    void load();
+  }, [friendsOnline, load]);
 
   // A friend at a table or with a game open is here, whether or not the live list has caught up.
   const here = friends.filter((f) => f.table || playing[f.user_id] || online.some((o) => o.user_id === f.user_id));

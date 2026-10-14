@@ -185,7 +185,8 @@ export function BlackjackTable({ tableId }: { tableId: string }) {
       }
       // 1, 2, 3… add a chip to the bet being built.
       const tb = state?.table;
-      if (canBet && tb && /^[1-9]$/.test(k)) {
+      // Not while the key is held down: it repeats many times a second and would run the bet up to the limit.
+      if (canBet && tb && !e.repeat && /^[1-9]$/.test(k)) {
         const d = chipDenominations(tb.min_bet, tb.max_bet)[Number(k) - 1];
         const max = Math.min(tb.max_bet, balance + (myBetHand?.bet ?? 0));
         if (d) {

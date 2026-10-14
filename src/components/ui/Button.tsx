@@ -1,4 +1,4 @@
-import { forwardRef, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, useCallback, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { keyLabel, useHotkeys } from '@/lib/hotkeys';
 import { Link, type LinkProps } from 'react-router-dom';
 import { cn } from './cn';
@@ -41,31 +41,15 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   hotkeyLabel?: string;
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'gold', size = 'md', loading, block, icon, className, children, disabled, type = 'button', hotkey, hotkeyLabel, title, ...rest },
+/** The plain button. Nothing here knows about shortcuts, so the hundreds of buttons without one pay nothing for them. */
+const PlainButton = forwardRef<HTMLButtonElement, Omit<ButtonProps, 'hotkey' | 'hotkeyLabel'>>(function PlainButton(
+  { variant = 'gold', size = 'md', loading, block, icon, className, children, disabled, type = 'button', ...rest },
   ref,
 ) {
-  const own = useRef<HTMLButtonElement | null>(null);
-  const usable = () => Boolean(own.current && !own.current.disabled && own.current.offsetParent !== null);
-  useHotkeys([
-    {
-      key: hotkey,
-      // Listed whenever the button is on screen, even while it cannot be pressed (Deal, before a bet).
-      label: () => (own.current && own.current.offsetParent !== null ? (hotkeyLabel ?? own.current?.getAttribute('aria-label') ?? own.current?.textContent ?? '') : ''),
-      run: () => own.current?.click(),
-      enabled: usable,
-    },
-  ]);
   return (
     <button
-      ref={(el) => {
-        own.current = el;
-        if (typeof ref === 'function') ref(el);
-        else if (ref) ref.current = el;
-      }}
+      ref={ref}
       type={type}
-      title={title ?? (hotkey ? `Shortcut: ${keyLabel(hotkey)}` : undefined)}
-      aria-keyshortcuts={hotkey ? keyLabel(hotkey).replace(/ /g, '') : undefined}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(base, variants[variant], sizes[size], block && 'w-full', className)}
@@ -75,6 +59,34 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       <span>{children}</span>
     </button>
   );
+});
+
+/** A button that a key presses while it is on screen and enabled. */
+const HotkeyButton = forwardRef<HTMLButtonElement, ButtonProps & { hotkey: string }>(function HotkeyButton({ hotkey, hotkeyLabel, title, ...rest }, ref) {
+  const own = useRef<HTMLButtonElement | null>(null);
+  // One function for the life of the button: a new one each render would make React detach and re-attach it.
+  const setRef = useCallback(
+    (el: HTMLButtonElement | null) => {
+      own.current = el;
+      if (typeof ref === 'function') ref(el);
+      else if (ref) ref.current = el;
+    },
+    [ref],
+  );
+  useHotkeys([
+    {
+      key: hotkey,
+      // Listed whenever the button is on screen, even while it cannot be pressed (Deal, before a bet).
+      label: () => (own.current && own.current.offsetParent !== null ? (hotkeyLabel ?? own.current.getAttribute('aria-label') ?? own.current.textContent ?? '') : ''),
+      run: () => own.current?.click(),
+      enabled: () => Boolean(own.current && !own.current.disabled && own.current.offsetParent !== null),
+    },
+  ]);
+  return <PlainButton ref={setRef} title={title ?? `Shortcut: ${keyLabel(hotkey)}`} aria-keyshortcuts={keyLabel(hotkey).replace(/ /g, '')} {...rest} />;
+});
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({ hotkey, hotkeyLabel, ...rest }, ref) {
+  return hotkey ? <HotkeyButton ref={ref} hotkey={hotkey} hotkeyLabel={hotkeyLabel} {...rest} /> : <PlainButton ref={ref} {...rest} />;
 });
 
 export function ButtonLink({

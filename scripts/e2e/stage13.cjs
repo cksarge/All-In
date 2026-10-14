@@ -66,6 +66,13 @@ async function sitAt(page, game) {
   await ann.keyboard.press('c');
   for (let i = 0; i < 20 && (await clear.isEnabled()); i++) await sleep(100);
   ok(!(await clear.isEnabled()), 'C clears them');
+  // Nothing to deal: Space must still be the game's key, not the browser's (it would scroll the page).
+  await ann.setViewportSize({ width: 1280, height: 500 });
+  await ann.evaluate(() => window.scrollTo(0, 0));
+  await ann.keyboard.press('Space');
+  await ann.waitForTimeout(400);
+  ok((await ann.evaluate(() => window.scrollY)) === 0, 'Space does not scroll the page when there is nothing to deal');
+  await ann.setViewportSize({ width: 1280, height: 900 });
   await ann.keyboard.press('Shift+Slash');
   await ann.getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor();
   await ann.getByRole('dialog').getByText('Deal', { exact: true }).waitFor();
@@ -88,7 +95,7 @@ async function sitAt(page, game) {
   await ann.keyboard.press('Escape');
   await ann.keyboard.press('c');
   for (let i = 0; i < 20 && (await clear.isEnabled()); i++) await sleep(100);
-  await ann.keyboard.press('Shift+1');
+  await ann.keyboard.press('Shift+Digit1');
   await ann.getByRole('button', { name: /^Tie\..*Your bet: 10/ }).waitFor();
   ok(await clear.isEnabled(), 'a saved preset comes back with Shift + 1');
   await ann.reload();
@@ -155,9 +162,22 @@ async function sitAt(page, game) {
   await ann.keyboard.press('c');
   for (let i = 0; i < 30 && (await mine()).length > 0; i++) await sleep(150);
   ok(placed.length === 2 && (await mine()).length === 0, 'C clears the roulette bets');
-  await ann.keyboard.press('Shift+1');
+  await ann.keyboard.press('Shift+Digit1');
   for (let i = 0; i < 40 && (await mine()).length < 2; i++) await sleep(150);
   ok(JSON.stringify(await mine()) === JSON.stringify(placed), 'a roulette preset puts the same chips on the same spots');
+  // Pressed again on top of those chips: refused whole, nothing doubled.
+  await ann.keyboard.press('Shift+Digit1');
+  await ann.getByText('Clear your bets first').first().waitFor();
+  await ann.waitForTimeout(500);
+  ok(JSON.stringify(await mine()) === JSON.stringify(placed), 'a preset is not put on top of bets already there');
+  // The chat panel is open beside the game: the keys still belong to the game.
+  await ann.getByRole('button', { name: /^Chat/ }).first().click();
+  await ann.getByRole('dialog', { name: 'Chat' }).waitFor();
+  await ann.evaluate(() => document.activeElement && document.activeElement.blur());
+  await ann.keyboard.press('c');
+  for (let i = 0; i < 30 && (await mine()).length > 0; i++) await sleep(150);
+  ok((await mine()).length === 0 && (await ann.getByRole('dialog', { name: 'Chat' }).count()) === 1, 'with the chat panel open, the game keys still work');
+  await ann.keyboard.press('Escape');
   await ann.screenshot({ path: `${SHOTS}/k-roulette.png` });
 
   // ---------- Craps: Space rolls ----------
@@ -170,6 +190,17 @@ async function sitAt(page, game) {
   for (let i = 0; i < 40 && Number((await q(`select roll_no from public.cr_state where table_id = $1`, [cr])).roll_no) === r0; i++) await sleep(150);
   ok(Number((await q(`select roll_no from public.cr_state where table_id = $1`, [cr])).roll_no) === r0 + 1, 'Space rolls the dice in craps');
   ok((await ann.getByRole('button', { name: /^Presets/ }).count()) === 1, 'craps has presets too');
+  const crBets = async () => (await pool.query(`select bet_type, number, amount::int as amount from public.cr_bets where table_id = $1 and user_id = $2 order by 1, 2`, [cr, annId])).rows;
+  await ann.getByRole('button', { name: /^Field\./ }).first().click();
+  await ann.waitForTimeout(500);
+  const standing = await crBets();
+  await ann.getByRole('button', { name: /^Presets/ }).click();
+  await ann.getByRole('button', { name: 'Save these bets as preset 1' }).click();
+  await ann.keyboard.press('Escape');
+  await ann.keyboard.press('Shift+Digit1');
+  await ann.getByText('Those bets are already on the table').first().waitFor();
+  await ann.waitForTimeout(400);
+  ok(standing.length > 0 && JSON.stringify(await crBets()) === JSON.stringify(standing), 'a craps preset does not double bets that are still up');
 
   // ---------- Your turn, in another tab ----------
   const bj = await sitAt(ann, 'blackjack');

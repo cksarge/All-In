@@ -9,6 +9,7 @@ import { Button, ButtonLink } from '@/components/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { TextField } from '@/components/ui/TextField';
 import { friendlyError } from '@/lib/errors';
+import { loadFriends, type FriendList } from '@/lib/friends';
 import type { Friendship, PlayerCard } from '@/lib/progress';
 import { playSound } from '@/lib/sound';
 import { supabase } from '@/lib/supabase';
@@ -16,16 +17,7 @@ import { usePresence } from '@/stores/presenceStore';
 import { useProgress } from '@/stores/progressStore';
 import { toast } from '@/stores/toastStore';
 
-interface Friend extends PlayerCard {
-  since: string;
-  /** Where they are sitting. `id` is null for a private table. */
-  table: { id: string | null; game_key: string; game: string; name: string; private: boolean; full: boolean } | null;
-}
-interface List {
-  friends: Friend[];
-  incoming: (PlayerCard & { at: string })[];
-  outgoing: (PlayerCard & { at: string })[];
-}
+type List = FriendList;
 type Found = PlayerCard & { friendship: Friendship };
 
 export default function FriendsPage() {
@@ -47,18 +39,11 @@ export default function FriendsPage() {
   const [params, setParams] = useSearchParams();
 
   const load = useCallback(async () => {
-    const { data, error: err } = await supabase.rpc('friends_list');
-    if (err) setError(friendlyError(err));
-    else {
-      setError(null);
-      setList(data as List);
-    }
-    const act = await supabase.rpc('friends_activity');
-    if (!act.error) {
-      const d = act.data as { watchable: boolean; playing: Record<string, { game_key: string; game: string }> };
-      setPlaying(d.playing);
-      setWatchable(d.watchable);
-    }
+    const f = await loadFriends();
+    setError(f.error);
+    if (f.list) setList(f.list);
+    if (f.playing) setPlaying(f.playing);
+    if (f.watchable !== null) setWatchable(f.watchable);
   }, []);
 
   // A "new message" toast links here with ?dm=<their id>: open that conversation.

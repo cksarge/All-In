@@ -196,29 +196,47 @@ export function CrapsTable({ tableId }: { tableId: string }) {
     void run('bet', () => call('cr_place_bet', { p_type: spot.type, p_number: spot.number, p_amount: chip }), 'chip');
   };
 
+  // A Come bet that has moved to a number is still a Come bet when it is made again.
+  const moves = (type: CrBetType) => type === 'come' || type === 'dont_come';
+  const spotOf = (b: { type: CrBetType; number: number | null }) => `${b.type}|${moves(b.type) ? '' : (b.number ?? '')}`;
+  // A preset holds the bets as they are made: one entry per spot, a moved Come bet as a Come bet, and
+  // no odds (odds can only be added once a bet has its number).
   const savePreset = (i: number) => {
-    if (myBets.length === 0) return;
-    setPreset(i, myBets.map((b) => ({ type: b.bet_type, number: b.number, amount: b.amount })));
-    toast.success(`Saved as preset ${i + 1}`);
+    const spots = new Map<string, { type: CrBetType; number: number | null; amount: number }>();
+    for (const b of myBets) {
+      const e = { type: b.bet_type, number: moves(b.bet_type) ? null : b.number };
+      spots.set(spotOf(e), { ...e, amount: (spots.get(spotOf(e))?.amount ?? 0) + b.amount });
+    }
+    if (spots.size === 0) return;
+    setPreset(i, [...spots.values()]);
+    toast.success(`Saved as preset ${i + 1}`, myBets.some((b) => b.odds > 0) ? 'Odds are not part of a preset: add them once the bet has its number.' : undefined);
   };
-  // Puts down every bet of the preset that can be made on this roll (a Pass bet cannot once a point is set).
+  // Puts down the bets of the preset that are not on the table already and can be made on this roll.
+  // Bets stay up from roll to roll here, so a preset tops the table up: pressing it twice changes nothing.
   const loadPreset = (i: number) => {
     const p = presets[i];
-    if (!p || !mySeat) return;
-    const now = p.filter((b) => allowed(b) === null);
+    if (!p || !mySeat || busy) return;
+    const up = new Set(myBets.map((b) => spotOf({ type: b.bet_type, number: b.number })));
+    const missing = p.filter((b) => !up.has(spotOf(b)));
+    if (missing.length === 0) return toast.info('Those bets are already on the table');
+    const now = missing.filter((b) => allowed(b) === null);
     if (now.length === 0) return toast.info('None of those bets can be made right now', 'Line bets go down on the come-out roll, Come bets once a point is set.');
+    if (now.reduce((n, b) => n + b.amount, 0) > balance) return toast.info('Not enough chips for that preset');
     void run(
       'preset',
       async () => {
+        let placed = 0;
         for (const b of now) {
           const err = await call('cr_place_bet', { p_type: b.type, p_number: b.number, p_amount: b.amount });
-          if (err) return err;
+          // What went down before a refusal stays down, and is listed under "Your bets" to take back.
+          if (err) return placed > 0 ? `${err} ${placed} of ${now.length} bets were placed.` : err;
+          placed++;
         }
         return null;
       },
       'chip',
     );
-    if (now.length < p.length) toast.info(`${p.length - now.length} of the bets could not be made on this roll`);
+    if (now.length < missing.length) toast.info(`${missing.length - now.length} of the bets could not be made on this roll`);
   };
 
   const leave = async () => {
